@@ -10,6 +10,10 @@ router.post('/register', userController.userRegister )
 
 // user login by id
 
-router.get('/login', userController.loginUser)
+router.post('/login', userController.loginUser)
+
+// user change password
+
+router.post('/userChangePass', userController.userChangePass)
 
 module.exports = router

@@ -5,6 +5,7 @@ const port = process.env.PORT || 3001;
 const db= require('./config/db')
 const userRoutes = require('./routes/userRoutes')
 const adminRoute = require('./routes/adminRoutes')
+const cors = require('cors')
 
 const bodyParser = require('body-parser')
 
@@ -13,6 +14,7 @@ const bodyParser = require('body-parser')
 
 app.use(express.json())
 app.use(bodyParser.urlencoded({ extended : true}))
+app.use(cors())
 
 app.get('/', (req, res) => {
   res.send('Hello');
@@ -22,6 +24,12 @@ app.get('/', (req, res) => {
 //Router configuration   
 app.use('/api', userRoutes );
 app.use('/api', adminRoute)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://192.168.1.51:3000/api/'); 
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  next();
+});
 
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);

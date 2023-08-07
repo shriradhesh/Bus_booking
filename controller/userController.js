@@ -1,5 +1,7 @@
 const UserModel = require('../models/userModel');
 const bcrypt = require('bcrypt')
+const changePass = require('../models/changePassword')
+const cors = require('cors')
 
                          /* --> User API <-- */
 
@@ -62,6 +64,57 @@ const bcrypt = require('bcrypt')
         }
     }
 
-               
+   // API for change user password
+  const userChangePass = async (req,res)=>{
+   
+      try{
+          const { email , oldPassword , newPassword , confirmPassword} = req.body                
+            
 
-module.exports = {userRegister , loginUser}
+          // check for password match                     
+            
+            if( newPassword !== confirmPassword )
+            {
+              return res.status(400).json({ error : 'Password do not match' , success : false})
+            }
+
+             // find Admin by Id
+             
+             const user = await UserModel.findOne({ email })
+              
+             if(!user){
+       
+              return res.status(404).json({ error : ' user not found' , success : false})
+             }
+             else
+             {
+                                     
+               // check if old password match with stored password
+               
+               const isOldPasswordValid = await bcrypt.compare(oldPassword , user.password)
+                  if(!isOldPasswordValid)
+                  {
+                      return res.status(400).json({ error : 'Old Password incorrect ', success : false})
+                  }
+            
+                  // encrypt the newPassword 
+
+                  const hashedNewPassword = await bcrypt.hash(newPassword ,10)
+                  // update the admin password with new encrypted password 
+                          user.password = hashedNewPassword
+                          await user.save()
+                          return res.json({ message : ' Password changed Successfully', success : true})
+                      
+              } 
+          }
+          
+      catch(error)
+      {
+          console.error(error);
+          res.status(500).json({ message : 'Internal server error ', success : false})
+      }
+  }
+  
+
+
+module.exports = {userRegister , loginUser , userChangePass}
