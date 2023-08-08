@@ -1,7 +1,16 @@
 const express = require('express')
 const router = express.Router()
 const adminController = require('../controller/adminController')
+const multer = require('multer')
+const path = require('path')
+const upload = require('../uploadImage')
 
+
+
+
+
+
+   
 
             /* ==>   Admin Api's    <== */
 
@@ -12,11 +21,16 @@ const adminController = require('../controller/adminController')
 //admin changePass
          router.post('/changePass', adminController.changePassword)
 
-                            /* admin Manage Routes */
-// APi for create Route
+                            /* admin Manage Buses*/
+// APi for add new bus
 
-        router.post('/bus-routes')
-
-
+        router.post('/add_Bus', upload.array('images',15),adminController.addBus)
+// Api for edit bus
+         router.put('/editBus/:id',upload.array('images',15), adminController.editBus)
+//Api for get AllBuses with there status
+        router.get('/allBuses', adminController.allBuses)
 module.exports = router
-    
+                              
+                                  /*   Admin Manage Route */
+//Api for add new Route 
+router.post('/addRoute', adminController.addRoute)

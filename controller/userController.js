@@ -2,7 +2,8 @@ const UserModel = require('../models/userModel');
 const bcrypt = require('bcrypt')
 const changePass = require('../models/changePassword')
 const cors = require('cors')
-
+const nodemailer = require('nodemailer')
+const crypto = require('crypto')
                          /* --> User API <-- */
 
 
@@ -36,8 +37,7 @@ const cors = require('cors')
                }
                catch(error)
                {
-               console.error(' Error while creating user', error)
-               res.status(500).json({ error : 'Error while creating User' , success : false})
+                        res.status(500).json({ error : 'Error while creating User' , success : false})
                }
             }
 
@@ -115,6 +115,38 @@ const cors = require('cors')
       }
   }
   
+
+    // APi for forget password for user 
+       
+              const forgetPassword = async(req,res)=>{
+               
+                try{
+                  const {email}= req.body
+                   const user = await UserModel.findOne({ email })
+
+                   if(!user)
+                   {
+                    return res.status(404).json({ success: false, message : ' User not found'})
+                   }
+                    // Generate a password reset token and expire time
+                       const token = crypto.randomBytes(32).toString('hex')
+                       const expireTime = Date.now() + 3600000
+                   
+
+                   // save reset token and expire time 
+
+                   user.resetPasswordToken = token;
+                   user.passwordResetTokenExpire = expireTime
+                   await user.save();
+
+                        // send password reset link to user email
+                    
+                       
+                      
+              }
+              catch(error)
+              {}
+            }
 
 
 module.exports = {userRegister , loginUser , userChangePass}

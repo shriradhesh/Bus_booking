@@ -8,7 +8,7 @@ const busSchema = new mongoose.Schema({
     type : Number,
     required : true,
 },
-  registration_number: {
+  bus_no: {
     type : String,
     required : true
 },
@@ -31,8 +31,15 @@ const busSchema = new mongoose.Schema({
     depot_station: {
         type : String,
         required : true
-    }
-    })
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'active', 
+    }},
+    {timestamps: true}
+     
+    )
 
     const BusModel = mongoose.model('BusModel', busSchema);
 

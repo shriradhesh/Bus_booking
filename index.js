@@ -6,7 +6,8 @@ const db= require('./config/db')
 const userRoutes = require('./routes/userRoutes')
 const adminRoute = require('./routes/adminRoutes')
 const cors = require('cors')
-
+const multer = require('multer')
+const path =require('path')
 const bodyParser = require('body-parser')
 
 
