@@ -15,13 +15,20 @@ const busRouteSchema = new mongoose.Schema({
     stops: {
         type : [String],
         required : true,
-    },
-    schedule:{
-        type : [String],
+    },    
+    distances: 
+    {
+        type : [Number],
         required : true,
     },
-    distances: 
-    {type : [Number]}, 
+    duration : {
+        type :Number ,
+        required : true,
+    },
+    schedule:[{
+        day : String,
+        departureTimes : [String]
+    }]
 })
 
 const BusRoute= mongoose.model('BusRoute', busRouteSchema);
