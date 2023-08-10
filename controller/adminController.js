@@ -111,8 +111,37 @@ const addBus = async (req, res) => {
         status, 
       } = req.body;
   
-      if (!bus_type || !seating_capacity || !bus_no || !model || !manufacture_year || !amenities || !depot_station) {
-        return res.status(400).json({ error: 'Missing required Field ', success: false });
+      if (!bus_type) 
+      { 
+        return res.status(400).json({ error: 'Missing bus type ', success: false });
+      }
+      if (!seating_capacity) 
+      { 
+        return res.status(400).json({ error: 'Missing seating_capacity  ', success: false });
+      }
+      if (!bus_no) 
+      { 
+        return res.status(400).json({ error: 'Missing bus_no field', success: false });
+      }
+      if (!model) 
+      { 
+        return res.status(400).json({ error: 'Missing model field ', success: false });
+      }
+      if (!manufacture_year) 
+      { 
+        return res.status(400).json({ error: 'Missing manufacture_year field ', success: false });
+      }
+      if (!amenities) 
+      { 
+        return res.status(400).json({ error: 'Missing amenities ', success: false });
+      }
+      if (!depot_station) 
+      { 
+        return res.status(400).json({ error: 'Missing depot_station ', success: false });
+      }
+      if (!status) 
+      { 
+        return res.status(400).json({ error: 'Missing status', success: false });
       }
   
       // Check for bus number
@@ -166,9 +195,39 @@ const addBus = async (req, res) => {
                             status
                         } = req.body
                     
-                        if (!bus_type || !seating_capacity || !bus_no || !model || !manufacture_year || !amenities || !depot_station || !status) {
-                            return res.status(400).json({ error: 'Missing required Field ', success: false });
-                        }
+                        if (!bus_type) 
+      { 
+        return res.status(400).json({ error: 'Missing bus type ', success: false });
+      }
+      if (!seating_capacity) 
+      { 
+        return res.status(400).json({ error: 'Missing seating_capacity  ', success: false });
+      }
+      if (!bus_no) 
+      { 
+        return res.status(400).json({ error: 'Missing bus_no field', success: false });
+      }
+      if (!model) 
+      { 
+        return res.status(400).json({ error: 'Missing model field ', success: false });
+      }
+      if (!manufacture_year) 
+      { 
+        return res.status(400).json({ error: 'Missing manufacture_year field ', success: false });
+      }
+      if (!amenities) 
+      { 
+        return res.status(400).json({ error: 'Missing amenities ', success: false });
+      }
+      if (!depot_station) 
+      { 
+        return res.status(400).json({ error: 'Missing depot_station ', success: false });
+      }
+      if (!status) 
+      { 
+        return res.status(400).json({ error: 'Missing status', success: false });
+      }
+  
                     
                         // Check if the bus with the given id exists
                         const existBus = await BusModel.findOne({ _id:id  });
@@ -213,56 +272,305 @@ const addBus = async (req, res) => {
                     }
                 
                     res.status(200).json({success: true , message: 'All Buses', Bus_Detail : Buses });
-                    } catch (err) {
-                    res.status(500).json({success : false, error: 'There is an error to find Buses' , error : error});
+                    } catch (error) {
+                    res.status(500).json({success : false, error: 'There is an error to find Buses' + error.message});
                     }
-                };
+                }
              
 
 
                                                     /* Route Management */
 
-            // Api for Add Route
+// Api for Add Route
+                 
                   const addRoute = async(req,res)=>{
-                    try{
-                        const {
-                           routeNumber,
-                            startingPoint ,
-                            endPoint,                        
-                            stops,
-                            schedule,
-                            distances
-                        } = req.body
-               
-                        if (!routeNumber || !startingPoint || !endPoint || !stops || !schedule || !distances) {
-                            return res.status(400).json({ error: 'Missing required Field ', success: false });
-                          }
-
-                        // Check for route Number
-                        const existRoute = await BusRoute.findOne({ routeNumber });
+               try{
+                    const { s_no , routeNumber ,routeName ,
+                         starting_Date , end_Date , starting_time , 
+                         end_time , busId , contact_no, live_Location  ,status , stops} = req.body
+                  
+                   
                     
-                        if (existRoute) {
-                            return res.status(400).json({ error: 'Route with the same Route Number is Already Exist', success: false });
+                           // check field validation
+                           if(!s_no)
+                           { 
+                            return res.status(400).json({ error: 'Missing serial no ', success: false });
+                          }
+                          if (!routeNumber) 
+                          { 
+                            return res.status(400).json({ error: 'Missing routeNumber  ', success: false });
+                          }
+                          if (!routeName) 
+                          { 
+                            return res.status(400).json({ error: 'Missing routeName', success: false });
+                          }
+                          if (!starting_Date) 
+                          { 
+                            return res.status(400).json({ error: 'Missing starting_Date ', success: false });
+                          }
+                          if (!end_Date) 
+                          { 
+                            return res.status(400).json({ error: 'Missing end_Date ', success: false });
+                          }
+                          if (!starting_time) 
+                          { 
+                            return res.status(400).json({ error: 'Missing starting_time ', success: false });
+                          }
+                          if (!end_time) 
+                          { 
+                            return res.status(400).json({ error: 'Missing end_time ', success: false });
+                          }
+                          if (!busId) 
+                          { 
+                            return res.status(400).json({ error: 'Missing busId', success: false });
+                          }
+                      
+                          if (!contact_no) 
+                          { 
+                            return res.status(400).json({ error: 'Missing contact_no', success: false });
+                          }
+                      
+                          if (!live_Location) 
+                          { 
+                            return res.status(400).json({ error: 'Missing busId', success: false });
+                          }   
+                          if (!status) 
+                          { 
+                            return res.status(400).json({ error: 'Missing status', success: false });
+                          }
+                          if (!stops) 
+                          { 
+                            return res.status(400).json({ error: 'Missing stops', success: false });
+                          }
+                      
+
+                            // check for route existance 
+                    const existRoute = await BusRoute.findOne({ routeNumber })
+                    if(existRoute)
+                    {
+                      return res.status(400).json({ success : false ,  error : `route already exit with the route number : ${routeNumber} `})
+                    }
+                            //validation for stops
+
+                    if (!stops || !Array.isArray(stops) || stops.length === 0) {
+                        return res.status(400).json({ error: 'Missing stops or invalid format', success: false });
+                    }            
+           
+
+                    const newRoute = new BusRoute({
+
+                        s_no : s_no,
+                        routeNumber : routeNumber,
+                        routeName : routeName,
+                        starting_Date: starting_Date,
+                        end_Date: end_Date,
+                        starting_time: starting_time,
+                        end_time : end_time,
+                        busId : busId,
+                        contact_no : contact_no,
+                        live_Location: live_Location,                        
+                        status: status,
+                        stops: stops                          
+                        
+                    });
+
+                        // Save the new route to the database
+                             await newRoute.save();
+
+                  return res.status(200).json({ success: true, message: 'Route added successfully ',  routeNumber : routeNumber , details : newRoute});
+                     }
+                      catch (error) {
+                                console.error(error);
+                     return res.status(500).json({ success: false, error: 'An error occurred while add route' });
+                    }
+                  }
+
+// API for Get all route 
+                                        
+                    const allroutes = async (req, res) => {
+                        try {
+                    
+                        const status = req.query.status;
+
+                        let Routes;
+                        if (status === 'active' || status === 'inactive') {
+                            Routes = await BusRoute.find({ status: status });
+                        } else {
+                            Routes = await BusRoute.find({});
                         }
-                        const newRoute = new BusRoute({
-                            routeNumber: routeNumber,
-                            startingPoint: startingPoint,
-                            endPoint: endPoint,
-                            stops: stops,
-                            schedule: schedule,
-                            distances: distances,
+
+                        res.status(200).json({success: true , message: 'All Routes', Route_Detail : Routes });
+                        } catch (error) {
+                        res.status(500).json({success : false, error: 'There is an error to find Routes' + error.message});
+                        }
+                    }
+
+
+// API for Edit Route 
+                        const editRoute = async (req, res) => {
+                            try {
+                            const id = req.params.id;
+                            const {
+                                routeNumber,
+                                routeName,
+                                starting_Date,
+                                end_Date,
+                                starting_time,
+                                end_time,
+                                busId,
+                                contact_no,
+                                live_Location,
+                                delay,
+                                status,
+                               
+                            } = req.body
+
+                            if (!routeNumber) 
+                          { 
+                            return res.status(400).json({ error: 'Missing routeNumber  ', success: false });
+                          }
+                          if (!routeName) 
+                          { 
+                            return res.status(400).json({ error: 'Missing routeName', success: false });
+                          }
+                          if (!starting_Date) 
+                          { 
+                            return res.status(400).json({ error: 'Missing starting_Date ', success: false });
+                          }
+                          if (!end_Date) 
+                          { 
+                            return res.status(400).json({ error: 'Missing end_Date ', success: false });
+                          }
+                          if (!starting_time) 
+                          { 
+                            return res.status(400).json({ error: 'Missing starting_time ', success: false });
+                          }
+                          if (!end_time) 
+                          { 
+                            return res.status(400).json({ error: 'Missing end_time ', success: false });
+                          }
+                          if (!busId) 
+                          { 
+                            return res.status(400).json({ error: 'Missing busId', success: false });
+                          }
+                      
+                          if (!contact_no) 
+                          { 
+                            return res.status(400).json({ error: 'Missing contact_no', success: false });
+                          }
+                      
+                          if (!live_Location) 
+                          { 
+                            return res.status(400).json({ error: 'Missing busId', success: false });
+                          }   
+                          if (!status) 
+                          { 
+                            return res.status(400).json({ error: 'Missing status', success: false });
+                          }
+                         
+                           
+                           // check for route existance 
+                         
+                    const existRoute = await BusRoute.findOne({_id:id})
+                    if(!existRoute)
+                    {
+                        console.log("route not found with id : ", id);
+                      return res.status(404).json({ success : false ,  error : `route not found `})
+                    }
+                                  //validation for stops
+
+                    
+                        //update the properties
+                        existRoute.routeNumber = routeNumber;
+                        existRoute.routeName = routeName;
+                        existRoute.starting_Date = starting_Date;
+                        existRoute.end_Date = end_Date;
+                        existRoute.starting_time = starting_time;
+                        existRoute.end_time = end_time;
+                        existRoute.busId = busId;
+                        existRoute.contact_no = contact_no;
+                        existRoute.live_Location = live_Location;                        
+                        existRoute.status = status;
+                      
+                          
+                       
+   
+                        // Save the data into the database
+                        const updatedRoute = await existRoute.save();
+                        res.status(200).json({ success: true, message: ' Route Details Edit Successfully', bus: updatedRoute });
+                        } catch (error) {
+                            console.error(error);
+                        res.status(500).json({ success: false, error: 'Error while editing the route details' });
+                        }
+                    };
+            
+    // Api for delete Route 
+    const deleteRoute = async (req, res) => {
+        try {
+          const id = req.params.id;
+          const route = await BusRoute.findById(id);
+      
+          if (!route) {
+            return res.status(404).json({ success: false, error: 'Route not found' });
+          }
+      
+          await route.deleteOne();
+          res.status(200).json({ success: true, message: 'Route deleted successfully' });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ error: 'Error while deleting the route' });
+        }
+      };
+      
+     
+      //API for add stop in a route with route id 
+
+           const addStop = async (req,res)=>{
+           try{
+            const routeId = req.params.routeId;
+            const stopName = req.body.stopName
+            const stop_time =req.body.stop_time
+            const stop_actualTime = req.body.stop_actualTime
+            
+            if (!stopName) 
+            { 
+                 
+              return res.status(400).json({ error: 'Missing stopName  ', success: false });
+            }
+            if (!stop_time) 
+            { 
+              return res.status(400).json({ error: 'Missing stop_time', success: false });
+            }
+            if (!stop_actualTime) 
+            { 
+              return res.status(400).json({ error: 'Missing stop_actualTime ', success: false });
+            }
+            
+                const route = await BusRoute.findOne({ _id:routeId })
+           
+                if(!route)
+                {
+                    return res.status(400).json({ success : false , error : `Route not found with the routeId ${routeId}`})
+                }
+
+                route.stops.push({
+                    stopName,
+                    stop_time,
+                    stop_actualTime
+                })
+                await route.save()
+
+                return res.status(200).json({ success : true , message : `stop added successfully to routeId :  ${routeId}`})
+            }
+            catch(error)
+            {
+                return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
+            }
+           }
                             
-                        });
-                    const savedRoute = await newRoute.save();
-                        res.status(200).json({ success: true, message: 'New Route Added successfully', Bus: savedRoute });
-                                }
-                                catch(error)
-                                {
-                                
-                                res.status(500).json({ success: false, message: 'Error while adding the Route ', error: error });
-                                }
-                            }     
-                            
-                            
-                                    
-    module.exports = {adminLogin , changePassword, addBus , editBus , allBuses , addRoute}
+
+
+    module.exports = {adminLogin , changePassword, addBus , editBus ,
+                        allBuses , addRoute , allroutes , editRoute,
+                      deleteRoute  , addStop 
+                    }

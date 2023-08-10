@@ -30,5 +30,5 @@ router.post('/userChangePass', userController.userChangePass)
                           /*  Manage profile */
 
  //update profile by id
- router.put('/updateUser/:id',upload.single('profileImage'), userController.updateUser)
+ router.put('/updateUser/:id', upload.single('profileImage'), userController.updateUser)
   module.exports = router
