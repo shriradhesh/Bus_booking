@@ -29,7 +29,8 @@ const upload = require('../uploadImage')
          router.put('/editBus/:id', upload.array('images',15), adminController.editBus)
 //Api for get AllBuses with there status
         router.get('/allBuses', adminController.allBuses)
-module.exports = router
+
+
                               
                                   /*   Admin Manage Route */
 //Api for add new Route 
@@ -42,3 +43,16 @@ router.put('/editRoute/:id',adminController.editRoute)
 router.delete('/deleteRoute/:id', adminController.deleteRoute)
 //Api for add Stop in a Route with the help of Route id 
 router.post('/addStop/:routeId',adminController.addStop)
+//Api for edit Stop in a Route with the help of stop id and routeId
+router.put('/editStop/:stopId/:routeId',adminController.editStop)
+// Api for get all stops in a route
+router.get('/allStops/:routeId', adminController.allStops)
+// Api for delete a stop by stop id and route id
+router.delete('/deleteStop/:stopId/:routeId', adminController.deleteStop)
+
+                                /* Admin change Profile */
+//Api for change Admin Profile
+
+router.put('/changeprofile/:AdminId',upload.single('profileImage'), adminController.changeProfile)
+
+module.exports = router

@@ -9,6 +9,9 @@ const cors = require('cors')
 const multer = require('multer')
 const path = require('path')
 const { error } = require('console')
+const fs = require('fs');
+
+
 
                       /* -->  ADMIN Api'S   <--    */
 
@@ -246,7 +249,16 @@ const addBus = async (req, res) => {
                         existBus.status = status;
                                            
                         if (req.file) {
-                            existBus.images = req.file.path;
+                              if(existBus.images)
+                              {
+                                try{
+                                  fd.unlinkSync(existBus.images)
+                                }catch(error)
+                                {
+                                  console.error('Error deleting previous image:', error);
+                                }
+                              }
+                              existBus.images = req.file.path;
                         }
                     
                         // Save the data into the database
@@ -474,11 +486,10 @@ const addBus = async (req, res) => {
                     const existRoute = await BusRoute.findOne({_id:id})
                     if(!existRoute)
                     {
-                        console.log("route not found with id : ", id);
+                        
                       return res.status(404).json({ success : false ,  error : `route not found `})
                     }
-                                  //validation for stops
-
+                    
                     
                         //update the properties
                         existRoute.routeNumber = routeNumber;
@@ -526,13 +537,14 @@ const addBus = async (req, res) => {
       //API for add stop in a route with route id 
 
            const addStop = async (req,res)=>{
-           try{
-            const routeId = req.params.routeId;
-            const stopName = req.body.stopName
-            const stop_time =req.body.stop_time
-            const stop_actualTime = req.body.stop_actualTime
+          
+            const routeId = req.params.routeId
+           const {stopName , stop_time, stop_actualTime} = req.body
+          
             
-            if (!stopName) 
+           try{
+
+            if (!stopName)
             { 
                  
               return res.status(400).json({ error: 'Missing stopName  ', success: false });
@@ -567,10 +579,156 @@ const addBus = async (req, res) => {
                 return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
             }
            }
-                            
 
+      // Api for EDIT Stops in a route with route Id and stop Id
+      const editStop = async (req, res) =>{
+       let routeId
+        try{
+            const stopId = req.params.stopId
+             routeId = req.params.routeId          
+           
+            const {
+              stopName,
+              stop_time,
+              stop_actualTime
+            } = req.body
+            if(!stopName)
+            {
+              return res.status(400).json({ success : false , error : 'Missing stopName'})
+            }
+            if(!stop_time)
+            {
+              return res.status(400).json({ success : false , error : 'Missing stop_time'})
+            }
+            if(!stop_actualTime)
+            {
+              return res.status(400).json({ success : false , error : 'Missing stop_time'})
+            }
+
+                 // check for route existance
+                const existRoute = await BusRoute.findOne({_id:routeId})
+                if(!existRoute)
+                {
+                  return res.status(404).json({ success: false , error : " route not found "})
+                }
+                    
+                    // check for stop
+                const existStop = existRoute.stops.find(stop => stop._id.toString() === stopId)                     
+                  if(!existStop)
+                  {
+                    return res.status(404).json({ success : false , error : "stop not found"})
+                  }
+                        //update the property of  stops
+                      existStop.stopName = stopName
+                      existStop.stop_time = stop_time
+                      existStop.stop_actualTime = stop_actualTime
+                       
+                         await BusRoute.findOneAndUpdate(
+                          {_id: routeId, 'stops._id': stopId},
+                          {$set: { 'stops.$' : existStop}
+
+                              }
+                         )
+                           
+                      res.status(200).json({ success : true , message :` stop is edit successfully for routeID : ${routeId}`})
+                      
+              }        
+       catch(error)
+       {
+        
+          res.status(500).json({success: false , error : ` there is an error to update the stop in routeId : ${routeId}`})
+       }
+       }
+
+    // get all stops form the route ID
+                   const allStops = async(req,res)=>{
+                    try{
+                      const routeId = req.params.routeId
+                      const route = await BusRoute.findOne({ _id:routeId})
+                      if(!route)
+                      {
+                        return res.status(404).json({ success : false , error : ' Route not found '})
+                      }                          
+
+                          const stops = route.stops
+                          return res.status(200).json({ success : true , message : " all Stops : ", stops : stops})
+
+                    }
+                    catch(error)
+                    {
+                      console.error(error);
+                          return res.status(500).json({ success : false , errror : " there is an error to get all stops" , })
+                    }
+                   }
+                    
+    // Delete a particular stop by stopId with the help of routeId
+                
+                    const deleteStop = async (req ,res)=>{
+                      let routeId 
+                      try{
+                            const stopId = req.params.stopId
+                            routeId = req.params.routeId
+                            const existRoute = await BusRoute.findById(routeId)   
+                                                        
+                            if(!existRoute)
+                            {
+                              return res.status(404).json({ success : false , error : " route not found"})
+                            }
+                            
+                            // check for stop
+                            const existStopIndex = existRoute.stops.findIndex(stop => stop._id.toString() === stopId)
+                               if(existStopIndex === -1)
+                               {
+                                 return res.status(404).json({ success : false , error : " Stop not found"})
+                                }  
+                                // remove the stop from the stop array
+                                
+                                existRoute.stops.splice(existStopIndex, 1)
+
+                                await BusRoute.findByIdAndUpdate(
+                                      { _id:routeId },
+                                      {stops : existRoute.stops}
+                                )
+
+                                res.status(200).json({ success : true , message : "stop delete successfully"})
+                      
+                        }
+                       catch(error)
+                       {
+                            res.status(500).json({ success : false , error :  ` there is an error to delete the stop `})
+                       }
+                      }
+            
+                                          /* Change Profile */
+// ApI for change Porfile 
+              const changeProfile = async(req,res)=>{
+                try{
+                       const AdminId = req.params.AdminId
+                 // check for Admin exist
+                 const admin = await Admin.findById(AdminId)
+                 if(!admin){
+                  return res.status(404).json({ success : false , error : 'Admin not found'})
+                 }
+                
+                      
+                       if(req.file)
+                  {
+                    admin.profileImage = req.file.filename
+                 
+                  }  
+                 
+                      await admin.save()
+                      return res.status(200).json({ success: true, message: 'Admin profile change successfully' });
+                }
+                catch(error)
+                {
+                  
+                  res.status(500).json({ success : false , error : ' Error while changing Admin profile'})
+                }
+              }
 
     module.exports = {adminLogin , changePassword, addBus , editBus ,
                         allBuses , addRoute , allroutes , editRoute,
-                      deleteRoute  , addStop 
+                      deleteRoute  , addStop , editStop , allStops , 
+                        deleteStop , changeProfile
                     }
