@@ -5,6 +5,7 @@ const changePass  = require('../models/changePassword')
 const BusModel = require('../models/busModel')
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
+const DriverModel = require('../models/driverModel')
 const cors = require('cors')
 const multer = require('multer')
 const path = require('path')
@@ -184,109 +185,121 @@ const addBus = async (req, res) => {
 
 
   // Api for Edit bus with id
-                    const editBus = async (req, res) => {
-                        try {
-                        const id = req.params.id;
-                        const {
-                            bus_type,
-                            seating_capacity,
-                            bus_no,
-                            model,
-                            manufacture_year,
-                            amenities,
-                            depot_station,
-                            status
-                        } = req.body
-                    
-                        if (!bus_type) 
-      { 
-        return res.status(400).json({ error: 'Missing bus type ', success: false });
-      }
-      if (!seating_capacity) 
-      { 
-        return res.status(400).json({ error: 'Missing seating_capacity  ', success: false });
-      }
-      if (!bus_no) 
-      { 
-        return res.status(400).json({ error: 'Missing bus_no field', success: false });
-      }
-      if (!model) 
-      { 
-        return res.status(400).json({ error: 'Missing model field ', success: false });
-      }
-      if (!manufacture_year) 
-      { 
-        return res.status(400).json({ error: 'Missing manufacture_year field ', success: false });
-      }
-      if (!amenities) 
-      { 
-        return res.status(400).json({ error: 'Missing amenities ', success: false });
-      }
-      if (!depot_station) 
-      { 
-        return res.status(400).json({ error: 'Missing depot_station ', success: false });
-      }
-      if (!status) 
-      { 
-        return res.status(400).json({ error: 'Missing status', success: false });
-      }
-  
-                    
-                        // Check if the bus with the given id exists
-                        const existBus = await BusModel.findOne({ _id:id  });
-                        if (!existBus) {
-                            return res.status(400).json({ error: ' Bus Not found ', success: false });
-                        }
-                    
-                        //update the properties
-                        existBus.bus_type = bus_type;
-                        existBus.seating_capacity = seating_capacity;
-                        existBus.bus_no = bus_no;
-                        existBus.model = model;
-                        existBus.manufacture_year = manufacture_year;
-                        existBus.amenities = amenities;
-                        existBus.depot_station = depot_station;
-                        existBus.status = status;
-                                           
-                        if (req.file) {
-                              if(existBus.images)
-                              {
-                                try{
-                                  fd.unlinkSync(existBus.images)
-                                }catch(error)
-                                {
-                                  console.error('Error deleting previous image:', error);
-                                }
-                              }
-                              existBus.images = req.file.path;
-                        }
-                    
-                        // Save the data into the database
-                        const updatedBus = await existBus.save();
-                        res.status(200).json({ success: true, message: ' Bus Details Edit Successfully', bus: updatedBus });
-                        } catch (error) {
-                            console.error(error);
-                        res.status(500).json({ success: false, error: 'Error while editing the bus details' });
-                        }
-                    };
-                    
+  const editBus = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const {
+            bus_type,
+            seating_capacity,
+            bus_no,
+            model,
+            manufacture_year,
+            amenities,
+            depot_station,
+            status,
+            availability
+        } = req.body;
+
+        const requiredFields = [
+            'bus_type',
+            'seating_capacity',
+            'bus_no',
+            'model',
+            'manufacture_year',
+            'amenities',
+            'depot_station',
+            'status',
+            'availability'
+        ];
+
+        for (const field of requiredFields) {
+            if (!req.body[field]) {
+                return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+            }
+        }
+
+        const existBus = await BusModel.findOne({ _id: id });
+        if (!existBus) {
+            return res.status(400).json({ error: 'Bus Not found', success: false });
+        }
+
+        const validStatus = ['active', 'inactive'];
+        const driverStatus = validStatus.includes(status) ? status : 'active';
+
+        const validAvailability = ['available', 'unavailable', 'booked'];
+        const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
+
+        existBus.bus_type = bus_type;
+        existBus.seating_capacity = seating_capacity;
+        existBus.bus_no = bus_no;
+        existBus.model = model;
+        existBus.manufacture_year = manufacture_year;
+        existBus.amenities = amenities;
+        existBus.depot_station = depot_station;
+        existBus.status = driverStatus;
+        existBus.availability = BusAvailability;
+
+        if (req.file) {
+            if (existBus.images) {
+                try {
+                    fs.unlinkSync(existBus.images);
+                } catch (error) {
+                    console.error('Error deleting previous image:', error);
+                }
+            }
+            existBus.images = req.file.path;
+        }
+
+        const updatedBus = await existBus.save();
+        res.status(200).json({ success: true, message: 'Bus Details Edit Successfully', bus: updatedBus });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: 'Error while editing the bus details' });
+    }
+};
+
+  //APi for delete Bus 
+               
+                const deleteBus = async (req, res) => {
+                  try {
+                    const busId = req.params.busId;
+                    const Bus = await BusModel.findById(busId);
+                
+                    if (!Bus) {
+                      return res.status(404).json({ success: false, error: 'Bus not found' });
+                    }
+                // Check if driver status is inactive and availability is unavailable
+                if (Bus.status === 'inactive' && Bus.availability === 'unavailable') {
+                  await Bus.deleteOne();
+                  res.status(200).json({ success: true, message: 'Bus deleted successfully' });
+                } else {
+                  res.status(400).json({ success: false, error: 'Bus booked on other route ' });
+                }
+                }
+                 catch (error) {                    
+                    res.status(500).json({ error: 'Error while deleting the Bus' });
+                  }
+                };
+
 //Api for Get All Buses with there status 
                 const allBuses = async (req, res) => {
-                    try {
-                   
+                  try {
                     const status = req.query.status;
                 
-                    let Buses;
-                    if (status === 'active' || status === 'inactive') {
-                        Buses = await BusModel.find({ status: status });
+                    let buses;
+                    if (status === 'active') {
+                      buses = await BusModel.find({ status: 'active', availability: { $in: ['available', 'booked'] } });
+                    } else if (status === 'inactive') {
+                      buses = await BusModel.find({ status: 'inactive', availability: 'unavailable' });
                     } else {
-                          Buses = await BusModel.find({});
+                      return res.status(400).json({ success: false, error: 'Invalid status value' });
                     }
-                
-                    res.status(200).json({success: true , message: 'All Buses', Bus_Detail : Buses });
-                    } catch (error) {
-                    res.status(500).json({success : false, error: 'There is an error to find Buses' + error.message});
-                    }
+                      
+                    res.status(200).json({ success: true, message: 'All Buses', Bus_Detail: buses });
+                  } catch (error) {
+                    console.error(error);
+                    res.status(500).json({ success: false, error: 'There is an error to find Buses' });
+                  }
                 }
              
 
@@ -299,7 +312,7 @@ const addBus = async (req, res) => {
                try{
                     const { s_no , routeNumber ,routeName ,
                          starting_Date , end_Date , starting_time , 
-                         end_time , busId , contact_no, live_Location  ,status , stops} = req.body
+                         end_time , contact_no, live_Location  ,status , stops} = req.body
                   
                    
                     
@@ -331,11 +344,7 @@ const addBus = async (req, res) => {
                           if (!end_time) 
                           { 
                             return res.status(400).json({ error: 'Missing end_time ', success: false });
-                          }
-                          if (!busId) 
-                          { 
-                            return res.status(400).json({ error: 'Missing busId', success: false });
-                          }
+                          }                        
                       
                           if (!contact_no) 
                           { 
@@ -344,7 +353,7 @@ const addBus = async (req, res) => {
                       
                           if (!live_Location) 
                           { 
-                            return res.status(400).json({ error: 'Missing busId', success: false });
+                            return res.status(400).json({ error: 'Missing location', success: false });
                           }   
                           if (!status) 
                           { 
@@ -377,8 +386,7 @@ const addBus = async (req, res) => {
                         starting_Date: starting_Date,
                         end_Date: end_Date,
                         starting_time: starting_time,
-                        end_time : end_time,
-                        busId : busId,
+                        end_time : end_time,                       
                         contact_no : contact_no,
                         live_Location: live_Location,                        
                         status: status,
@@ -421,7 +429,8 @@ const addBus = async (req, res) => {
 // API for Edit Route 
                         const editRoute = async (req, res) => {
                             try {
-                            const id = req.params.id;
+                            const routeId = req.params.routeId;
+                            
                             const {
                                 routeNumber,
                                 routeName,
@@ -434,9 +443,11 @@ const addBus = async (req, res) => {
                                 live_Location,
                                 delay,
                                 status,
+                                driverId
+                              
                                
                             } = req.body
-
+                           
                             if (!routeNumber) 
                           { 
                             return res.status(400).json({ error: 'Missing routeNumber  ', success: false });
@@ -479,17 +490,36 @@ const addBus = async (req, res) => {
                           { 
                             return res.status(400).json({ error: 'Missing status', success: false });
                           }
+                          if (!driverId) 
+                          { 
+                            return res.status(400).json({ error: 'Missing driverId', success: false });
+                          }
                          
                            
                            // check for route existance 
-                         
-                    const existRoute = await BusRoute.findOne({_id:id})
-                    if(!existRoute)
-                    {
                         
+                    const existRoute = await BusRoute.findOne({_id:routeId})
+                    if(!existRoute)
+                    {                        
                       return res.status(404).json({ success : false ,  error : `route not found `})
                     }
                     
+                        // Check if the Bus ID is already assigned to a different route
+                        if (busId) {
+                          const existingBusRoute = await BusRoute.findOne({ busId });
+                          if (existingBusRoute && existingBusRoute._id.toString() !== routeId) {
+                              return res.status(400).json({ success: false, error: `Bus ID is already assigned to a different route` });
+                          }                         
+                       }
+                       
+                        // Check if the driver ID is already assigned to a different route
+                    if (driverId) {
+                      const existingDriverRoute = await BusRoute.findOne({ driverId });
+                      if (existingDriverRoute && existingDriverRoute._id.toString() !== routeId) {
+                          return res.status(400).json({ success: false, error: `Driver ID is already assigned to a different route` });
+                      }
+                   }
+                   
                     
                         //update the properties
                         existRoute.routeNumber = routeNumber;
@@ -502,10 +532,9 @@ const addBus = async (req, res) => {
                         existRoute.contact_no = contact_no;
                         existRoute.live_Location = live_Location;                        
                         existRoute.status = status;
-                      
-                          
-                       
-   
+                        existRoute.driverId = driverId
+
+                        
                         // Save the data into the database
                         const updatedRoute = await existRoute.save();
                         res.status(200).json({ success: true, message: ' Route Details Edit Successfully', bus: updatedRoute });
@@ -727,8 +756,185 @@ const addBus = async (req, res) => {
                 }
               }
 
-    module.exports = {adminLogin , changePassword, addBus , editBus ,
-                        allBuses , addRoute , allroutes , editRoute,
-                      deleteRoute  , addStop , editStop , allStops , 
-                        deleteStop , changeProfile
+                                                    /*   Driver Manage  */
+
+  //Api for add New Driver
+              const addDriver = async (req, res) => {
+                try {
+                  const { driverName, driverContact, driverLicence_number, status  } = req.body;
+
+                  if (!driverName) 
+                  { 
+                    return res.status(400).json({ error: 'Missing driverName  ', success: false });
+                  }
+                  if (!driverContact) 
+                  { 
+                    return res.status(400).json({ error: 'Missing driverContact', success: false });
+                  }
+                  if (!driverLicence_number) 
+                  { 
+                    return res.status(400).json({ error: 'Missing driverLicence_number ', success: false });
+                  }
+                  if (!status) 
+                  { 
+                    return res.status(400).json({ error: 'Missing status ', success: false });
+                  }
+                 
+              
+                  // Check for driver existence
+                  const existingDriver = await DriverModel.findOne({ driverLicence_number });
+                  if (existingDriver) {
+                    return res.status(400).json({ success: false, error: ' License Number already exists' });
+                  }
+              
+                  // Check for valid driver status
+                  const validStatus = ['active', 'inactive'];
+                  const driverStatus = validStatus.includes(status) ? status : 'active';
+
+                 
+                  const newDriver = new DriverModel({
+                    driverName,
+                    driverContact,
+                    driverLicence_number,
+                    status: driverStatus
+                    
+                  });  
+
+                        
+                        // set Driver availability  and profile Images
+                  newDriver.availability = 'available'; 
+                  if (req.file) {
+                    newDriver.driverProfileImage = req.file.filename;
+                  }
+              
+              
+                  const savedDriver = await newDriver.save();
+                  res.status(200).json({ success: true, message: ' New Driver added successfully', driver: savedDriver });
+                } catch (error) {
+                  console.error(error);
+                  res.status(500).json({ success: false, error: 'Error adding driver details' });
+                }
+              };
+        
+      // Api for edit Driver Details
+                     const editDriver = async(req, res) =>{
+                      try{
+                            const driverId = req.params.driverId
+                            const {
+                              driverName ,
+                              driverContact,
+                              status , 
+                             availability 
+                              
+                            } = req.body
+
+                              if(!driverName)
+                              {
+                                return res.status(400).json({success : false , error : ' missing Driver Name'})
+                              }
+                              if(!driverContact)
+                              {
+                                return res.status(400).json({success : false , error : ' missing Driver Contact'})
+                              }
+                              if(!status)
+                              {
+                                return res.status(400).json({success : false , error : ' missing Driver status'})
+                              }
+                              if(!availability)
+                              {
+                                return res.status(400).json({success : false , error : ' missing Driver availability'})
+                              }
+
+                                  
+                                
+                             // Check for driver existence
+                            const existingDriver = await DriverModel.findOne({ _id:driverId});
+                            if (!existingDriver) {
+                              return res.status(400).json({ success: false, error: 'Driver not found' });
+                            }
+                             // Check for valid driver status
+                        const validStatus = ['active', 'inactive'];
+                        const driverStatus = validStatus.includes(status) ? status : 'active';
+                              // check for valid availability status
+                        const validAvailability = ['available', 'unavailable', 'booked'];
+                        const driverAvailability = validAvailability.includes(availability) ? availability : 'available';
+                
+
+                                    // update the Driver properties
+                              existingDriver.driverName = driverName,
+                              existingDriver.driverContact = driverContact,
+                              existingDriver.status = driverStatus
+                              existingDriver.availability = driverAvailability;
+                              
+                                      //update driver profileImage  
+                                                    
+                       if(req.file)
+                       {
+                         existingDriver.driverProfileImage = req.file.filename
+                      
+                       }  
+
+                              // save the data into database
+                              const updateDriver = await existingDriver.save()
+                              res.status(200).json({ success : true , message : ' Driver details update successfully' , Driver : updateDriver})
+
+                      }catch(error)
+                     
+                      {
+                        console.error(error);
+                          
+                          res.status(500).json({ success : false , error : ' there is an error to update the details of the driver'})
+                      }
+                     } 
+  
+        // Api for Delete Driver
+                const deleteDriver = async (req, res) => {
+                  try {
+                    const driverId = req.params.driverId;
+                    const driver = await DriverModel.findById(driverId);
+                
+                    if (!driver) {
+                      return res.status(404).json({ success: false, error: 'driver not found' });
                     }
+                // Check if driver status is inactive and availability is unavailable
+                if (driver.status === 'inactive' && driver.availability === 'unavailable') {
+                  await driver.deleteOne();
+                  res.status(200).json({ success: true, message: 'Driver deleted successfully' });
+                } else {
+                  res.status(400).json({ success: false, error: 'Driver booked with other bus and route ' });
+                }
+                }
+                 catch (error) {                    
+                    res.status(500).json({ error: 'Error while deleting the Driver' });
+                  }
+                };
+
+      // Api for get all driver
+                  const allDrivers = async (req, res) => {
+                    try {
+                      const status = req.query.status;
+                  
+                      let Drivers;
+                      if (status === 'active') {
+                        Drivers = await DriverModel.find({ status: 'active', availability: { $in: ['available', 'booked'] } });
+                      } else if (status === 'inactive') {
+                        buses = await DriverModel.find({ status: 'inactive', availability: 'unavailable' });
+                      } else {
+                        return res.status(400).json({ success: false, error: 'Invalid status value' });
+                      }
+                        
+                      res.status(200).json({ success: true, message: 'All Drivers', Driver_Details: Drivers });
+                    } catch (error) {
+                      
+                      res.status(500).json({ success: false, error: 'There is an error to find Drivers' });
+                    }
+                  }
+               
+                
+    module.exports = {adminLogin , changePassword, addBus , editBus ,
+                       deleteBus, allBuses , addRoute , allroutes , editRoute,
+                      deleteRoute  , addStop , editStop , allStops , 
+                        deleteStop , changeProfile , addDriver , editDriver,
+                        deleteDriver , allDrivers
+                      }
+                    

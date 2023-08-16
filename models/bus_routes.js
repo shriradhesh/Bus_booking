@@ -28,8 +28,9 @@ const busRouteSchema = new mongoose.Schema({
         required : true,
     },
     busId :{
-        type : String,
-        required : true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'BusModel', 
+      required: false 
     },
     contact_no : { 
         type : String,
@@ -64,7 +65,12 @@ const busRouteSchema = new mongoose.Schema({
         type: String,
         enum: ['active', 'inactive'],
         default: 'active', 
-      }
+      },
+      driverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'DriverModel', 
+        required: false 
+    }
 },
 {timestamps: true}
 )
