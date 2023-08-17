@@ -51,6 +51,8 @@ router.put('/editStop/:stopId/:routeId',adminController.editStop)
 router.get('/allStops/:routeId', adminController.allStops)
 // Api for delete a stop by stop id and route id
 router.delete('/deleteStop/:stopId/:routeId', adminController.deleteStop)
+//Api for assign stop price
+router.post('/calculateStopfare/:routeId', adminController.calculateStopfare)
 
                                 /* Admin change Profile */
 //Api for change Admin Profile

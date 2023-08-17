@@ -7,10 +7,8 @@ const busRouteSchema = new mongoose.Schema({
         type : Number,
         required : true,
     },
-    routeName: {
-        type : String,
-        required : true,
-    },
+    source :String,
+    destination: String,
     starting_Date:{ 
         type : Date,
         required : true
@@ -30,7 +28,7 @@ const busRouteSchema = new mongoose.Schema({
     busId :{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'BusModel', 
-      required: false 
+      required: false
     },
     contact_no : { 
         type : String,
@@ -41,26 +39,26 @@ const busRouteSchema = new mongoose.Schema({
                 type : String,
                 required : true
               },
-              stop_time : {
+              arrivalTime : {
                 type : String,
                 required :true,
-              },
-              stop_actualTime:
-              {
+              },            
+              departureTime:{
                 type: String,
                 required : true,
-              }
-
+              },
+              distance: {
+                type: Number,  
+                required: true,
+              },
+             
      }],
      live_Location :
      {
         type : String,
         required : true,
-     },
-     delay : {
-        type : Number 
-        
-     },
+     },     
+    
      status: {
         type: String,
         enum: ['active', 'inactive'],
@@ -69,7 +67,7 @@ const busRouteSchema = new mongoose.Schema({
       driverId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'DriverModel', 
-        required: false 
+        required: false
     }
 },
 {timestamps: true}
