@@ -114,40 +114,25 @@ const addBus = async (req, res) => {
         depot_station,
         status, 
       } = req.body;
-  
-      if (!bus_type) 
-      { 
-        return res.status(400).json({ error: 'Missing bus type ', success: false });
-      }
-      if (!seating_capacity) 
-      { 
-        return res.status(400).json({ error: 'Missing seating_capacity  ', success: false });
-      }
-      if (!bus_no) 
-      { 
-        return res.status(400).json({ error: 'Missing bus_no field', success: false });
-      }
-      if (!model) 
-      { 
-        return res.status(400).json({ error: 'Missing model field ', success: false });
-      }
-      if (!manufacture_year) 
-      { 
-        return res.status(400).json({ error: 'Missing manufacture_year field ', success: false });
-      }
-      if (!amenities) 
-      { 
-        return res.status(400).json({ error: 'Missing amenities ', success: false });
-      }
-      if (!depot_station) 
-      { 
-        return res.status(400).json({ error: 'Missing depot_station ', success: false });
-      }
-      if (!status) 
-      { 
-        return res.status(400).json({ error: 'Missing status', success: false });
-      }
-  
+       
+      const requiredFields = [
+        'bus_type',
+        'seating_capacity',
+        'bus_no',            
+        'model',
+        'manufacture_year',
+        'amenities',
+        'depot_station',
+        'status',
+        
+    ];
+
+    for (const field of requiredFields) {
+        if (!req.body[field]) {
+            return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+        }
+    }
+      
       // Check for bus number
       const existBus = await BusModel.findOne({ bus_no });
   
@@ -190,8 +175,7 @@ const addBus = async (req, res) => {
         const id = req.params.id;
         const {
             bus_type,
-            seating_capacity,
-            bus_no,
+            seating_capacity,            
             model,
             manufacture_year,
             amenities,
@@ -202,8 +186,7 @@ const addBus = async (req, res) => {
 
         const requiredFields = [
             'bus_type',
-            'seating_capacity',
-            'bus_no',
+            'seating_capacity',            
             'model',
             'manufacture_year',
             'amenities',
@@ -218,7 +201,7 @@ const addBus = async (req, res) => {
             }
         }
 
-        const existBus = await BusModel.findOne({ _id: id });
+        const existBus = await BusModel.findOne({ _id:id });
         if (!existBus) {
             return res.status(400).json({ error: 'Bus Not found', success: false });
         }
@@ -230,8 +213,7 @@ const addBus = async (req, res) => {
         const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
 
         existBus.bus_type = bus_type;
-        existBus.seating_capacity = seating_capacity;
-        existBus.bus_no = bus_no;
+        existBus.seating_capacity = seating_capacity;       
         existBus.model = model;
         existBus.manufacture_year = manufacture_year;
         existBus.amenities = amenities;
@@ -301,7 +283,22 @@ const addBus = async (req, res) => {
                     res.status(500).json({ success: false, error: 'There is an error to find Buses' });
                   }
                 }
-             
+            
+// Api for Get a Route details by Route id
+                const getBus = async (req, res) => {
+                  try {
+                    const busId = req.params.busId;
+                    const bus = await BusModel.findById(busId);
+
+                    if (!bus) {
+                      return res.status(404).json({success : false ,  error: 'BUS not found' });
+                    }
+
+                    res.status(200).json({ success : true , message : " BUS found" , Bus_Detail : bus });
+                  } catch (err) {
+                    res.status(500).json({ success : false , error: 'Error while finding the BUS' });
+                  }
+                }
 
 
                                                     /* Route Management */
@@ -317,57 +314,27 @@ const addRoute = async(req,res)=>{
       
        
               // check field validation
-              if(!s_no)
-              { 
-               return res.status(400).json({ error: 'Missing serial no ', success: false });
-             }
-             if (!routeNumber) 
-             { 
-               return res.status(400).json({ error: 'Missing routeNumber  ', success: false });
-             }
-             if (!source) 
-             { 
-               return res.status(400).json({ error: 'Missing source', success: false });
-             }
-             if (!destination) 
-             { 
-               return res.status(400).json({ error: 'Missing destination', success: false });
-             }
-             if (!starting_Date) 
-             { 
-               return res.status(400).json({ error: 'Missing starting_Date ', success: false });
-             }
-             if (!end_Date) 
-             { 
-               return res.status(400).json({ error: 'Missing end_Date ', success: false });
-             }
-             if (!starting_time) 
-             { 
-               return res.status(400).json({ error: 'Missing starting_time ', success: false });
-             }
-             if (!end_time) 
-             { 
-               return res.status(400).json({ error: 'Missing end_time ', success: false });
-             }                        
-         
-             if (!contact_no) 
-             { 
-               return res.status(400).json({ error: 'Missing contact_no', success: false });
-             }
-         
-             if (!live_Location) 
-             { 
-               return res.status(400).json({ error: 'Missing location', success: false });
-             }   
-             if (!status) 
-             { 
-               return res.status(400).json({ error: 'Missing status', success: false });
-             }
-             if (!stops) 
-             { 
-               return res.status(400).json({ error: 'Missing stops', success: false });
-             }
-         
+              const requiredFields = [
+                's_no',
+                'routeNumber',
+                'source',            
+                'destination',
+                'starting_Date',
+                'end_Date',
+                'starting_time',
+                'end_time',                
+                'contact_no',
+                'live_Location',
+                'status',
+                'stops',
+                
+            ];
+        
+            for (const field of requiredFields) {
+                if (!req.body[field]) {
+                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                }
+            }
 
                // check for route existance 
        const existRoute = await BusRoute.findOne({ routeNumber })
@@ -395,9 +362,8 @@ const addRoute = async(req,res)=>{
            contact_no : contact_no,
            live_Location: live_Location,                        
            status: status,
-           stops: stops                          
-           
-       });
+           stops: stops                   
+         });
 
            // Save the new route to the database
                 await newRoute.save();
@@ -447,65 +413,33 @@ const addRoute = async(req,res)=>{
                                 busId,
                                 contact_no,
                                 live_Location,
-                                delay,
-                                status,
+                                 status,
                                 driverId,
-                                
                               
-                               
                             } = req.body
                            
-                            if (!routeNumber) 
-                          { 
-                            return res.status(400).json({ error: 'Missing routeNumber  ', success: false });
-                          }
-                          if (!source) 
-                          { 
-                            return res.status(400).json({ error: 'Missing source', success: false });
-                          }
-                          if (!destination) 
-                          { 
-                            return res.status(400).json({ error: 'Missing destination', success: false });
-                          }
-                          if (!starting_Date) 
-                          { 
-                            return res.status(400).json({ error: 'Missing starting_Date ', success: false });
-                          }
-                          if (!end_Date) 
-                          { 
-                            return res.status(400).json({ error: 'Missing end_Date ', success: false });
-                          }
-                          if (!starting_time) 
-                          { 
-                            return res.status(400).json({ error: 'Missing starting_time ', success: false });
-                          }
-                          if (!end_time) 
-                          { 
-                            return res.status(400).json({ error: 'Missing end_time ', success: false });
-                          }
-                          if (!busId) 
-                          { 
-                            return res.status(400).json({ error: 'Missing busId', success: false });
-                          }
-                      
-                          if (!contact_no) 
-                          { 
-                            return res.status(400).json({ error: 'Missing contact_no', success: false });
-                          }
-                      
-                          if (!live_Location) 
-                          { 
-                            return res.status(400).json({ error: 'Missing busId', success: false });
-                          }   
-                          if (!status) 
-                          { 
-                            return res.status(400).json({ error: 'Missing status', success: false });
-                          }
-                          if (!driverId) 
-                          { 
-                            return res.status(400).json({ error: 'Missing driverId', success: false });
-                          }
-                         
+                            // check field validation
+              const requiredFields = [                
+                'routeNumber',
+                'source',            
+                'destination',
+                'starting_Date',
+                'end_Date',
+                'starting_time',
+                'end_time', 
+                'busId',               
+                'contact_no',
+                'live_Location',
+                'status',
+                'driverId',
+                
+            ];
+        
+            for (const field of requiredFields) {
+                if (!req.body[field]) {
+                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                }
+            }
                          
                            
                            // check for route existance 
@@ -574,6 +508,22 @@ const addRoute = async(req,res)=>{
           res.status(500).json({ error: 'Error while deleting the route' });
         }
       };
+  // Api for Get a Route details by Route id
+  const getRoute = async (req, res) => {
+    try {
+      const routeId = req.params.routeId;
+      const route = await BusRoute.findById(routeId);
+
+      if (!route) {
+        return res.status(404).json({success : false ,  error: 'Route not found' });
+      }
+
+      res.status(200).json({ success : true , message : " Route found" , Route_Detail : route });
+    } catch (err) {
+      res.status(500).json({ success : false , error: 'Error while finding the Route' });
+    }
+  }
+
                                 /*   stops manage for Route   */
      
       //API for add stop in a route with route id 
@@ -585,24 +535,20 @@ const addRoute = async(req,res)=>{
             
            try{
 
-            if (!stopName)
-            { 
-                 
-              return res.status(400).json({ error: 'Missing stopName  ', success: false });
-            }
-            if (!arrivalTime) 
-            { 
-              return res.status(400).json({ error: 'Missing arrivalTime', success: false });
-            }
-            if (!departureTime) 
-            { 
-              return res.status(400).json({ error: 'Missing departureTime', success: false });
-            }
-            if (!distance) 
-            { 
-              return res.status(400).json({ error: 'Missing distance', success: false });
-            }
-            
+            const requiredFields = [                
+              'stopName',
+              'arrivalTime',            
+              'departureTime',              
+              'distance'            
+              
+          ];
+      
+          for (const field of requiredFields) {
+              if (!req.body[field]) {
+                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+              }
+          }
+                       
                 const route = await BusRoute.findOne({ _id:routeId })
            
                 if(!route)
@@ -639,22 +585,20 @@ const addRoute = async(req,res)=>{
               departureTime,
               distance
             } = req.body
-            if(!stopName)
-            {
-              return res.status(400).json({ success : false , error : 'Missing stopName'})
-            }
-            if(!arrivalTime)
-            {
-              return res.status(400).json({ success : false , error : 'Missing arrivalTime'})
-            }
-            if(!departureTime)
-            {
-              return res.status(400).json({ success : false , error : 'Missing departureTime'})
-            }
-            if(!distance)
-            {
-              return res.status(400).json({ success : false , error : 'Missing distance'})
-            }
+
+            const requiredFields = [                
+              'stopName',
+              'arrivalTime',            
+              'departureTime',             
+              'distance'            
+              
+          ];
+      
+          for (const field of requiredFields) {
+              if (!req.body[field]) {
+                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+              }
+          }
 
                  // check for route existance
                 const existRoute = await BusRoute.findOne({_id:routeId})
@@ -835,23 +779,19 @@ const addRoute = async(req,res)=>{
                 try {
                   const { driverName, driverContact, driverLicence_number, status  } = req.body;
 
-                  if (!driverName) 
-                  { 
-                    return res.status(400).json({ error: 'Missing driverName  ', success: false });
-                  }
-                  if (!driverContact) 
-                  { 
-                    return res.status(400).json({ error: 'Missing driverContact', success: false });
-                  }
-                  if (!driverLicence_number) 
-                  { 
-                    return res.status(400).json({ error: 'Missing driverLicence_number ', success: false });
-                  }
-                  if (!status) 
-                  { 
-                    return res.status(400).json({ error: 'Missing status ', success: false });
-                  }
-                 
+                  const requiredFields = [                
+              'driverName',
+              'driverContact',            
+              'driverLicence_number',             
+              'status'            
+              
+          ];
+      
+          for (const field of requiredFields) {
+              if (!req.body[field]) {
+                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+              }
+          }               
               
                   // Check for driver existence
                   const existingDriver = await DriverModel.findOne({ driverLicence_number });
@@ -899,24 +839,19 @@ const addRoute = async(req,res)=>{
                              availability 
                               
                             } = req.body
-
-                              if(!driverName)
-                              {
-                                return res.status(400).json({success : false , error : ' missing Driver Name'})
+                            const requiredFields = [                
+                              'driverName',
+                              'driverContact',            
+                              'driverLicence_number',             
+                              'status'            
+                              
+                          ];
+                      
+                          for (const field of requiredFields) {
+                              if (!req.body[field]) {
+                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
                               }
-                              if(!driverContact)
-                              {
-                                return res.status(400).json({success : false , error : ' missing Driver Contact'})
-                              }
-                              if(!status)
-                              {
-                                return res.status(400).json({success : false , error : ' missing Driver status'})
-                              }
-                              if(!availability)
-                              {
-                                return res.status(400).json({success : false , error : ' missing Driver availability'})
-                              }
-
+                          }           
                                   
                                 
                              // Check for driver existence
@@ -1002,11 +937,27 @@ const addRoute = async(req,res)=>{
                     }
                   }
                
+    // Api for Get a driver details by driver id
+                const getDriver = async (req, res) => {
+                  try {
+                    const driverId = req.params.driverId;
+                    const driver = await DriverModel.findById(driverId);
+
+                    if (!driver) {
+                      return res.status(404).json({success : false ,  error: 'Driver not found' });
+                    }
+
+                    res.status(200).json({ success : true , message : " driver found" , Driver_Details : driver });
+                  } catch (err) {
+                    res.status(500).json({ success : false , error: 'Error while finding the driver' });
+                  }
+                }
+
                 
     module.exports = {adminLogin , changePassword, addBus , editBus ,
-                       deleteBus, allBuses , addRoute , allroutes , editRoute,
-                      deleteRoute  , addStop , editStop , allStops , 
+                       deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,
+                      deleteRoute  , getRoute , addStop , editStop , allStops , 
                         deleteStop ,calculateStopfare, changeProfile , addDriver ,
-                         editDriver,deleteDriver , allDrivers
+                         editDriver,deleteDriver , allDrivers , getDriver
                       }
                     

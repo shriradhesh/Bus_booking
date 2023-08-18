@@ -31,5 +31,16 @@ router.post('/userChangePass', userController.userChangePass)
 
  //update profile by id
  router.put('/updateUser/:id', upload.single('profileImage'), userController.updateUser)
+                       
+                                  /*      see Routes      */
+// APi for seeRoutes                              
+router.get('/seeRoutes',userController.seeRoutes)
  
-  module.exports = router
+                                  /*  Booking */
+
+//Api for Book Tickit
+  router.post('/bookTicket',userController.bookTicket)
+
+
+
+    module.exports = router

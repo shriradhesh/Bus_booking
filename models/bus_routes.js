@@ -37,26 +37,26 @@ const busRouteSchema = new mongoose.Schema({
      stops:[{
               stopName : {
                 type : String,
-                required : true
+               
               },
               arrivalTime : {
                 type : String,
-                required :true,
+                
               },            
               departureTime:{
                 type: String,
-                required : true,
+                
               },
               distance: {
                 type: Number,  
-                required: true,
+               
               },
              
      }],
      live_Location :
      {
         type : String,
-        required : true,
+        required : false,
      },     
     
      status: {
@@ -68,7 +68,11 @@ const busRouteSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'DriverModel', 
         required: false
-    }
+    },
+    Date:{ 
+      type : Date,     
+             },
+
 },
 {timestamps: true}
 )
