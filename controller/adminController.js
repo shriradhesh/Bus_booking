@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const Admin = require('../models/adminModel')
 const changePass  = require('../models/changePassword')
+const BookingModel = require('../models/BookingModel')
+const UserModel = require('../models/userModel');
 const BusModel = require('../models/busModel')
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
@@ -11,7 +13,6 @@ const multer = require('multer')
 const path = require('path')
 const { error } = require('console')
 const fs = require('fs');
-
 
 
                       /* -->  ADMIN Api'S   <--    */
@@ -86,8 +87,7 @@ const adminLogin = async (req, res) => {
                             // update the admin password with new encrypted password 
                                     admin.password = hashedNewPassword
                                     await admin.save()
-                                    return res.json({ message : ' Password changed Successfully', success : true})
-                                
+                                    return res.json({ message : ' Password changed Successfully', success : true})                                
                         } 
                     }
                     
@@ -954,10 +954,17 @@ const addRoute = async(req,res)=>{
                 }
 
                 
+                                       
+               
+                
+              
+
+                
     module.exports = {adminLogin , changePassword, addBus , editBus ,
                        deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,
                       deleteRoute  , getRoute , addStop , editStop , allStops , 
                         deleteStop ,calculateStopfare, changeProfile , addDriver ,
-                         editDriver,deleteDriver , allDrivers , getDriver
+                         editDriver,deleteDriver , allDrivers , getDriver 
+                         
                       }
                     

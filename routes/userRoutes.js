@@ -36,11 +36,13 @@ router.post('/userChangePass', userController.userChangePass)
 // APi for seeRoutes                              
 router.get('/seeRoutes',userController.seeRoutes)
  
-                                  /*  Booking */
+                               /*  Booking */
 
 //Api for Book Tickit
-  router.post('/bookTicket',userController.bookTicket)
+router.post('/bookTicket',userController.bookTicket)
 
+
+                           
 
 
     module.exports = router

@@ -74,7 +74,8 @@ const upload = require('../uploadImage')
         router.get('/allDrivers', adminController.allDrivers)
 // Api for get a Driver by driver id
         router.get('/getDriver/:driverId', adminController.getDriver)
-
+                                   
+                                     
 
 
 module.exports = router
