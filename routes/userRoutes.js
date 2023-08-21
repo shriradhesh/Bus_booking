@@ -40,6 +40,8 @@ router.get('/seeRoutes',userController.seeRoutes)
 
 //Api for Book Tickit
 router.post('/bookTicket',userController.bookTicket)
+//Api for get upcoming Booking 
+router.get('/upcoming_Booking/:userId',userController.upcoming_Booking)
 
 
                            

@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer')
 const sendEmail = async(recipientEmail , subject , text)=>{
     try{
-        
+        const qrCodeImage = 'tickit-QRCODE.png'
         const transporter = nodemailer.createTransport({
             host:'smtp.gmail.com',
             port:587,
@@ -18,6 +18,12 @@ const sendEmail = async(recipientEmail , subject , text)=>{
                 to : recipientEmail,
                 subject : subject,
                 text : text,
+                attachments : [
+                    {
+                        filename : 'tickit-QRCODE.png',
+                        path : qrCodeImage
+                    }
+                ]
              })
              console.log("email sent successfully");
     }catch(error)

@@ -4,13 +4,17 @@ const BusRoute = require('../models/bus_routes')
 const BusModel = require('../models/busModel')
 const  BookingModel = require('../models/BookingModel')
 const sendEmail =require("../utils/sendEmail")
+const sendEmails = require('../utils/sendEmails')
 const bcrypt = require('bcrypt')
 const changePass = require('../models/changePassword')
 const cors = require('cors')
 const nodemailer = require('nodemailer')
+const qrcode = require('qrcode')
 const crypto = require('crypto');
 const { error, log } = require('console');
 const upload = require('../uploadImage')
+const shortid = require('shortid')
+const cron = require('node-cron')
                         
                                     /* --> User API <-- */
 
@@ -156,7 +160,7 @@ const upload = require('../uploadImage')
                        }
 
                        const link = `${process.env.BASE_URL}/password-reset/${user._id}/${token.token}`
-                       await sendEmail(user.email, "Password reset", link)
+                       await sendEmails(user.email, "Password reset", link)
 
                        res.status(200).json({success : true ,messsage  : "password reset link sent to your email account"})
                       
@@ -290,7 +294,7 @@ const upload = require('../uploadImage')
 
                                    /* Bookings */
     // api for book tickit 
-   
+               
     
         const bookTicket = async (req, res) => {
           try {
@@ -302,7 +306,8 @@ const upload = require('../uploadImage')
                       if (!req.body[field]) {
                           return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
                       }
-                  }             
+                  }      
+                        
                           const user = await UserModel.findOne({_id:userId})
                           const route = await BusRoute.findOne({_id:routeId})
                           if (!user) {
@@ -318,57 +323,91 @@ const upload = require('../uploadImage')
                             if (userBookedSeatsCount >= 6) {
                                 return res.status(400).json({ success: false, error: 'User has already booked the maximum allowed seats (6)' });
                             }
-                  const isSeatBooked = await BookingModel.findOne({ routeId, seatNumber, departureDate });
-          
-                  if (isSeatBooked) {
-                      return res.status(400).json({ success: false, error: 'Seat already booked' });
-                  }
-          
-                  const booking = new BookingModel({
-                      userId,
-                      routeId,
-                      seatNumber,
-                      departureDate,
-                      status
-                  });
-          
-                  await booking.save();
-                  const bus = await BusModel.findOne(route.busId)
-                  console.log(bus);
-                  if(!bus)
-                  {
-                    return res.status(400).json({success : false , error :'Bus not found'  })
-                  }
-                 
-                  const sourceStopDetails = route.stops.find(stop => stop.stopName === source);
-                 const destinationStopDetails = route.stops.find(stop => stop.stopName === destination);
-  
-                  const emailContent = `Dear ${user.fullName}, \n\n Your booking for departure on ${departureDate} has been confirmed.\n\n Journey Details:\n 
-                      Bus Number : ${bus.bus_no} \n
-                      Bus Departure Time : ${route.starting_Date}\n
-                      Source: ${sourceStopDetails.stopName}\n
-                     Destination: ${destinationStopDetails.stopName}\n        
-                      Seat Number : ${seatNumber}\n
-                      Have a safe journey !
-                      Thank you for choosing our service! `;
-  
-                                  
-  
-                      // Send booking confirmation email
-             
-                            await sendEmail(email , 'Your Booking has been confirmed' , emailContent); 
-                           res.status(200).json({ success: true, message: 'Booking successful Tickit  sent to user email' });
-                    
-                    } 
-                  catch (error) 
-                {
-                  console.error(error);
-                    return res.status(500).json({success : false ,  error: "An error occured"});
-                }
-      }
-      
+                          const isSeatBooked = await BookingModel.findOne({ routeId, seatNumber, departureDate });
+                  
+                          if (isSeatBooked) {
+                              return res.status(400).json({ success: false, error: 'Seat already booked' });
+                          }
+                          const bookingId = shortid.generate();
+                          const booking = new BookingModel({
+                              userId,
+                              routeId,
+                              seatNumber,
+                              departureDate,
+                              status,
+                              bookingId,
+                          });
+                  
+                          await booking.save();
+                          const bus = await BusModel.findOne(route.busId)
                           
+                          if(!bus)
+                          {
+                            return res.status(400).json({success : false , error :'Bus not found'  })
+                          }
+                        
+                          const sourceStopDetails = route.stops.find(stop => stop.stopName === source);
+                        const destinationStopDetails = route.stops.find(stop => stop.stopName === destination);
+          
+                          const emailContent = `Dear ${user.fullName}, \n\n  \n\n Your booking  for departure on ${departureDate} has been confirmed.\n\n Journey Details:\n 
+                              Booking ID: ${bookingId} 
+                              Bus Number : ${bus.bus_no} \n
+                              Bus Departure Time : ${route.starting_Date}\n
+                              Source: ${sourceStopDetails.stopName}\n
+                            Destination: ${destinationStopDetails.stopName}\n        
+                              Seat Number : ${seatNumber}\n
+                              Have a safe journey !
+                              Thank you for choosing our service! `;
+
+                                // Generate the QR CODE 
+
+                                const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
+
+                                    const qrCodeImage = 'tickit-QRCODE.png' 
+                                    await qrcode.toFile(qrCodeImage , qrCodeData)  
+                                    
+                                                            
+          
+                              // Send booking confirmation email
+                    
+                                    await sendEmail(email , 'Your Booking has been confirmed' , emailContent); 
+                                  res.status(200).json({ success: true, message: 'Booking successful Tickit  sent to user email' });
+                            
+                            } 
+                          catch (error) 
+                        {
+                          console.error(error);
+                            return res.status(500).json({success : false ,  error: "An error occured"});
+                        }
+                      }
+              
+              //Api for check upcoming bookings
+            
+                                  const upcoming_Booking = async (req,res)=>{
+
+                                      try{
+                                          const  userId  = req.params.userId                                          
+                                          const today = new Date()                                         
+                                          const user = await UserModel.findOne({_id:userId})  
+                                          if (!user) {
+                                            return res.status(400).json({ success: false, error: 'User not found' });
+                                             }
+                                                             
+                                        const upcomingBookings = await BookingModel.find({                                        
+                                          "departureDate":{
+                                            $gte: today,
+                                          }
+                                        }).sort({departureDate : 1})                                       
+                                         res.status(200).json({ success : true , bookings : upcomingBookings})  
+                                        }
+
+                                      catch(error)
+                                      {
+                                        console.error(error);
+                                          return res.status(500).json({ success : false , error : ' error occured to find upcoming booking'})
+                                      }
+                                  }
                         
 
 module.exports = {userRegister , loginUser , userChangePass , forgetPassToken , userResetPass,
-                    updateUser , seeRoutes , bookTicket }
+                    updateUser , seeRoutes , bookTicket , upcoming_Booking }
