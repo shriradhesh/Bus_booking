@@ -5,6 +5,7 @@ const changePass  = require('../models/changePassword')
 const BookingModel = require('../models/BookingModel')
 const UserModel = require('../models/userModel');
 const BusModel = require('../models/busModel')
+const sendCancelEmail =require("../utils/sendCancelEmail")
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
 const DriverModel = require('../models/driverModel')
@@ -953,8 +954,66 @@ const addRoute = async(req,res)=>{
                   }
                 }
 
-                
-                                       
+
+
+                                             /*  Manage Tickit */
+    //Api for get all Tickit
+                 
+                    const allTickites = async (req, res) => {
+                      try {
+                        const status = req.query.status;
+                    
+                        let tickites;
+                        if (status === 'confirmed') {
+                          tickites = await BookingModel.find({ status: 'confirmed' });
+                        } else if (status === 'pending' || status ==='cancelled') {
+                          tickites = await BookingModel.find({ status:  {$in:['pending','cancelled'] }});
+                        } else {
+                          return res.status(400).json({ success: false, error: 'Invalid status value' });
+                        }
+                          
+                        res.status(200).json({ success: true, message: 'All Tickites', AllTickites : tickites });
+                      } catch (error) {
+                        
+                        res.status(500).json({ success: false, error: 'There is an error to find tickites '});
+                      }
+                    }
+  // Api for cancle tickit 
+        const cancelTickit = async (req, res) => {
+          try {
+              const { email , bookingId } = req.body;
+      
+              if (!email) {
+                  return res.status(400).json({ success: false, error: 'Missing Email' });
+              }
+              if (!bookingId) {
+                  return res.status(400).json({ success: false, error: 'Missing bookingId' });
+              }
+      
+              const booking = await BookingModel.findOne({  bookingId });
+              if (!booking) {
+                  return res.status(404).json({ success: false, error: 'Booking not found' });
+              }
+      
+              booking.status = 'cancelled';
+              await booking.save();
+      
+              const user = await UserModel.findOne({email});
+              if (!user) {
+                  return res.status(400).json({ success: false, error: 'User not found' });
+              }
+      
+              const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID: ${bookingId} has been cancelled.\n\n your Money will be refund shortly We apologize for any inconvenience caused.\n\nThank you.`;
+      
+              await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
+      
+              res.status(200).json({ success: true, message: 'Ticket cancellation successful, cancellation email sent.' });
+          } catch (error) {
+             console.error(error);
+              return res.status(500).json({ success: false, error: 'An error occurred' });
+          }
+      };
+                   
                
                 
               
@@ -964,7 +1023,8 @@ const addRoute = async(req,res)=>{
                        deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,
                       deleteRoute  , getRoute , addStop , editStop , allStops , 
                         deleteStop ,calculateStopfare, changeProfile , addDriver ,
-                         editDriver,deleteDriver , allDrivers , getDriver 
+                         editDriver,deleteDriver , allDrivers , getDriver ,
+                         allTickites ,cancelTickit
                          
                       }
                     

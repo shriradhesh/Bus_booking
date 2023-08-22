@@ -74,6 +74,13 @@ const upload = require('../uploadImage')
         router.get('/allDrivers', adminController.allDrivers)
 // Api for get a Driver by driver id
         router.get('/getDriver/:driverId', adminController.getDriver)
+
+
+                                     /*  Tickit Manage  */
+// Api for get all Tickits
+        router.get('/allTickites', adminController.allTickites)
+// Api for cancle Booking
+        router.post('/cancelTickit',adminController.cancelTickit)
                                    
                                      
 

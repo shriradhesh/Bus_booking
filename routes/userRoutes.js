@@ -42,8 +42,10 @@ router.get('/seeRoutes',userController.seeRoutes)
 router.post('/bookTicket',userController.bookTicket)
 //Api for get upcoming Booking 
 router.get('/upcoming_Booking/:userId',userController.upcoming_Booking)
-// Api for cancle Booking
-router.post('/cancelBooking',userController.cancelBooking)
+
+// Api for get Booking History
+router.post('/bookingHistory/:userId',userController.bookingHistory)
+
 
 
                            
