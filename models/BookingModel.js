@@ -11,7 +11,7 @@ const bookingSchema = new mongoose.Schema({
     },
     seatNumber: {
         type: Number,
-        required: true
+       
     },
     departureDate: {
         type: Date,
@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: [ 'confirmed', 'pending','canceled'],
+        enum: [ 'confirmed', 'pending','cancelled'],
         default: 'confirmed'
     },
     paymentToken : {
@@ -37,7 +37,27 @@ const bookingSchema = new mongoose.Schema({
     },
     bookingId :{
         type : String
-    }
+    },
+    passengers : [{
+               name :{
+                type : String,
+                
+               },
+               age : {
+                type :  Number ,
+              
+               },
+               gender : {
+                type : String,
+                enum : ['male', 'female', 'other'],
+               
+               },
+               seatNumber : {
+                type : Number,
+                
+               }
+               
+    }]
 
 });
 
