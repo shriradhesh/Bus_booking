@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
-    
+    userId : {
+        type : mongoose.Schema.Types.ObjectId,
+         ref : 'UserModel',
+          required: true
+    },
     routeNumber: {
         type : Number,
         required: true

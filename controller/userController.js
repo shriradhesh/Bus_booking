@@ -3,9 +3,9 @@ const tokenModel = require("../models/tokenModel")
 const BusRoute = require('../models/bus_routes')
 const BusModel = require('../models/busModel')
 const  BookingModel = require('../models/BookingModel')
-const sendBookingEmail =require("../utils/sendBookingEmail")
 const sendEmails = require('../utils/sendEmails')
 const bcrypt = require('bcrypt')
+const session = require('express-session')
 const changePass = require('../models/changePassword')
 const cors = require('cors')
 const nodemailer = require('nodemailer')
@@ -80,6 +80,23 @@ const cron = require('node-cron')
             res.status(500).json({ error: 'Error while login the user' , success: false });
         }
     }
+  // Api for logout user
+        const logoutUser = async(req,res)=>{
+          try{
+            req.session.destroy(error =>{
+              if(error)
+              {
+                return res.status(500).json({ success : false ,  error :" Error while Logout the user"})
+              }
+              res.status(200).json({  success: true , message: ' user Logged out successfully' });
+            });
+          }
+          catch(error)
+          {
+            res.status(500).json({ error: 'Error while logging out', success: false });
+          }
+          
+        }
 
    // API for change user password
   const userChangePass = async (req,res)=>{
@@ -292,120 +309,8 @@ const cron = require('node-cron')
                     }
                   }
 
-                                                       /* Bookings */
-    // api for book tickit 
-               
+                                                       /* My Bookings */
     
-        const bookTicket = async (req, res) => {
-          try {
-                  const { routeNumber,departureDate, status ,email , source , destination , passengers} = req.body;             
-         
-                  const requiredFields = [ 'routeNumber','departureDate', 'email','passengers']; 
-          
-                  for (const field of requiredFields) {
-                      if (!req.body[field]) {
-                          return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                      }
-                  }     
-                  
-                          const user = await UserModel.findOne({email});
-                          if (!user) {
-                              return res.status(400).json({ success: false, error: 'User not found' });
-                          }
-                          const route = await BusRoute.findOne({routeNumber})                         
-                
-                          if (!route) {
-                            return res.status(400).json({ success: false, error: 'Route not found' });
-                            }
-
-                            const bookingId = shortid.generate();
-
-                            // calculate the number of passengers and update the user bookseat count
-                            const numPassengers = passengers.length 
-                            const userBookedSeatsCount = await BookingModel.countDocuments({ departureDate });
-
-                            if (userBookedSeatsCount + numPassengers >= 6) {
-                                return res.status(400).json({ success: false, error: 'Exceeded maximum allowed seats' });
-                            }
-                            
-                            const bus = await BusModel.findOne(route.busId)
-                          
-                            if(!bus)
-                            {
-                              return res.status(400).json({success : false , error :'Bus not found'  })
-                            }
-
-                            const sourceStopDetails = route.stops.find(stop => stop.stopName === source);
-                            const destinationStopDetails = route.stops.find(stop => stop.stopName === destination);
-            
-
-                            // const bookingPromises = passengers.map(async (passenger)=>{
-                           
-                            // })
-                            const passenger = passengers
-
-                        const passengerSeat = passenger.seatNumber
-                            
-
-
-                        const isSeatBooked = await BookingModel.findOne({
-                                                                     seatNumber:passengerSeat,
-                                                                       departureDate });
-                
-                        if (isSeatBooked) {
-                            return res.status(400).json({ success: false, error: `Seat ${passengerSeat} already booked` });
-                        }
-                       
-                        const booking = new BookingModel({
-                        
-                            routeNumber,                           
-                            departureDate,                              
-                            status,
-                            bookingId,
-                            passengers: passenger
-                        });                      
-                                 await booking.save();                            
-                         
-                             const passengerDetails = passengers.map(passenger =>`
-                             Passenger Name : ${passenger.name}
-                             Age : ${passenger.age}
-                             Gender : ${passenger.gender}
-                             Seat Number : ${passenger.seatNumber}
-                              -----------------------------------------
-                              `).join('\n')
-                         
-                          const emailContent = `Dear ${user.fullName}\n Your booking  for departure on ${departureDate} has been confirmed.\n\n Journey Details:\n 
-                              Booking ID: ${bookingId} 
-                              Bus Number : ${bus.bus_no} \n
-                              Bus Departure Time : ${route.starting_Date}\n
-                              Source: ${sourceStopDetails.stopName}\n
-                              Destination: ${destinationStopDetails.stopName}\n    
-                              PassengerDetails : ${passengerDetails}
-                              Have a safe journey !
-                              Thank you for choosing our service! `;
-
-                                // Generate the QR CODE 
-
-                                    const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
-
-                                    const qrCodeImage = 'tickit-QRCODE.png' 
-                                    await qrcode.toFile(qrCodeImage , qrCodeData)  
-                                    
-                                                            
-          
-                              // Send booking confirmation email
-                    
-                                    await sendBookingEmail(email , 'Your Booking has been confirmed' , emailContent); 
-                                  res.status(200).json({ success: true, message: 'Booking successful Tickit  sent to user email' });
-                            
-                            } 
-                          catch (error) 
-                        {
-                          console.error(error);
-                            return res.status(500).json({success : false ,  error: "An error occured"});
-                        }
-                      }
-              
    //Api for check upcoming bookings
             
                         const upcoming_Booking = async (req,res)=>{
@@ -464,5 +369,5 @@ const cron = require('node-cron')
 
 
           
-module.exports = {userRegister , loginUser , userChangePass , forgetPassToken , userResetPass,
-                    updateUser , seeRoutes , bookTicket , upcoming_Booking , bookingHistory }
+module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassToken , userResetPass,
+                    updateUser , seeRoutes , upcoming_Booking , bookingHistory }

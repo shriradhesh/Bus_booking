@@ -13,6 +13,9 @@ router.post('/register', userController.userRegister )
 // user login by id
 
 router.post('/login', userController.loginUser)
+// user logoutUser user 
+
+router.post('/logoutUser', userController.logoutUser)
 
 // user change password
 
@@ -38,8 +41,7 @@ router.get('/seeRoutes',userController.seeRoutes)
  
                                /*  Booking */
 
-//Api for Book Tickit
-router.post('/bookTicket',userController.bookTicket)
+
 //Api for get upcoming Booking 
 router.get('/upcoming_Booking/:userId',userController.upcoming_Booking)
 

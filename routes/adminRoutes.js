@@ -77,10 +77,18 @@ const upload = require('../uploadImage')
 
 
                                      /*  Tickit Manage  */
-// Api for get all Tickits
-        router.get('/allTickites', adminController.allTickites)
+//Api for Book Tickit
+        router.post('/bookTicket',adminController.bookTicket)
 // Api for cancle Booking
-        router.post('/cancelTickit',adminController.cancelTickit)
+        router.post('/cancelTicket',adminController.cancelTicket)
+// APi for get all tickets of user 
+        router.get('/userTickets/:userId', adminController.userTickets)
+// Api for Modify Ticket (departure date)
+        router.post('/modifyTicket', adminController.modifyTicket)
+                                 
+                                        /*  Booking Manage */
+// Api for get all Tickits done by users
+        router.get('/allBookings', adminController.allBookings)
                                    
                                      
 
