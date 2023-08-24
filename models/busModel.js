@@ -44,7 +44,18 @@ const busSchema = new mongoose.Schema({
       required: true,
       default : 'available'
 
-    },},
+    },
+    current_location : {
+      type : {
+        type : String,
+        default: 'Point',
+      },
+      coordinates : {
+        type : [Number],
+        default : [0, 0]
+      },
+    },
+  },
     {timestamps: true}
      
     )

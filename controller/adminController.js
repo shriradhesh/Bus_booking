@@ -246,26 +246,34 @@ const addBus = async (req, res) => {
 
   //APi for delete Bus 
                
-                const deleteBus = async (req, res) => {
-                  try {
-                    const busId = req.params.busId;
-                    const Bus = await BusModel.findById(busId);
-                
-                    if (!Bus) {
-                      return res.status(404).json({ success: false, error: 'Bus not found' });
+                  const deleteBus = async (req, res) => {
+                    try {
+                        const busId = req.params.busId;
+                        const bus = await BusModel.findById(busId);
+
+                        if (!bus) {
+                            return res.status(404).json({ success: false, error: 'Bus not found' });
+                        }
+
+                        if (bus.status === 'inactive' && bus.availability === 'unavailable') {
+                            // Check if the bus is booked on other routes
+                            const routesWithBus = await BusRoute.find({ busId: busId });
+                            if (routesWithBus.length > 0) {
+                                return res.status(400).json({ success: false, error: 'Bus is booked on other routes' });
+                            }
+
+                            // If not booked on other routes, delete the bus
+                            await BusModel.deleteOne({ _id: busId });
+                            res.status(200).json({ success: true, message: 'Bus deleted successfully' });
+                        } else {
+                            res.status(400).json({ success: false, error: 'Bus cannot be deleted due to status or availability' });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        res.status(500).json({ error: 'Error while deleting the Bus' });
                     }
-                // Check if driver status is inactive and availability is unavailable
-                if (Bus.status === 'inactive' && Bus.availability === 'unavailable') {
-                  await Bus.deleteOne();
-                  res.status(200).json({ success: true, message: 'Bus deleted successfully' });
-                } else {
-                  res.status(400).json({ success: false, error: 'Bus booked on other route ' });
-                }
-                }
-                 catch (error) {                    
-                    res.status(500).json({ error: 'Error while deleting the Bus' });
-                  }
                 };
+
 
 //Api for Get All Buses with there status 
                 const allBuses = async (req, res) => {
@@ -963,119 +971,115 @@ const addRoute = async(req,res)=>{
 
     // api for book tickit               
     
-    const bookTicket = async (req, res) => {
-      try {
-              const { routeNumber,departureDate, status ,email , source , destination , passengers} = req.body;             
-     
-              const requiredFields = [ 'routeNumber','departureDate', 'email','passengers']; 
-      
-              for (const field of requiredFields) {
-                  if (!req.body[field]) {
-                      return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                  }
-              }   
-                      const user = await UserModel.findOne({email});
-                      if (!user) {
-                          return res.status(400).json({ success: false, error: 'User not found' });
-                      }
-                      const userId = user._id;
-                      const route = await BusRoute.findOne({routeNumber})                         
-            
-                      if (!route) {
-                        return res.status(400).json({ success: false, error: 'Route not found' });
-                        }
-
-                        const bookingId = shortid.generate();
-
-                        // calculate the number of passengers and update the user bookseat count
-                        const numPassengers = passengers.length 
-                        const userBookedSeatsCount = await BookingModel.countDocuments({ departureDate });
-
-                        if (userBookedSeatsCount + numPassengers >= 6) {
-                            return res.status(400).json({ success: false, error: 'Exceeded maximum allowed seats' });
-                        }
-                        
-                        const bus = await BusModel.findOne(route.busId)
-                      
-                        if(!bus)
-                        {
-                          return res.status(400).json({success : false , error :'Bus not found'  })
-                        }
-
-                        const sourceStopDetails = route.stops.find(stop => stop.stopName === source);
-                        const destinationStopDetails = route.stops.find(stop => stop.stopName === destination);
-        
-
-                        // const bookingPromises = passengers.map(async (passenger)=>{
-                       
-                        // })
-                        const passenger = passengers
-
-                    const passengerSeat = passenger.seatNumber
-                        
-
-
-                    const isSeatBooked = await BookingModel.findOne({
-                                                                 seatNumber:passengerSeat,
-                                                                   departureDate });
-            
-                    if (isSeatBooked) {
-                        return res.status(400).json({ success: false, error: `Seat already booked` });
-                    }
-                   
-                    const booking = new BookingModel({
+                  const bookTicket = async (req, res) => {
+                    try {
+                            const { routeNumber,departureDate, status ,email , source , destination , passengers} = req.body;             
+                  
+                            const requiredFields = [ 'routeNumber','departureDate', 'email','passengers']; 
                     
-                        routeNumber,                           
-                        departureDate,                              
-                        status,
-                        bookingId,
-                        userId,
-                        passengers: passenger
-                    });                      
-                             await booking.save();                            
-                     
-                         const passengerDetails = passengers.map(passenger =>`
-                         Passenger Name : ${passenger.name}
-                         Age : ${passenger.age}
-                         Gender : ${passenger.gender}
-                         Seat Number : ${passenger.seatNumber}
-                          -----------------------------------------
-                          `).join('\n')
-                     
-                      const emailContent = `Dear ${user.fullName}\n Your booking  for departure on ${departureDate} has been confirmed.\n\n Journey Details:\n 
-                          Booking ID: ${bookingId} 
-                          Bus Number : ${bus.bus_no} \n
-                          Bus Departure Time : ${route.starting_Date}\n
-                          Source: ${sourceStopDetails.stopName}\n
-                          Destination: ${destinationStopDetails.stopName}\n    
-                          PassengerDetails : ${passengerDetails}
-                          Have a safe journey !
-                          Thank you for choosing our service! `;
+                            for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                            }   
+                                    const user = await UserModel.findOne({email});
+                                    if (!user) {
+                                        return res.status(400).json({ success: false, error: 'User not found' });
+                                    }
+                                    const userId = user._id;
+                                    const route = await BusRoute.findOne({routeNumber}).populate('busId')                        
+                          
+                                    if (!route) {
+                                      return res.status(400).json({ success: false, error: 'Route not found' });
+                                      }
+                                    const bus = route.busId
+                                    
+                                      if(!bus)
+                                      {
+                                        return res.status(400).json({success : false , error :'Bus not found'  })
+                                      }
+                                     
 
-                            // Generate the QR CODE 
+                                      // calculate the number of passengers and update the user bookseat count
+                                      const busCapacity = bus.seating_capacity;
+                                      const numPassengers = passengers.length 
+                                      const userBookedSeatsCount = await BookingModel.countDocuments({ routeNumber, departureDate });
 
-                                const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
+                                      if (userBookedSeatsCount + numPassengers > busCapacity) {
+                                          return res.status(400).json({ success: false, error: 'Exceeded maximum allowed seats' });
+                                      }
+                                      const bookingId = shortid.generate();
+                                     
 
-                                const qrCodeImage = 'tickit-QRCODE.png' 
-                                await qrcode.toFile(qrCodeImage , qrCodeData)  
+                                      const sourceStopDetails = route.stops.find(stop => stop.stopName === source);
+                                      const destinationStopDetails = route.stops.find(stop => stop.stopName === destination);
+                      
+
+                                      // const bookingPromises = passengers.map(async (passenger)=>{
+                                    
+                                      // })
+                                      for (const passenger of passengers) {
+                                        const passengerSeat = passenger.seatNumber;
+                            
+                                        const isSeatBooked = await BookingModel.findOne({
+                                            seatNumber: passengerSeat,
+                                            departureDate
+                                        });
+                            
+                                        if (isSeatBooked) {
+                                            return res.status(400).json({ success: false, error: `Seat already booked` });
+                                        }
+                                    }
                                 
-                                                        
-      
-                          // Send booking confirmation email
-                
-                                await sendBookingEmail(email , 'Your Booking has been confirmed' , emailContent); 
-                              res.status(200).json({ success: true, message: 'Booking successful Tickit  sent to user email' });
-                        
-                        } 
-                      catch (error) 
-                    {
-                      console.error(error);
-                        return res.status(500).json({success : false ,  error: "An error occured"});
-                    }
-                  }
-          
+                                    const booking = new BookingModel({
+                                      routeNumber,
+                                      departureDate,
+                                      status,
+                                      bookingId,
+                                      userId,
+                                      passengers: passengers
+                                  });   
+                                    await booking.save();                            
+                                  
+                                      const passengerDetails = passengers.map(passenger =>`
+                                      Passenger Name : ${passenger.name}
+                                      Age : ${passenger.age}
+                                      Gender : ${passenger.gender}
+                                      Seat Number : ${passenger.seatNumber}
+                                        -----------------------------------------
+                                        `).join('\n')
+                                  
+                                    const emailContent = `Dear ${user.fullName}\n Your booking  for departure on ${departureDate} has been confirmed.\n\n Journey Details:\n 
+                                        Booking ID: ${bookingId} 
+                                        Bus Number : ${bus.bus_no} \n
+                                        Bus Departure Time : ${route.starting_Date}\n
+                                        Source: ${sourceStopDetails.stopName}\n
+                                        Destination: ${destinationStopDetails.stopName}\n    
+                                        PassengerDetails : ${passengerDetails}
+                                        Have a safe journey !
+                                        Thank you for choosing our service! `;
 
+                                          // Generate the QR CODE 
 
+                                              const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
+
+                                              const qrCodeImage = 'tickit-QRCODE.png' 
+                                              await qrcode.toFile(qrCodeImage , qrCodeData)  
+                                              
+                                                                      
+                    
+                                        // Send booking confirmation email
+                              
+                                              await sendBookingEmail(email , 'Your Booking has been confirmed' , emailContent); 
+                                            res.status(200).json({ success: true, message: 'Booking successful Tickit  sent to user email' });
+                                      
+                                      } 
+                                    catch (error) 
+                                  {
+                                    console.error(error);
+                                      return res.status(500).json({success : false ,  error: "An error occured"});
+                                  }
+                                }
     
   // Api for cancle tickit 
         const cancelTicket = async (req, res) => {
@@ -1093,7 +1097,22 @@ const addRoute = async(req,res)=>{
               if (!booking) {
                   return res.status(404).json({ success: false, error: 'Booking not found' });
               }
-      
+
+                 // store cancled seatNumber to update bus seat avaialblity
+              const canceledSeatNumbers =booking.passengers.map(passenger => passenger.seatNumber);
+
+
+              // Update seat availability on the associated bus route
+               const busRoute = await BusRoute.findOne({ routeNumber: booking.routeNumber });
+               if (busRoute) {
+            const bus = await BusModel.findById(busRoute.busId);
+            if (bus) {
+                busRoute.passengers = busRoute.passengers.filter(passenger => !canceledSeatNumbers.includes(passenger.seatNumber));
+                bus.availableSeats += canceledSeatNumbers.length;
+                await busRoute.save();
+                await bus.save();
+            }
+        }
               booking.status = 'cancelled';
               await booking.save();
       
@@ -1204,7 +1223,47 @@ const addRoute = async(req,res)=>{
             }
           }
               
+       // Api for update seat status 
 
+                      const updateSeatAvailability = async (req, res) => {
+                        try {
+                            const { bookingId} = req.body;
+                            const requiredFields = ['bookingId']
+                    
+                            for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                            }                    
+                            const booking = await BookingModel.findOne({ bookingId });
+                            if (!booking) {
+                                return res.status(400).json({ success: false, error: 'Booking not found' });
+                            }
+                    
+                            // Store seat numbers for updating seat availability
+                               const canceledSeatNumbers = booking.passengers.map(passenger => passenger.seatNumber);
+
+                        // Update seat availability on the associated bus route
+                        const busRoute = await BusRoute.findOne({ routeNumber: booking.routeNumber });
+                        if (busRoute) {
+                            const bus = await BusModel.findById(busRoute.busId);
+                            if (bus) {
+                                busRoute.passengers = busRoute.passengers.filter(passenger => !canceledSeatNumbers.includes(passenger.seatNumber));
+                                bus.availableSeats += canceledSeatNumbers.length;
+                                await busRoute.save();
+                                await bus.save();
+                            }
+                        }
+
+                        res.status(200).json({ success: true, message: 'Seat availability updated successfully.' });
+                    } catch (error) {
+                        console.error(error);
+                        return res.status(500).json({ success: false, error: 'An error occurred' });
+                    }
+                }
+
+                    
+    
                 
     module.exports = {
                        adminLogin , changePassword, addBus , editBus ,
@@ -1212,6 +1271,7 @@ const addRoute = async(req,res)=>{
                       deleteRoute  , getRoute , addStop , editStop , allStops , 
                         deleteStop ,calculateStopfare, changeProfile , addDriver ,
                          editDriver,deleteDriver , allDrivers , getDriver , bookTicket,
-                         cancelTicket, userTickets ,modifyTicket, allBookings
+                         cancelTicket, userTickets ,modifyTicket, allBookings,
+                         updateSeatAvailability
                      }
                     

@@ -79,7 +79,7 @@ const upload = require('../uploadImage')
                                      /*  Tickit Manage  */
 //Api for Book Tickit
         router.post('/bookTicket',adminController.bookTicket)
-// Api for cancle Booking
+// Api for cancle tickit
         router.post('/cancelTicket',adminController.cancelTicket)
 // APi for get all tickets of user 
         router.get('/userTickets/:userId', adminController.userTickets)
@@ -89,6 +89,9 @@ const upload = require('../uploadImage')
                                         /*  Booking Manage */
 // Api for get all Tickits done by users
         router.get('/allBookings', adminController.allBookings)
+// APi for update seat Availablity
+        router.post('/updateSeatAvailability',adminController.updateSeatAvailability)
+
                                    
                                      
 
