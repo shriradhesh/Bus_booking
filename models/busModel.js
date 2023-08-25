@@ -7,7 +7,12 @@ const busSchema = new mongoose.Schema({
   seating_capacity: {
     type : Number,
     required : true,
+  
 },
+    Available_seat : {
+      type : Number,
+      required : true,
+    },
   bus_no: {
     type : String,
     required : true
@@ -28,10 +33,7 @@ const busSchema = new mongoose.Schema({
     type : [String],
     required : true,
   },
-    depot_station: {
-        type : String,
-        required : true
-    },
+    
     status: {
       type: String,
       enum: ['active', 'inactive'],
@@ -45,16 +47,7 @@ const busSchema = new mongoose.Schema({
       default : 'available'
 
     },
-    current_location : {
-      type : {
-        type : String,
-        default: 'Point',
-      },
-      coordinates : {
-        type : [Number],
-        default : [0, 0]
-      },
-    },
+   
   },
     {timestamps: true}
      
