@@ -19,7 +19,7 @@ const upload = require('../uploadImage')
         router.post('/adminLogin',adminController.adminLogin)
 
 //admin changePass
-         router.post('/changePass', adminController.changePassword)
+         router.post('/changePass/:id', adminController.changePassword)
 
                             /* admin Manage Buses*/
 // APi for add new bus
@@ -89,8 +89,8 @@ const upload = require('../uploadImage')
                                         /*  Booking Manage */
 // Api for get all Tickits done by users
         router.get('/allBookings', adminController.allBookings)
-// APi for update seat Availablity
-        router.post('/updateSeatAvailability',adminController.updateSeatAvailability)
+// APi for count bookings for particular date
+        router.get('/countBookings',adminController.countBookings)
 
                                    
                                      
