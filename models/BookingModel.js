@@ -1,3 +1,4 @@
+const { Timestamp } = require('mongodb');
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
@@ -60,6 +61,13 @@ const bookingSchema = new mongoose.Schema({
                
     }]
 
+} ,{
+Timestamps : true,
+
+
+indexes: [
+    { unique: true, fields: ['seatNumber', 'routeNumber', 'departureDate'] }
+]
 });
 
 const BookingModel = mongoose.model('BookingModel', bookingSchema);

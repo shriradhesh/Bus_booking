@@ -53,6 +53,28 @@ const busSchema = new mongoose.Schema({
       default : 'available'
 
     },
+    
+     stops:[{
+              stopName : {
+                type : String,
+               
+              },
+              arrivalTime : {
+                type : String,
+                
+              },            
+              departureTime:{
+                type: String,
+                
+              },
+              distance: {
+                type: Number,  
+               
+              },
+             
+     }],
+   
+      
    
   },
     {timestamps: true}

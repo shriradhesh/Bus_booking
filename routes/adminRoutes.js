@@ -26,13 +26,25 @@ const upload = require('../uploadImage')
 
         router.post('/add_Bus', upload.array('images',15),adminController.addBus)
 // Api for edit bus
-         router.put('/editBus/:id', upload.array('images',15), adminController.editBus)
+         router.put('/updateBus/:id', upload.array('images',15), adminController.updateBus)
 //Api for delete Bus
           router.delete('/deleteBus/:busId', adminController.deleteBus)
 //Api for get AllBuses with there status
         router.get('/allBuses', adminController.allBuses)
 // APi for get a Bus by busID
         router.get('/getBus/:busId',adminController.getBus)
+//Api for add Stop in a Route with the help of bus id 
+        router.post('/addStop/:busId',adminController.addStop)
+//Api for edit Stop in a Route with the help of stop id and busId
+        router.put('/editStop/:stopId/:busId',adminController.editStop)
+// Api to add stop before the stop
+         router.post('/addStopBeforeStop/:busId', adminController.addStopBeforeStop)
+// Api for get all stops in a bus
+        router.get('/allStops/:busId', adminController.allStops)
+// Api for delete a stop by stop id and bus id
+        router.delete('/deleteStop/:stopId/:busId', adminController.deleteStop)
+//Api for assign stop price
+        router.post('/calculateStopfare/:busId', adminController.calculateStopfare)
 
 
                               
@@ -47,16 +59,7 @@ const upload = require('../uploadImage')
         router.delete('/deleteRoute/:routeId', adminController.deleteRoute)
 //Api for get a Route by  routeId
         router.get('/getRoute/:routeId',adminController.getRoute)
-//Api for add Stop in a Route with the help of Route id 
-        router.post('/addStop/:routeId',adminController.addStop)
-//Api for edit Stop in a Route with the help of stop id and routeId
-        router.put('/editStop/:stopId/:routeId',adminController.editStop)
-// Api for get all stops in a route
-        router.get('/allStops/:routeId', adminController.allStops)
-// Api for delete a stop by stop id and route id
-        router.delete('/deleteStop/:stopId/:routeId', adminController.deleteStop)
-//Api for assign stop price
-        router.post('/calculateStopfare/:routeId', adminController.calculateStopfare)
+
 
                                 /* Admin change Profile */
 //Api for change Admin Profile

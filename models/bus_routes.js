@@ -9,27 +9,18 @@ const busRouteSchema = new mongoose.Schema({
     },
     source :String,
     destination: String,
-    starting_Date:{ 
+    departureDate:{ 
         type : Date,
         required : true
                },
     end_Date: {
           type : Date, 
           required : true
-    },
-    starting_time : {
-        type : String,
-        required : true,
-    },
-    end_time :{
-        type : String,
-        required : true,
-    },
+    },   
     busInfo : [{
                   busId : {
                         type: mongoose.Schema.Types.ObjectId,
-                        ref: 'BusModel', 
-                       
+                        ref: 'BusModel',                        
                 }
               }],
     
@@ -44,30 +35,6 @@ const busRouteSchema = new mongoose.Schema({
         type : String,
        required : true,
      },
-     stops:[{
-              stopName : {
-                type : String,
-               
-              },
-              arrivalTime : {
-                type : String,
-                
-              },            
-              departureTime:{
-                type: String,
-                
-              },
-              distance: {
-                type: Number,  
-               
-              },
-             
-     }],
-     live_Location :
-     {
-        type : String,
-        required : false,
-     },     
     
      status: {
         type: String,
