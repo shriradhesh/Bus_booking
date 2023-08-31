@@ -14,11 +14,10 @@ const busSchema = new mongoose.Schema({
       min : 0,
       
     },
-    booked_seat : {
-      type : Number,
-      min : 0,
+    booked_seat : [{
+      type : Number,  
       
-    },
+    }],
   bus_no: {
     type : String,
     required : true

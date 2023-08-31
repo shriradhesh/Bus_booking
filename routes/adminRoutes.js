@@ -58,7 +58,7 @@ const upload = require('../uploadImage')
 //Api for delete Route by id
         router.delete('/deleteRoute/:routeId', adminController.deleteRoute)
 //Api for get a Route by  routeId
-        router.get('/getRoute/:routeId',adminController.getRoute)
+        router.get('/searchBuses',adminController.searchBuses)
 
 
                                 /* Admin change Profile */
