@@ -55,6 +55,10 @@ const upload = require('../uploadImage')
         router.get('/allRoute',adminController.allroutes)
 //Api for edit Route details by id
         router.put('/editRoute/:routeId',adminController.editRoute)
+//Api for add BusId in a Route
+        router.post('/addBusId/:routeId',adminController.addBusId) 
+//Api for add BusId in a Route
+        router.delete('/deleteBusId/:Id/:routeId',adminController.deleteBusId) 
 //Api for delete Route by id
         router.delete('/deleteRoute/:routeId', adminController.deleteRoute)
 //Api for get a Route by  routeId

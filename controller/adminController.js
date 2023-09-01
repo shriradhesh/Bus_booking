@@ -330,7 +330,45 @@ const addBus = async (req, res) => {
                     res.status(500).json({ success : false , error: 'Error while finding the BUS' });
                   }
                 }
-                                 
+                  
+  // Api for searchBuses   
+                              const searchBuses = async (req, res) => {
+                                try {
+                                  const { sourceStop, destinationStop, date } = req.body;
+                              
+                                  // Find routes that match the selected date
+                                  
+                                  const routes = await BusRoute.find({
+                                    starting_Date: {$lte: date},
+                                    end_Date: { $gte: date}
+                                  });
+                                          
+                                  if (!routes || routes.length === 0) {
+                                    return res.status(404).json({ success: false, error: 'No matching routes found for the selected date' });
+                                  }
+                              
+                                  // Extract bus IDs from the matching routes
+                                  const busIds = routes.map(route => route.busInfo.busId);
+                              
+                                  // Find buses with stops matching both source and destination and are in the list of matching bus IDs
+                                  const buses = await BusModel.find({
+                                    'stops.stopName': { $all: [sourceStop, destinationStop] },
+                                    _id: { $in: busIds }
+                                  });
+                              
+                                  if (!buses || buses.length === 0) {
+                                    return res.status(404).json({ success: false, error: 'No matching buses found' });
+                                  }
+                              
+                                  res.status(200).json({ success: true, message: 'Matching buses & routes found', Bus_Details: buses });
+                                } catch (error) {
+                                  console.error(error);
+                                  res.status(500).json({ success: false, error: 'Error while fetching the data' });
+                                }
+                              };
+                              
+                                              
+  
                                 /*   stops manage for Route   */
      
       //API for add stop in a bus with bus id 
@@ -381,7 +419,7 @@ const addBus = async (req, res) => {
 
       // Api for EDIT Stops in a bus with bus Id and stop Id
       const editStop = async (req, res) =>{
-       let routeId
+       let busId
         try{
             const stopId = req.params.stopId
              busId = req.params.busId          
@@ -433,13 +471,13 @@ const addBus = async (req, res) => {
                               }
                          )
                            
-                      res.status(200).json({ success : true , message :` stop is edit successfully for routeID : ${busId}`})
+                      res.status(200).json({ success : true , message :` stop is edit successfully for BusId : ${busId}`})
                       
               }        
        catch(error)
        {
         
-          res.status(500).json({success: false , error : ` there is an error to update the stop in routeId : ${busId}`})
+          res.status(500).json({success: false , error : ` there is an error to update the stop in BusId : ${busId}`})
        }
        }
       // Api to add stop before the stop
@@ -514,7 +552,7 @@ const addBus = async (req, res) => {
     // Delete a particular stop by stopId with the help of bus
                 
                     const deleteStop = async (req ,res)=>{
-                      let routeId 
+                      let busId 
                       try{
                             const stopId = req.params.stopId
                             busId = req.params.busId
@@ -615,7 +653,7 @@ const addBus = async (req, res) => {
                   const addRoute = async(req,res)=>{
                     try{
                         const { s_no , routeNumber ,source , destination,
-                                departureDate , end_Date , 
+                                starting_Date , end_Date , 
                               contact_no , status } = req.body
                       
                         
@@ -626,7 +664,7 @@ const addBus = async (req, res) => {
                                   'routeNumber',
                                   'source',            
                                   'destination',
-                                  'departureDate',
+                                  'starting_Date',
                                   'end_Date',                                
                                   'contact_no',               
                                   'status',
@@ -655,7 +693,7 @@ const addBus = async (req, res) => {
                             routeNumber : routeNumber,
                             source : source,
                             destination : destination,
-                            departureDate: departureDate,
+                            starting_Date: starting_Date,
                             end_Date: end_Date,                                
                             contact_no : contact_no,                                  
                             status: status,
@@ -695,130 +733,157 @@ const addBus = async (req, res) => {
 
 
 // API for Edit Route 
-                    const editRoute = async (req, res) => {
-                      try {
-                          const routeId = req.params.routeId;
-                          
-                          const {
-                              routeNumber,
-                              source,
-                              destination,
-                              departureDate,
-                              end_Date,                             
-                              contact_no,                              
-                              status,
-                              busInfo
-                          } = req.body;
-                          
-                          // Check field validation
-                          const requiredFields = [
-                              'routeNumber',
-                              'source',
-                              'destination',
-                              'departureDate',
-                              'end_Date',                              
-                              'contact_no',                             
-                              'status',
-                              'busInfo'
-                          ];
+                              const editRoute = async (req, res) => {
+                                try {
+                                    const routeId = req.params.routeId;
+                                    
+                                    const {
+                                        
+                                        source,
+                                        destination,
+                                        starting_Date,
+                                        end_Date,                             
+                                        contact_no,                              
+                                        status
+                                        
+                                    } = req.body;
+                                          
+                                    // Check field validation
+                                    const requiredFields = [
+                                        
+                                        'source',
+                                        'destination',
+                                        'starting_Date',
+                                        'end_Date',                              
+                                        'contact_no',                             
+                                        'status',
+                                        
+                                    ];
+                                        
+                                    for (const field of requiredFields) {
+                                        if (!req.body[field]) {
+                                            return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                        }
+                                    }
 
-                          for (const field of requiredFields) {
-                              if (!req.body[field]) {
-                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                              }
-                          }
+                                    // Check for route existence
+                                    const existRoute = await BusRoute.findOne({ _id: routeId });
+                                    if (!existRoute) {
+                                        return res.status(404).json({ success: false, error: `Route not found` });
+                                    }
+                                   
+                                        
 
-                          // Check for route existence
-                          const existRoute = await BusRoute.findOne({ _id: routeId });
-                          if (!existRoute) {
-                              return res.status(404).json({ success: false, error: `Route not found` });
-                          }
+                                    // Update the properties of the existing route
+                                    
+                                    existRoute.source = source;
+                                    existRoute.destination = destination;
+                                    existRoute.starting_Date = starting_Date;
+                                    existRoute.end_Date = end_Date;                         
+                                    existRoute.contact_no = contact_no;                         
+                                    existRoute.status = status;                                   
+                                  
+                                    // Save the updated route details to the database
+                                    const updatedRoute = await existRoute.save();
+                                    res.status(200).json({ success: true, message: 'Route Details Edited Successfully', route: updatedRoute });
+                                } catch (error) {
+                                    console.error(error);
+                                    res.status(500).json({ success: false, error: 'Error while editing the route details' });
+                                }
+                              };
 
-                          // Check for duplicate bus IDs and driver IDs within the same route
-                          const duplicateBusIds = new Set();
-                         
-
-                          for (const info of busInfo) {
-                              if (duplicateBusIds.has(info.busId.toString())) {
-                                  return res.status(400).json({ success: false, error: 'Duplicate bus IDs found in the same route' });
-                              }
-                              duplicateBusIds.add(info.busId.toString());                             
-                          }
-                               // Check for same bus IDs and driver IDs in different routes
-                                for (const info of busInfo) {
-                                  const existingRouteWithBus = await BusRoute.findOne({ 'busInfo.busId': info.busId, _id: { $ne: routeId } });
-                                  if (existingRouteWithBus) {
-                                      return res.status(400).json({ success: false, error: 'Same bus ID is assigned to a different route' });
-                                  }
-                              }
-
-                          // Update the properties of the existing route
-                          existRoute.routeNumber = routeNumber;
-                          existRoute.source = source;
-                          existRoute.destination = destination;
-                          existRoute.departureDate = departureDate;
-                          existRoute.end_Date = end_Date;                         
-                          existRoute.contact_no = contact_no;                         
-                          existRoute.status = status;
-
-                          // Update busInfo array
-                          existRoute.busInfo = busInfo;
-
-                          // Save the updated route details to the database
-                          const updatedRoute = await existRoute.save();
-                          res.status(200).json({ success: true, message: 'Route Details Edited Successfully', route: updatedRoute });
-                      } catch (error) {
-                          console.error(error);
-                          res.status(500).json({ success: false, error: 'Error while editing the route details' });
+  // APi for add BusId in a Route
+                 const addBusId = async (req,res)=>{
+          
+                  const routeId = req.params.routeId
+                 const { busId } = req.body          
+                  
+                 try{
+      
+                  const requiredFields = [                
+                    'busId' ];
+            
+                for (const field of requiredFields) {
+                    if (!req.body[field]) {
+                        return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                    }
+                }                             
+                      const route = await BusRoute.findOne({ _id:routeId })
+                 
+                      if(!route)
+                      {
+                          return res.status(400).json({ success : false , error : `route not found with the routeId ${routeId}`})
                       }
-                    };
+      
+                      route.busInfo.push({
+                          busId
+                      })
+                      await route.save()
+      
+                      return res.status(200).json({ success : true , message : `busId added successfully to route :  ${routeId}`})
+                  }
+                  catch(error)
+                  {
+                      return res.status(500).json({ success : false , message : ` an error occured while adding the busId` , error : error})
+                  }
+                 }
+
+   // Api for Delete busId in a Route
+              const deleteBusId = async (req, res) => {
+                try {
+                    const busId = req.params.Id; // Updated to use :Id
+                    const routeId = req.params.routeId;
+
+                    // Find the route by its ID
+                    const existRoute = await BusRoute.findById(routeId);
+
+                    if (!existRoute) {
+                        return res.status(404).json({ success: false, error: "Route not found" });
+                    }
+
+                    // Check for busId in busInfo
+                    const existBusIdIndex = existRoute.busInfo.findIndex(bus => bus._id.toString() === busId);
+
+                    if (existBusIdIndex === -1) {
+                        return res.status(404).json({ success: false, error: "BusId not found" });
+                    }
+
+                    // Remove the busId from the busInfo array
+                    existRoute.busInfo.splice(existBusIdIndex, 1);
+
+                    // Update the BusRoute document with the modified busInfo
+                    await BusRoute.findByIdAndUpdate(routeId, { busInfo: existRoute.busInfo });
+
+                    res.status(200).json({ success: true, message: "BusId deleted successfully" });
+                } catch (error) {
+                    console.error(error);
+                    res.status(500).json({ success: false, error: "There is an error while deleting the busId" });
+                }
+            };
+
+            
 
 
 
 
     // Api for delete Route 
-    const deleteRoute = async (req, res) => {
-        try {
-          const id = req.params.id;
-          const route = await BusRoute.findById(id);
-      
-          if (!route) {
-            return res.status(404).json({ success: false, error: 'Route not found' });
-          }
-      
-          await route.deleteOne();
-          res.status(200).json({ success: true, message: 'Route deleted successfully' });
-        } catch (error) {
-          console.error(error);
-          res.status(500).json({ error: 'Error while deleting the route' });
-        }
-      };
-  // Api for Get a Route details by Route id
-            const searchBuses = async (req, res) => {
-       
-                const { source, destination, departureDate } = req.body;
-              
-                try {
-                  const matchingRoutes = await BusRoute.find({
-                    source,
-                    destination,
-                    departureDate: { $lte: new Date(departureDate) },
-                    end_Date: { $gte: new Date(departureDate) }
-                  })
-                    .populate({
-                          path : 'busInfo.busId',
-                          populate : {
-                            path : 'stops',
-                            select : 'stopName'
+                      const deleteRoute = async (req, res) => {
+                          try {
+                            const id = req.params.id;
+                            const route = await BusRoute.findById(id);
+                        
+                            if (!route) {
+                              return res.status(404).json({ success: false, error: 'Route not found' });
+                            }
+                        
+                            await route.deleteOne();
+                            res.status(200).json({ success: true, message: 'Route deleted successfully' });
+                          } catch (error) {
+                            console.error(error);
+                            res.status(500).json({ error: 'Error while deleting the route' });
                           }
-                        })
-                  res.status(200).json({success : true , message : 'matchingRoutes' , allBuses : matchingRoutes});
-                } catch (error) {
-                  res.status(500).json({success : false , error: 'An error occurred' });
-                }
-              }
-       
-
+                        };
+                    
                                               /* Change Profile */
 // ApI for change Porfile 
               const changeProfile = async(req,res)=>{
@@ -1037,11 +1102,11 @@ const addBus = async (req, res) => {
     const bookTicket = async (req, res) => {
       try {
          
-          const { routeNumber, departureDate, status, email, source, destination, passengers } = req.body;
+          const { routeNumber, starting_Date, status, email, source, destination, passengers } = req.body;
           const selectedBusId = req.query.selectedBusId;
   
           // Checking for required fields in the request
-          const requiredFields = ['routeNumber', 'departureDate', 'email', 'passengers', 'source', 'destination'];
+          const requiredFields = ['routeNumber', 'starting_Date', 'email', 'passengers', 'source', 'destination'];
         if (requiredFields.some(field => !req.body[field])) {
             return res.status(400).json({ success: false, error: `Missing required field` });
         }
@@ -1083,14 +1148,14 @@ const addBus = async (req, res) => {
               return res.status(500).json({ success: false, error: 'Available seats information not found for the selected bus' });
           }
           
-          if (new Date(departureDate) < new Date(today)) {
+          if (new Date(starting_Date) < new Date(today)) {
             return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
         }
   
           // Calculating available seats, checking seat availability
           const availableSeats = selectedBus.busId.Available_seat;
           const numPassengers = passengers.length;
-          const userBookedSeatsCount = await BookingModel.countDocuments({ routeNumber, departureDate });
+          const userBookedSeatsCount = await BookingModel.countDocuments({ routeNumber, starting_Date });
         
           if (userBookedSeatsCount + numPassengers > availableSeats) {
               return res.status(400).json({ success: false, error: 'Exceeded maximum allowed seats' });
@@ -1135,7 +1200,7 @@ const addBus = async (req, res) => {
           // Creating a new booking
           const booking = new BookingModel({
               routeNumber,
-              departureDate,
+              starting_Date,
               status,
               bookingId,
               userId,
@@ -1155,7 +1220,7 @@ const addBus = async (req, res) => {
               -----------------------------------------
           `).join('\n');
   
-          const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${departureDate} has been confirmed.\n\n Journey Details:\n 
+          const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${starting_Date} has been confirmed.\n\n Journey Details:\n 
               Booking ID: ${bookingId} 
               Bus Number: ${selectedBus.busId.bus_no}
               Bus Arrival Time:${sourceStopArrivalTime}
@@ -1276,14 +1341,14 @@ const addBus = async (req, res) => {
                     }
                    }
 
-        // APi for ModifyTicket ( departureDate , seatNumber)
+        // APi for ModifyTicket ( starting_Date , seatNumber)
 
                       const modifyTicket = async (req,res)=>{
                         try{
-                          const { bookingId , newDepartureDate } = req.body
+                          const { bookingId , newstarting_Date } = req.body
                           const requiredFields = [                
                             'bookingId',
-                            'newDepartureDate',                               
+                            'newstarting_Date',                               
                         ];
                     
                         for (const field of requiredFields) {
@@ -1297,12 +1362,12 @@ const addBus = async (req, res) => {
                           return res.status(404).json({ success: false, error: 'Booking not found' });
                         }   
 
-                         if(booking.departureDateUpdated)
+                         if(booking.starting_DateUpdated)
                          {
                           return res.status(400).json({ success : false , error: 'Departure date already updated once'})
                          }
-                              booking.departureDate = newDepartureDate
-                              booking.departureDateUpdated = true
+                              booking.starting_Date = newstarting_Date
+                              booking.starting_DateUpdated = true
                               await booking.save()
                                 
                                 res.status(200).json({ success : true , message : ' Tickit details modified Successfully '})
@@ -1342,25 +1407,25 @@ const addBus = async (req, res) => {
                       
                         const countBookings = async (req, res) => {                          
                             try {
-                              const departureDate = req.query.departureDate;
+                              const starting_Date = req.query.starting_Date;
                               const status = req.query.status;
                           
-                              if (!departureDate) {
-                                return res.status(400).json({ success: false, error: 'Departure date is required' });
+                              if (!starting_Date) {
+                                return res.status(400).json({ success: false, error: 'starting date is required' });
                               }
                           
                               let bookings;
                               if (status === 'confirmed') {
-                                bookings = await BookingModel.find({ status: 'confirmed', departureDate });
+                                bookings = await BookingModel.find({ status: 'confirmed', starting_Date });
                               } else if (status === 'pending' || status === 'cancelled') {
-                                bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] }, departureDate });
+                                bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] }, starting_Date });
                               } else {
                                 return res.status(400).json({ success: false, error: 'Invalid status value' });
                               }
                           
                               const count = bookings.length;
                           
-                              res.status(200).json({ success: true, message: `Count and details of ${status} bookings for departure date ${departureDate}`, count, bookings });
+                              res.status(200).json({ success: true, message: `Count and details of ${status} bookings for departure date ${starting_Date}`, count, bookings });
                             } catch (error) {
                               res.status(500).json({ success: false, error: 'An error occurred while retrieving bookings' });
                             }
@@ -1376,11 +1441,11 @@ const addBus = async (req, res) => {
                 
     module.exports = { 
                         adminLogin , changePassword, addBus , updateBus ,
-                        deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,
-                        deleteRoute  , searchBuses , addStop , editStop ,addStopBeforeStop, allStops , 
-                        deleteStop ,calculateStopfare, changeProfile , addDriver ,
-                         editDriver,deleteDriver , allDrivers , getDriver , bookTicket,
-                         cancelTicket, userTickets ,modifyTicket, allBookings,
+                        deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute, addBusId,
+                        deleteBusId,deleteRoute  , searchBuses , addStop , editStop ,
+                        addStopBeforeStop, allStops ,deleteStop ,calculateStopfare, 
+                        changeProfile , addDriver ,editDriver,deleteDriver , allDrivers ,
+                         getDriver , bookTicket, cancelTicket, userTickets , modifyTicket , allBookings,
                          countBookings 
                      }
                     

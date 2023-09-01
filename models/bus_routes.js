@@ -9,7 +9,7 @@ const busRouteSchema = new mongoose.Schema({
     },
     source :String,
     destination: String,
-    departureDate:{ 
+    starting_Date:{ 
         type : Date,
         required : true
                },
