@@ -122,146 +122,150 @@ const fs = require('fs');
                                              /* BUS MANAGEMENT */
         
 // APi for add new bus
-const addBus = async (req, res) => {
-    try {
-      const {
-        bus_type,
-        seating_capacity,        
-        bus_no,
-        model,
-        manufacture_year,
-        amenities,       
-        status, 
-      } = req.body;
-       
-      const Available_seat = seating_capacity;
+                  const addBus = async (req, res) => {
+                      try {
+                        const {
+                          bus_type,
+                          seating_capacity,        
+                          bus_no,
+                          model,
+                          manufacture_year,
+                          amenities,       
+                          status, 
+                        } = req.body;
+                      // Create an array for available seats
+                         const availableSeat = Array.from({ length: seating_capacity }, (_, index) => index + 1);
 
-      const requiredFields = [
-        'bus_type',
-        'seating_capacity',       
-        'bus_no',            
-        'model',
-        'manufacture_year',
-        'amenities',        
-        'status',
-        
-    ];
 
-    for (const field of requiredFields) {
-        if (!req.body[field]) {
-            return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-        }
-    }
-        
-      // Check for bus number
-      const existBus = await BusModel.findOne({ bus_no });
-  
-      if (existBus) {
-        return res.status(400).json({ error: 'Bus with the same Number is Already Exist', success: false });
-      }
-       
-     
+                        const requiredFields = [
+                          'bus_type',
+                          'seating_capacity',       
+                          'bus_no',            
+                          'model',
+                          'manufacture_year',
+                          'amenities',        
+                          'status',
+                          
+                      ];
 
-      const imagePath = req.files.map((file) => file.path);  
-         // check Bus status
-      const validStatuses = ['active', 'inactive'];
-      const busStatus = validStatuses.includes(status) ? status : 'active';
-          
-      const newBus = new BusModel({
-        bus_type: bus_type,
-        seating_capacity: seating_capacity,
-        Available_seat : Available_seat,
-        bus_no: bus_no,
-        model: model,
-        manufacture_year: manufacture_year,
-        amenities: amenities,
-        images: imagePath,      
-        status: busStatus, 
-      });
-  
-      const savedBus = await newBus.save();
-      res.status(200).json({ success: true, message: 'Bus Added successfully', Bus: savedBus });
-    } catch (error) {
-      console.error('Error while adding the Bus', error);
-      res.status(500).json({ success: false, message: 'Error while adding the Bus', error: error });
-    }
-  };
+                      for (const field of requiredFields) {
+                          if (!req.body[field]) {
+                              return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                          }
+                      }
+                          
+                        // Check for bus number
+                        const existBus = await BusModel.findOne({ bus_no });
+                    
+                        if (existBus) {
+                          return res.status(400).json({ error: 'Bus with the same Number is Already Exist', success: false });
+                        }
+                        
+                      
+
+                        const imagePath = req.files.map((file) => file.path);  
+                          // check Bus status
+                        const validStatuses = ['active', 'inactive'];
+                        const busStatus = validStatuses.includes(status) ? status : 'active';
+                            
+                        const newBus = new BusModel({
+                          bus_type: bus_type,
+                          seating_capacity: seating_capacity,
+                          Available_seat : availableSeat ,
+                          bus_no: bus_no,
+                          model: model,
+                          manufacture_year: manufacture_year,
+                          amenities: amenities,
+                          images: imagePath,      
+                          status: busStatus, 
+                        });
+                    
+                        const savedBus = await newBus.save();
+                        res.status(200).json({ success: true, message: 'Bus Added successfully', Bus: savedBus });
+                      } catch (error) {
+                        console.error('Error while adding the Bus', error);
+                        res.status(500).json({ success: false, message: 'Error while adding the Bus', error: error });
+                      }
+                    };
   
 
 
 
   // Api for update bus with id
-  const updateBus = async (req, res) => {
-    try {
-        const id = req.params.id;
-        const {
-          bus_type,
-          seating_capacity,
-          model,
-          manufacture_year,
-          amenities,
-          status,
-          availability,
-          stops  
-      } = req.body;
-      
+                      const updateBus = async (req, res) => {
+                        try {
+                            const id = req.params.id;
+                            const {
+                              bus_type,
+                              seating_capacity,
+                              model,
+                              manufacture_year,
+                              amenities,
+                              status,
+                              availability
+                                
+                          } = req.body;
+                          
 
-        const requiredFields = [
-            'bus_type',
-            'seating_capacity',            
-            'model',
-            'manufacture_year',
-            'amenities',            
-            'status',
-            'availability',
-           
-        ];
+                            const requiredFields = [
+                                'bus_type',
+                                'seating_capacity',            
+                                'model',
+                                'manufacture_year',
+                                'amenities',            
+                                'status',
+                                'availability',
+                              
+                            ];
 
-        for (const field of requiredFields) {
-            if (!req.body[field]) {
-                return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-            }
-        }
+                            for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                            }
 
-        const existBus = await BusModel.findOne({ _id:id });
-        if (!existBus) {
-            return res.status(400).json({ error: 'Bus Not found', success: false });
-        }
+                            const existBus = await BusModel.findOne({ _id:id });
+                            if (!existBus) {
+                                return res.status(400).json({ error: 'Bus Not found', success: false });
+                            }
 
-        const validStatus = ['active', 'inactive'];
-        const driverStatus = validStatus.includes(status) ? status : 'active';
+                            const validStatus = ['active', 'inactive'];
+                            const driverStatus = validStatus.includes(status) ? status : 'active';
 
-        const validAvailability = ['available', 'unavailable', 'booked'];
-        const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
-               
+                            const validAvailability = ['available', 'unavailable', 'booked'];
+                            const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
+                                  // Create an array for available seats
+                         const availableSeat = Array.from({ length: seating_capacity }, (_, index) => index + 1);
+ 
 
-        existBus.bus_type = bus_type;
-        existBus.seating_capacity = seating_capacity;       
-        existBus.model = model;
-        existBus.manufacture_year = manufacture_year;
-        existBus.amenities = amenities;       
-        existBus.status = driverStatus;
-        existBus.availability = BusAvailability;
-      
+                            existBus.bus_type = bus_type;
+                            existBus.seating_capacity = seating_capacity;    
+                            existBus.Available_seat = availableSeat;   
+                            existBus.model = model;
+                            existBus.manufacture_year = manufacture_year;
+                            existBus.amenities = amenities;       
+                            existBus.status = driverStatus;
+                            existBus.availability = BusAvailability;
+                          
 
-        if (req.file) {
-            if (existBus.images) {
-                try {
-                    fs.unlinkSync(existBus.images);
-                } catch (error) {
-                    console.error('Error deleting previous image:', error);
-                }
-            }
-            existBus.images = req.file.path;
-        }
+                            if (req.file) {
+                                if (existBus.images) {
+                                    try {
+                                        fs.unlinkSync(existBus.images);
+                                    } catch (error) {
+                                        console.error('Error deleting previous image:', error);
+                                    }
+                                }
+                                existBus.images = req.file.path;
+                            }
 
-        const updatedBus = await existBus.save();
-        res.status(200).json({ success: true, message: 'Bus Details Edit Successfully', bus: updatedBus });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, error: 'Error while editing the bus details' });
-    }
-};
+                            const updatedBus = await existBus.save();
+                            res.status(200).json({ success: true, message: 'Bus Details Edit Successfully', bus: updatedBus });
+                        } catch (error) {
+                            console.error(error);
+                            res.status(500).json({ success: false, error: 'Error while editing the bus details' });
+                        }
+                    };
 
   //APi for delete Bus 
                
@@ -340,15 +344,13 @@ const addBus = async (req, res) => {
                         const routes = await BusRoute.find({
                           starting_Date: { $lte: date },
                           end_Date: { $gte: date }
-                        });
-                    
+                        });                    
                        
                         if (!routes || routes.length === 0) {
                           return res
                             .status(404)
                             .json({ success: false, error: 'No matching routes found for the selected date' });
-                        }
-                       
+                        }                       
                              
                         // Extract bus IDs from the matching routes
                         const busIds = routes.flatMap(route => route.busInfo.map(info => info.busId)).filter(Boolean);
@@ -366,7 +368,7 @@ const addBus = async (req, res) => {
                           return res.status(404).json({ success: false, error: 'No matching buses found' });
                         }
                     
-                        res.status(200).json({ success: true, message: 'Matching buses & routes found', Bus_Details: buses });
+                        res.status(200).json({ success: true, message: 'Buses for the route', Bus_Details: buses });
                       } catch (error) {
                         console.error(error);
                         res.status(500).json({ success: false, error: 'Error while fetching the data' });
@@ -1445,8 +1447,42 @@ const addBus = async (req, res) => {
                               res.status(500).json({ success: false, error: 'An error occurred while retrieving bookings' });
                             }
                           }
-                          
-                      
+
+   // API for View seats in Bus for a route
+                                const  viewSeats = async (req, res) => {
+                                  try {
+                                    const busId = req.params.busId;
+                                
+                                    // Find the bus by its ID
+                                    const bus = await BusModel.findById(busId);
+                                
+                                    if (!bus) {
+                                      return res.status(404).json({ success: false, error: 'Bus not found' });
+                                    }
+                                
+                                    // Convert totalSeats to an array
+                                    const totalSeatsArray = Array.from({ length: bus.seating_capacity }, (_, index) => index + 1);
+                                
+                                    // Calculate availableSeats by subtracting bookedSeats from totalSeats
+                                    const bookedSeats = bus.booked_seat;
+                                    const availableSeats = totalSeatsArray.filter(seat => !bookedSeats.includes(seat));
+                                
+                                    res.status(200).json({
+                                      success: true,
+                                      message: 'Seat information for the bus',
+                                      Seat_Info: {
+                                        totalSeats: totalSeatsArray,
+                                        availableSeats,
+                                        bookedSeats,
+                                      },
+                                    });
+                                  } catch (error) {
+                                    console.error(error);
+                                    res.status(500).json({ success: false, error: 'Error while fetching seat information' });
+                                  }
+                                }
+                                
+                                            
           
           
                 
@@ -1461,6 +1497,6 @@ const addBus = async (req, res) => {
                         addStopBeforeStop, allStops ,deleteStop ,calculateStopfare, 
                         changeProfile , addDriver ,editDriver,deleteDriver , allDrivers ,
                          getDriver , bookTicket, cancelTicket, userTickets , modifyTicket , allBookings,
-                         countBookings 
+                         countBookings , viewSeats
                      }
                     

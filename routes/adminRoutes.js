@@ -98,6 +98,8 @@ const upload = require('../uploadImage')
         router.get('/allBookings', adminController.allBookings)
 // APi for count bookings for particular date
         router.get('/countBookings',adminController.countBookings)
+// Api for view seats in Bus for a Route
+        router.get('/viewSeats/:busId', adminController.viewSeats)
 
                                    
                                      

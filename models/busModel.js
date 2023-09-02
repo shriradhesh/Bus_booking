@@ -9,11 +9,11 @@ const busSchema = new mongoose.Schema({
     required : true,
   
 },
-    Available_seat : {
+    Available_seat : [{
       type : Number,
       min : 0,
       
-    },
+    }],
     booked_seat : [{
       type : Number,  
       
