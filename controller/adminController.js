@@ -332,44 +332,51 @@ const addBus = async (req, res) => {
                 }
                   
   // Api for searchBuses   
-                              const searchBuses = async (req, res) => {
-                                try {
-                                  const { sourceStop, destinationStop, date } = req.body;
-                              
-                                  // Find routes that match the selected date
-                                  
-                                  const routes = await BusRoute.find({
-                                    starting_Date: {$lte: date},
-                                    end_Date: { $gte: date}
-                                  });
-                                          
-                                  if (!routes || routes.length === 0) {
-                                    return res.status(404).json({ success: false, error: 'No matching routes found for the selected date' });
-                                  }
-                              
-                                  // Extract bus IDs from the matching routes
-                                  const busIds = routes.map(route => route.busInfo.busId);
-                              
-                                  // Find buses with stops matching both source and destination and are in the list of matching bus IDs
-                                  const buses = await BusModel.find({
-                                    'stops.stopName': { $all: [sourceStop, destinationStop] },
-                                    _id: { $in: busIds }
-                                  });
-                              
-                                  if (!buses || buses.length === 0) {
-                                    return res.status(404).json({ success: false, error: 'No matching buses found' });
-                                  }
-                              
-                                  res.status(200).json({ success: true, message: 'Matching buses & routes found', Bus_Details: buses });
-                                } catch (error) {
-                                  console.error(error);
-                                  res.status(500).json({ success: false, error: 'Error while fetching the data' });
-                                }
-                              };
+                    const searchBuses = async (req, res) => {
+                      try {
+                        const { sourceStop, destinationStop, date } = req.body;
+                    
+                        // Find routes that match the selected date
+                        const routes = await BusRoute.find({
+                          starting_Date: { $lte: date },
+                          end_Date: { $gte: date }
+                        });
+                    
+                       
+                        if (!routes || routes.length === 0) {
+                          return res
+                            .status(404)
+                            .json({ success: false, error: 'No matching routes found for the selected date' });
+                        }
+                       
+                             
+                        // Extract bus IDs from the matching routes
+                        const busIds = routes.flatMap(route => route.busInfo.map(info => info.busId)).filter(Boolean);
+
+                       
+                        // Find buses with stops matching both source and destination and are in the list of matching bus IDs
+                        const buses = await BusModel.find({
+                          _id: { $in: busIds },
+                          'stops.stopName': { $all: [sourceStop, destinationStop] }
+                          
+                        });                   
+                       
+                    
+                        if (!buses || buses.length === 0) {
+                          return res.status(404).json({ success: false, error: 'No matching buses found' });
+                        }
+                    
+                        res.status(200).json({ success: true, message: 'Matching buses & routes found', Bus_Details: buses });
+                      } catch (error) {
+                        console.error(error);
+                        res.status(500).json({ success: false, error: 'Error while fetching the data' });
+                      }
+                    };
+  
                               
                                               
   
-                                /*   stops manage for Route   */
+                                             /*   stops manage for Route   */
      
       //API for add stop in a bus with bus id 
 
@@ -685,6 +692,9 @@ const addBus = async (req, res) => {
                             return res.status(400).json({ success : false ,  error : `route already exit with the route number : ${routeNumber} `})
                             }
                                   
+                                 // Convert string dates to Date objects
+                              const startDate = new Date(starting_Date);
+                              const endDate = new Date(end_Date);
 
 
                         const newRoute = new BusRoute({
@@ -693,13 +703,14 @@ const addBus = async (req, res) => {
                             routeNumber : routeNumber,
                             source : source,
                             destination : destination,
-                            starting_Date: starting_Date,
-                            end_Date: end_Date,                                
+                            starting_Date: startDate,
+                            end_Date: endDate,                                
                             contact_no : contact_no,                                  
                             status: status,
                                             
                           });
-
+                                
+                          
                             // Save the new route to the database
                                   await newRoute.save();
 
@@ -748,38 +759,42 @@ const addBus = async (req, res) => {
                                         
                                     } = req.body;
                                           
-                                    // Check field validation
-                                    const requiredFields = [
+                                    // // Check field validation
+                                    // const requiredFields = [
                                         
-                                        'source',
-                                        'destination',
-                                        'starting_Date',
-                                        'end_Date',                              
-                                        'contact_no',                             
-                                        'status',
+                                    //     'source',
+                                    //     'destination',
+                                    //     'starting_Date',
+                                    //     'end_Date',                              
+                                    //     'contact_no',                             
+                                    //     'status',
                                         
-                                    ];
+                                    // ];
                                         
-                                    for (const field of requiredFields) {
-                                        if (!req.body[field]) {
-                                            return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                        }
-                                    }
+                                    // for (const field of requiredFields) {
+                                    //     if (!req.body[field]) {
+                                    //         return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                    //     }
+                                    // }
 
                                     // Check for route existence
                                     const existRoute = await BusRoute.findOne({ _id: routeId });
                                     if (!existRoute) {
                                         return res.status(404).json({ success: false, error: `Route not found` });
                                     }
-                                   
-                                        
+                                       // Convert string dates to Date objects
+                                    const startDate = new Date(starting_Date);
+                                     const endDate = new Date(end_Date);
+
+                                        console.log(typeof(startDate));
+                                        console.log(typeof(endDate));
 
                                     // Update the properties of the existing route
                                     
                                     existRoute.source = source;
                                     existRoute.destination = destination;
-                                    existRoute.starting_Date = starting_Date;
-                                    existRoute.end_Date = end_Date;                         
+                                    existRoute.starting_Date = startDate;
+                                    existRoute.end_Date = endDate;                         
                                     existRoute.contact_no = contact_no;                         
                                     existRoute.status = status;                                   
                                   
