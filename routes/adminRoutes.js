@@ -100,6 +100,8 @@ const upload = require('../uploadImage')
         router.get('/countBookings',adminController.countBookings)
 // Api for view seats in Bus for a Route
         router.get('/viewSeats/:busId', adminController.viewSeats)
+// Api for calculate Fare For SelectedSeats in a Bus
+        router.post('/calculateFareForSelectedSeats/:busId', adminController.calculateFareForSelectedSeats)
 
                                    
                                      

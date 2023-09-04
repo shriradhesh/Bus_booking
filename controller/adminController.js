@@ -611,6 +611,8 @@ const fs = require('fs');
                       if (!bus) {
                         return res.status(400).json({ success: false, error: 'Bus not found' });
                       }
+
+                      // calculate the discance between source and destination stops
                       const stops = bus.stops;
                       
                       const sourceIndex = stops.findIndex(stop => stop.stopName === source);
@@ -619,41 +621,44 @@ const fs = require('fs');
                       if (sourceIndex === -1 || destinationIndex === -1) {
                         return res.status(400).json({ success: false, error: 'Source or destination stop not found' });
                       }   
-                      // Calculate fare logic
-                      const calculateFare = (sourceDistance, destinationDistance) => {
-                        const farePerUnitDistance = 0.5;
-                        const totalDistance = destinationDistance - sourceDistance;
-                        const totalFare = totalDistance * farePerUnitDistance;
-                        return totalFare;
-                      };
-                  
                       const sourceDistance = stops[sourceIndex].distance;
                       const destinationDistance = stops[destinationIndex].distance;
                   
-                      // Calculate total fare
-                      const totalFare = calculateFare(sourceDistance, destinationDistance);
-                  
-                      // Conversion rate: 1 euro = 90.22 Indian rupees
-                      const euroToIndianRupeeRate = 90.22;
-                  
-                      // Convert the total fare from Indian rupees to euros
-                      const fareInEuros = totalFare / euroToIndianRupeeRate;
-                  
-                      return res.status(200).json({
-                        success: true,
-                        message: 'Fare calculated successfully',
-                        fareInEuros: fareInEuros,
-                      });
+                      // calculate total distance and fare based on bus type
 
+                      const totalDistance = destinationDistance - sourceDistance
+
+                          // check the bus type and set farePerUnitDistance accordingly
+                          let farePerUnitDistance
+                          switch (bus.bus_type) {
+                            case 'Non-AC':
+                                farePerUnitDistance = 0.2;
+                              break;
+                             case 'AC' :
+                                farePerUnitDistance = 0.24;
+                                break;
+                             case 'luxury' :
+                              farePerUnitDistance = 0.3;
+                              break; 
+                            default:
+                                  farePerUnitDistance = 0.2;
+                              }                     
+                              // Calculate total fare 
+                              const totalFare = totalDistance * farePerUnitDistance                              
+                         
+                          return res.status(200).json({
+                            success: true,
+                            message: 'Fare calculated successfully',
+                            busType: bus.bus_type,
+                            totalFare : totalFare 
+                          });
+
+                        } catch (error) {
+                          console.error(error);
+                          return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
+                        }
+                      };
                       
-                    } catch (error) {
-                      console.error(error);
-                      return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
-                    }
-                  };
-                  
-                  
-              
 
                                                     /* Route Management */
 
@@ -884,23 +889,28 @@ const fs = require('fs');
 
 
     // Api for delete Route 
-                      const deleteRoute = async (req, res) => {
+                        const deleteRoute = async (req, res) => {
                           try {
-                            const id = req.params.id;
-                            const route = await BusRoute.findById(id);
+                            const routeId = req.params.routeId;
                         
-                            if (!route) {
-                              return res.status(404).json({ success: false, error: 'Route not found' });
+                            // Check for route existence
+                            const existingRoute = await BusRoute.findOne({ _id: routeId });
+                            if (!existingRoute) {
+                              return res.status(404).json({ success: false, error: `Route not found` });
                             }
                         
-                            await route.deleteOne();
+                            // Delete the route from the database
+                            await existingRoute.deleteOne();
+                            
                             res.status(200).json({ success: true, message: 'Route deleted successfully' });
                           } catch (error) {
                             console.error(error);
-                            res.status(500).json({ error: 'Error while deleting the route' });
+                            res.status(500).json({ success: false, error: 'Error while deleting the route' });
                           }
                         };
-                    
+    
+   
+    
                                               /* Change Profile */
 // ApI for change Porfile 
               const changeProfile = async(req,res)=>{
@@ -1119,162 +1129,163 @@ const fs = require('fs');
     const bookTicket = async (req, res) => {
       try {
          
-          const { routeNumber, starting_Date, status, email, source, destination, passengers } = req.body;
-          const selectedBusId = req.query.selectedBusId;
-  
-          // Checking for required fields in the request
-          const requiredFields = ['routeNumber', 'starting_Date', 'email', 'passengers', 'source', 'destination'];
-        if (requiredFields.some(field => !req.body[field])) {
-            return res.status(400).json({ success: false, error: `Missing required field` });
-        }
-  
-          // Fetching user details
-          const user = await UserModel.findOne({ email });
-          if (!user) {
-              return res.status(400).json({ success: false, error: 'User not found' });
-          }
-          const userId = user._id;
-  
-          // Fetching bus route details
-          const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
-          if (!route) {
-              return res.status(400).json({ success: false, error: 'Route not found' });
-          }
-  
-          // Updating available seats if it's a new day
-          const today = new Date().toISOString().split('T')[0];
-          if (route.lastUpdated !== today) {
-              route.busInfo.forEach(busInfo => {
-                if(busInfo.busId && busInfo.busId.seating_capacity)
-                {
-                  busInfo.busId.Available_seat = busInfo.busId.seating_capacity;
-          }
-        });
-              route.lastUpdated = today;
-              await route.save();
-          }
-  
-          // Finding the selected bus
-          const selectedBus = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
-          if (!selectedBus) {
-              return res.status(400).json({ success: false, error: 'Selected bus not found' });
-          }
-            
-          // Checking if available seats information is valid
-          if (!selectedBus.busId.Available_seat) {
-              return res.status(500).json({ success: false, error: 'Available seats information not found for the selected bus' });
-          }
-          
-          if (new Date(starting_Date) < new Date(today)) {
-            return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
-        }
-  
-          // Calculating available seats, checking seat availability
-          const availableSeats = selectedBus.busId.Available_seat;
-          const numPassengers = passengers.length;
-          const userBookedSeatsCount = await BookingModel.countDocuments({ routeNumber, starting_Date });
-        
-          if (userBookedSeatsCount + numPassengers > availableSeats) {
-              return res.status(400).json({ success: false, error: 'Exceeded maximum allowed seats' });
-          }
-  
-          // fetching stop details
-         
-          const sourceStopDetails = selectedBus.busId.stops.find(stop => stop.stopName === source);
-          const destinationStopDetails = selectedBus.busId.stops.find(stop => stop.stopName === destination);
+        const { routeNumber, starting_Date, status, email, source, destination, passengers } = req.body;
+        const selectedBusId = req.query.selectedBusId;
 
-          if (!sourceStopDetails || !destinationStopDetails) {
-            return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
-           }     
-           
-           // Checking if passenger's seat is already booked
-          for (const passenger of passengers) {
-            const passengerSeat = passenger.seatNumber;
-                 if(selectedBus.busId.booked_seats.includes(passengerSeat))
-                 {
-                  return res.status(400).json({ success: false, error: `Seat already booked` });
-                 }
-                }
-          
-              // Updating available seats count
-          const updatedAvailableSeats = availableSeats - numPassengers;
-          if (updatedAvailableSeats < 0) {
-              return res.status(500).json({ success: false, error: 'Invalid updated available seats count' });
-          }
-          selectedBus.busId.booked_seats = selectedBus.busId.booked_seats.concat(passengers.map(passenger => passenger.seatNumber));
-          selectedBus.busId.Available_seat = updatedAvailableSeats;
-  
-          // Saving the updated seat count
-         
-            await selectedBus.busId.save({ suppressWarning: true });
-             
-            
-                // Update the booked seats in the bus model
-             selectedBus.busId.booked_seats = selectedBus.busId.booked_seats.concat(passengers.map(passenger => passenger.seatNumber));
-               const bookingId = shortid.generate();
-               const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
-
-          // Creating a new booking
-          const booking = new BookingModel({
-              routeNumber,
-              starting_Date,
-              status,
-              bookingId,
-              userId,
-              passengers: passengers.map(passenger => ({
-                ...passenger,
-                ageGroup : calculateAgeGroup(passenger.age)
-              }))
-          });
-          await booking.save();
-         
-          // Generating passenger details and email content
-          const passengerDetails = passengers.map(passenger => `
-              Passenger Name: ${passenger.name}
-              Age: ${passenger.age}
-              Gender: ${passenger.gender}
-              Seat Number: ${passenger.seatNumber}
-              -----------------------------------------
-          `).join('\n');
-  
-          const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${starting_Date} has been confirmed.\n\n Journey Details:\n 
-              Booking ID: ${bookingId} 
-              Bus Number: ${selectedBus.busId.bus_no}
-              Bus Arrival Time:${sourceStopArrivalTime}
-              Source: ${sourceStopDetails.stopName}
-              Destination: ${destinationStopDetails.stopName}
-              Passenger Details:
-              ${passengerDetails}
-              Have a safe journey!
-              Thank you for choosing our service!`;
-  
-          // Generating the QR CODE and sending booking confirmation email
-          const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
-          const qrCodeImage = 'tickit-QRCODE.png';
-          await qrcode.toFile(qrCodeImage, qrCodeData);
-          await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
-  
-          res.status(200).json({ success: true, message: 'Booking successful. Ticket sent to user email.' });
-      } catch (error) {
-          console.error(error);
-          return res.status(500).json({ success: false, error: 'An error occurred' });
+        // Checking for required fields in the request
+        const requiredFields = ['routeNumber', 'starting_Date', 'email', 'passengers', 'source', 'destination'];
+      if (requiredFields.some(field => !req.body[field])) {
+          return res.status(400).json({ success: false, error: `Missing required field` });
       }
-  };
-                     // function to calculate age group
-                     function calculateAgeGroup(age){
-                      if(age>=0 && age <= 21)
-                      {
-                        return 'baby'
-                      }
-                      else if (age > 2 && age <=21)
-                      {
-                        return 'children'
-                      }
-                      else
-                      {
-                        return 'adult'
-                      }
-                     }
+
+        // Fetching user details
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ success: false, error: 'User not found' });
+        }
+        const userId = user._id;
+
+        // Fetching bus route details
+        const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
+        if (!route) {
+            return res.status(400).json({ success: false, error: 'Route not found' });
+        }
+
+        // Updating available seats if it's a new day
+        const today = new Date().toISOString().split('T')[0];
+        if (route.lastUpdated !== today) {
+            route.busInfo.forEach(busInfo => {
+              if(busInfo.busId && busInfo.busId.seating_capacity)
+              {
+                busInfo.busId.Available_seat = busInfo.busId.seating_capacity;
+        }
+      });
+            route.lastUpdated = today;
+            await route.save();
+        }
+
+        // Finding the selected bus
+        const selectedBus = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
+        if (!selectedBus) {
+            return res.status(400).json({ success: false, error: 'Selected bus not found' });
+        }
+          
+        // Checking if available seats information is valid
+        if (!selectedBus.busId.Available_seat) {
+            return res.status(500).json({ success: false, error: 'Available seats information not found for the selected bus' });
+        }
+        
+        if (new Date(starting_Date) < new Date(today)) {
+          return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
+      }
+
+        // Calculating available seats, checking seat availability
+        const availableSeats = selectedBus.busId.Available_seat;
+        const numPassengers = passengers.length;
+        const userBookedSeatsCount = await BookingModel.countDocuments({ routeNumber, starting_Date });
+      
+        if (userBookedSeatsCount + numPassengers > availableSeats) {
+            return res.status(400).json({ success: false, error: 'Exceeded maximum allowed seats' });
+        }
+
+        // fetching stop details
+       
+        const sourceStopDetails = selectedBus.busId.stops.find(stop => stop.stopName === source);
+        const destinationStopDetails = selectedBus.busId.stops.find(stop => stop.stopName === destination);
+
+        if (!sourceStopDetails || !destinationStopDetails) {
+          return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
+         }     
+         
+         // Checking if passenger's seat is already booked
+        for (const passenger of passengers) {
+          const passengerSeat = passenger.seatNumber;
+               if(selectedBus.busId.booked_seats.includes(passengerSeat))
+               {
+                return res.status(400).json({ success: false, error: `Seat already booked` });
+               }
+              }
+        
+            // Updating available seats count
+        const updatedAvailableSeats = availableSeats - numPassengers;
+        if (updatedAvailableSeats < 0) {
+            return res.status(500).json({ success: false, error: 'Invalid updated available seats count' });
+        }
+        selectedBus.busId.booked_seats = selectedBus.busId.booked_seats.concat(passengers.map(passenger => passenger.seatNumber));
+        selectedBus.busId.Available_seat = updatedAvailableSeats;
+
+        // Saving the updated seat count
+       
+          await selectedBus.busId.save({ suppressWarning: true });
+           
+          
+              // Update the booked seats in the bus model
+           selectedBus.busId.booked_seats = selectedBus.busId.booked_seats.concat(passengers.map(passenger => passenger.seatNumber));
+             const bookingId = shortid.generate();
+             const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
+
+        // Creating a new booking
+        const booking = new BookingModel({
+            routeNumber,
+            starting_Date,
+            status,
+            bookingId,
+            userId,
+            passengers: passengers.map(passenger => ({
+              ...passenger,
+              ageGroup : calculateAgeGroup(passenger.age)
+            }))
+        });
+        await booking.save();
+       
+        // Generating passenger details and email content
+        const passengerDetails = passengers.map(passenger => `
+            Passenger Name: ${passenger.name}
+            Age: ${passenger.age}
+            Gender: ${passenger.gender}
+            Seat Number: ${passenger.seatNumber}
+            -----------------------------------------
+        `).join('\n');
+
+        const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${starting_Date} has been confirmed.\n\n Journey Details:\n 
+            Booking ID: ${bookingId} 
+            Bus Number: ${selectedBus.busId.bus_no}
+            Bus Arrival Time:${sourceStopArrivalTime}
+            Source: ${sourceStopDetails.stopName}
+            Destination: ${destinationStopDetails.stopName}
+            Passenger Details:
+            ${passengerDetails}
+            Have a safe journey!
+            Thank you for choosing our service!`;
+
+        // Generating the QR CODE and sending booking confirmation email
+        const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
+        const qrCodeImage = 'tickit-QRCODE.png';
+        await qrcode.toFile(qrCodeImage, qrCodeData);
+        await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
+
+        res.status(200).json({ success: true, message: 'Booking successful. Ticket sent to user email.' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, error: 'An error occurred' });
+    }
+};
+                   // function to calculate age group
+                   function calculateAgeGroup(age){
+                    if(age>=0 && age <= 21)
+                    {
+                      return 'baby'
+                    }
+                    else if (age > 2 && age <=21)
+                    {
+                      return 'children'
+                    }
+                    else
+                    {
+                      return 'adult'
+                    }
+                   }
+    
                          
 // Api for cancle tickit 
                   
@@ -1481,9 +1492,108 @@ const fs = require('fs');
                                     res.status(500).json({ success: false, error: 'Error while fetching seat information' });
                                   }
                                 }
-                                
-                                            
-          
+   // APi for calculateFareFor selected seats in Bus 
+                            
+                            const calculateFareForSelectedSeats = async (req, res) => {
+                              try {
+                                const busId = req.params.busId;
+                                const { selectedSeatNumbers, source, destination } = req.body;
+                            
+                                // Input Validation for selected seat numbers
+                                if (!Array.isArray(selectedSeatNumbers) || selectedSeatNumbers.length === 0) {
+                                  return res.status(400).json({ error: 'Invalid or empty selected seat numbers', success: false });
+                                }
+                            
+                                // Access the bus route and available seats from the Database
+                                const bus = await BusModel.findById(busId);
+                            
+                                if (!bus) {
+                                  return res.status(404).json({ success: false, error: 'Bus not found' });
+                                }
+                            
+                                const availableSeats = bus.Available_seat || [];
+                            
+                                // Check if selected bus seats are valid and available
+                                const invalidSeatNumbers = selectedSeatNumbers.filter(seatNumber => !availableSeats.includes(seatNumber));
+                            
+                                if (invalidSeatNumbers.length > 0) {
+                                  return res.status(400).json({
+                                    success: false,
+                                    error: 'Selected seat numbers are invalid or not available',
+                                    invalidSeatNumbers,
+                                  });
+                                }
+                            
+                                // Access the stops from the bus route
+                                const stops = bus.stops || []; 
+                            
+                                // Find the source and destination stops
+                                const sourceStop = stops.find(stop => stop.stopName === source);
+                                const destinationStop = stops.find(stop => stop.stopName === destination);
+                            
+                                if (!sourceStop || !destinationStop) {
+                                  return res.status(400).json({
+                                    success: false,
+                                    error: 'Source or destination stop not found',
+                                  });
+                                }
+                            
+                                // Calculate the distance between source and destination stops
+                                const distance = calculateDistanceBetweenStops(stops, sourceStop, destinationStop);
+                            
+                                // Check the bus type and set farePerUnitDistance accordingly
+                                let farePerUnitDistance;
+                            
+                                switch (bus.bus_type) {
+                                  case 'Non-AC':
+                                    farePerUnitDistance = 0.2; 
+                                    break;
+                                  case 'AC':
+                                    farePerUnitDistance = 0.24; 
+                                    break;
+                                  case 'luxury':
+                                    farePerUnitDistance = 0.3; 
+                                    break;
+                                  default:
+                                    farePerUnitDistance = 0.2; 
+                                }
+                            
+                                // Calculate the total fare for selected seats
+                                const totalFare = selectedSeatNumbers.length * distance * farePerUnitDistance;
+                            
+                                return res.status(200).json({
+                                  success: true,
+                                  message: 'Fare calculated successfully',
+                                  busType: bus.bus_type,
+                                  bordingPoint :source ,
+                                  droppingPoint : destination ,
+                                  selectedSeats : selectedSeatNumbers ,
+                                  totalFare: totalFare,
+                                });
+                              } catch (error) {
+                                console.error(error);
+                                return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
+                              }
+                            };
+                            
+                            // Helper function to calculate distance between stops
+                            function calculateDistanceBetweenStops(stops, sourceStop, destinationStop) {
+                              const sourceIndex = stops.indexOf(sourceStop);
+                              const destinationIndex = stops.indexOf(destinationStop);
+                            
+                              if (sourceIndex === -1 || destinationIndex === -1 || sourceIndex >= destinationIndex) {
+                                return 0;
+                              }
+                            
+                              let distance = 0;
+                              for (let i = sourceIndex; i < destinationIndex; i++) {
+                                distance += stops[i + 1].distance - stops[i].distance;
+                              }
+                            
+                              return distance;
+                            }
+                            
+  
           
                 
 
@@ -1497,6 +1607,6 @@ const fs = require('fs');
                         addStopBeforeStop, allStops ,deleteStop ,calculateStopfare, 
                         changeProfile , addDriver ,editDriver,deleteDriver , allDrivers ,
                          getDriver , bookTicket, cancelTicket, userTickets , modifyTicket , allBookings,
-                         countBookings , viewSeats
+                         countBookings , viewSeats ,calculateFareForSelectedSeats
                      }
                     

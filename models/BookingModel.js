@@ -4,36 +4,38 @@ const mongoose = require('mongoose');
 const bookingSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'UserModel',
-        required: true
-    },
-    routeNumber: {
-        type: Number,
-        required: true
-    },
-    seatNumber: {
-        type: Number,
-    },
-    departureDate: {
-        type: Date,
-        required: true
-    },
+        ref: 'UserModel'      
+    },  
+
+    busId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Bus',
+      },
+
+   selectedSeatNumbers: [{
+    type : Number,
+    required : true
+        }],
+
+    totalFare : {
+        type : Number ,
+        required : true
+    },    
     status: {
         type: String,
         enum: ['confirmed', 'pending', 'cancelled'],
-        default: 'confirmed'
+        default: 'pending'
     },
-    paymentToken: {
-        type: String,
-    },
+         paymentMethod : {
+            type : String ,
+            required : true
+         },
+
     paymentStatus: {
         type: String,
         enum: ['paid', 'pending', 'failed'],
         default: 'pending'
-    },
-    ticketPrice: {
-        type: Number
-    },
+    },   
     bookingId: {
         type: String
     },
@@ -61,10 +63,7 @@ const bookingSchema = new mongoose.Schema({
     ]
 }, {
     timestamps: true,
-    indexes: [
-        { unique: true, fields: ['seatNumber', 'routeNumber', 'departureDate'] }
-    ]
-});
+    });
 
 const BookingModel = mongoose.model('BookingModel', bookingSchema);
 
