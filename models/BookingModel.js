@@ -18,8 +18,8 @@ const bookingSchema = new mongoose.Schema({
         }],
 
     totalFare : {
-        type : Number ,
-        required : true
+        type : Number
+        
     },    
     status: {
         type: String,
@@ -27,8 +27,8 @@ const bookingSchema = new mongoose.Schema({
         default: 'pending'
     },
          paymentMethod : {
-            type : String ,
-            required : true
+            type : String 
+           
          },
 
     paymentStatus: {
