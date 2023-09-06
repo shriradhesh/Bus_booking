@@ -361,14 +361,22 @@ const fs = require('fs');
                           _id: { $in: busIds },
                           'stops.stopName': { $all: [sourceStop, destinationStop] }
                           
-                        });                   
+                        });             
                        
                     
                         if (!buses || buses.length === 0) {
                           return res.status(404).json({ success: false, error: 'No matching buses found' });
                         }
+
+                        // filter buses to include only those where source stop comes before destination stop
+
+                        const filteredBuses = buses.filter(bus => {
+                          const sourceIndex = bus.stops.findIndex(stop => stop.stopName === sourceStop)
+                          const destinationIndex = bus.stops.findIndex(stop => stop.stopName === destinationStop)
+                          return sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex
+                        })
                     
-                        res.status(200).json({ success: true, message: 'Buses for the route', Bus_Details: buses });
+                        res.status(200).json({ success: true, message: 'Buses for the route', Bus_Details: filteredBuses });
                       } catch (error) {
                         console.error(error);
                         res.status(500).json({ success: false, error: 'Error while fetching the data' });
@@ -1131,121 +1139,142 @@ const fs = require('fs');
                                              /*  Manage Tickit */
 
     // api for book tickit               
-    
-                    const bookTicket = async (req, res) => {
-                      try {
-                          const { routeNumber, date, selectedSeatNumbers, status, email, source, destination, passengers } = req.body;
-                          const selectedBusId = req.query.selectedBusId;
-                  
-                          // Checking for required fields in the request
-                          const requiredFields = ['routeNumber', 'date', 'email', 'passengers', 'source', 'destination'];
-                          if (requiredFields.some(field => !req.body[field])) {
-                              return res.status(400).json({ success: false, error: `Missing required field` });
-                          }
-                  
-                          // Fetching user details
-                          const user = await UserModel.findOne({ email });
-                          if (!user) {
-                              return res.status(400).json({ success: false, error: 'User not found' });
-                          }
-                          const userId = user._id;
-                  
-                          // Fetching bus route details
-                          const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
-                          if (!route) {
-                              return res.status(400).json({ success: false, error: 'Route not found' });
-                          }
-                  
-                          // Finding the selected bus
-                          const selectedBusInfo = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
-                          if (!selectedBusInfo) {
-                              return res.status(400).json({ success: false, error: 'Selected bus not found' });
-                          }
-                  
-                          // Check if the booking date is valid (today or a future date)
-                          const today = new Date().toISOString().split('T')[0];
-                          if (new Date(date) < new Date(today)) {
-                              return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
-                          }
-                  
-                          // Check if source and destination stops are valid
-                          const sourceStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === source);
-                          const destinationStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === destination);
-                  
-                          if (!sourceStopDetails || !destinationStopDetails) {
-                              return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
-                          }
-                  
-                          // Check if the selected seats are available
-                          const selectedSeats = passengers.map(passenger => passenger.seatNumber);
-                          const availableSeats = selectedBusInfo.busId.Available_seat;
-                  
-                          for (const seat of selectedSeats) {
-                              if (!availableSeats.includes(seat)) {
-                                  return res.status(400).json({
-                                      success: false,
-                                      error: `Seat ${seat} is not available`,
-                                  });
-                              }
-                          }
-                  
-                          // Remove selected seats from Available_seat and add them to booked_seat
-                          selectedBusInfo.busId.Available_seat = availableSeats.filter(seat => !selectedSeats.includes(seat));
-                          selectedBusInfo.busId.booked_seat.push(...selectedSeats);
-                  
-                          // Calculate updated available seats count
-                          const updatedAvailableSeats = selectedBusInfo.busId.Available_seat.length;
-                  
-                          // Checking if passenger's seat is already booked
-                          const bookedSeats = selectedBusInfo.busId.booked_seat;
-                          for (const passenger of passengers) {
-                              if (bookedSeats.includes(passenger.seatNumber)) {
-                                  return res.status(400).json({ success: false, error: `Seat  ${passenger.seatNumber} is already booked` });
-                              }
-                          }
-                  
-                          // Create a new booking
-                          const bookingId = shortid.generate();
-                          const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
-                  
-                          const booking = new BookingModel({
-                              routeNumber,
-                              starting_Date: date,
-                              status,
-                              bookingId,
-                              userId: user._id,
-                              passengers: passengers.map(passenger => ({
-                                  ...passenger,
-                                  ageGroup: calculateAgeGroup(passenger.age),
-                              })),
-                          });
-                          await booking.save();
-                  
-                          // Generate passenger details and email content
-                          const passengerDetails = passengers.map(passenger => `
-                              Passenger Name: ${passenger.name}
-                              Age: ${passenger.age}
-                              Gender: ${passenger.gender}
-                              Seat Number: ${passenger.seatNumber}
-                              -----------------------------------------
-                          `).join('\n');
-                  
-                          const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${date} has been confirmed.\n\n Journey Details:\n 
-                              Booking ID: ${bookingId} 
-                              Bus Number: ${selectedBusInfo.busId.bus_no}
-                              Bus Arrival Time:${sourceStopArrivalTime}
-                              Source: ${sourceStopDetails.stopName}
-                              Destination: ${destinationStopDetails.stopName}
-                              Passenger Details:
-                              ${passengerDetails}
-                              Have a safe journey!
-                              Thank you for choosing our service!`;
-                  
-                          // Generate the QR CODE and send the booking confirmation email
-                          const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
-                          const qrCodeImage = 'tickit-QRCODE.png';
-                          await qrcode.toFile(qrCodeImage, qrCodeData);
-                          await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
+       
+    const bookTicket = async (req, res) => {
+      try {
+          const { routeNumber, date, selectedSeatNumbers, status, email, source, destination, passengers } = req.body;
+          const selectedBusId = req.query.selectedBusId;
+  
+          // Checking for required fields in the request
+          const requiredFields = ['routeNumber', 'date', 'email', 'passengers', 'source', 'destination'];
+          if (requiredFields.some(field => !req.body[field])) {
+              return res.status(400).json({ success: false, error: `Missing required field` });
+          }
+  
+          // Fetching user details
+          const user = await UserModel.findOne({ email });
+          if (!user) {
+              return res.status(400).json({ success: false, error: 'User not found' });
+          }
+          const userId = user._id;
+  
+          // Fetching bus route details
+          const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
+          if (!route) {
+              return res.status(400).json({ success: false, error: 'Route not found' });
+          }
+          
+  
+          // Finding the selected bus
+          const selectedBusInfo = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
+          if (!selectedBusInfo) {
+              return res.status(400).json({ success: false, error: 'Selected bus not found' });
+          }
+  
+          // Check if the booking date is valid (today or a future date)
+          const today = new Date().toISOString().split('T')[0];
+          if (new Date(date) < new Date(today)) {
+              return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
+          }
+  
+          // Check if source and destination stops are valid
+          const sourceStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === source);
+          const destinationStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === destination);
+  
+          if (!sourceStopDetails || !destinationStopDetails) {
+              return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
+          }
+  
+          // Check if the selected seats are available and valid
+          const availableSeats = selectedBusInfo.busId.Available_seat;
+          const selectedSeats = selectedSeatNumbers;
+  
+          if (!Array.isArray(selectedSeats) || selectedSeats.length !== passengers.length) {
+              return res.status(400).json({
+                  success: false,
+                  error: 'Invalid selected seat numbers',
+              });
+          }
+  
+          for (const seat of selectedSeats) {
+              if (typeof seat !== 'number' || seat < 1 || seat > availableSeats.length || !availableSeats.includes(seat)) {
+                  return res.status(400).json({
+                      success: false,
+                      error: `Seat ${seat} is not available`,
+                  });
+              }
+          }
+  
+          // Check if selected seats are already booked
+          const bookedSeats = selectedBusInfo.busId.booked_seat;
+          for (const seat of selectedSeats) {
+              if (bookedSeats.includes(seat)) {
+                  return res.status(400).json({ success: false, error: `Seat ${seat} is already booked` });
+              }
+          }
+  
+          // Update Available_seat and booked_seat arrays
+          const bus = selectedBusInfo.busId
+          for (const seat of selectedSeats) {
+              const index = bus.Available_seat.indexOf(seat);
+              if (index !== -1) {
+                  bus.Available_seat.splice(index, 1);
+                  bus.booked_seat.push(seat);
+              }
+          }
+
+             await bus.save()
+  
+          // Create a new booking
+          const bookingId = shortid.generate();
+          const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
+  
+          const booking = new BookingModel({
+              routeNumber,
+               busId : bus,
+               date: date,
+              status,
+              bookingId,
+              userId: user._id,
+              selectedSeatNumbers: selectedSeats,
+              passengers: passengers.map((passenger, index) => ({
+                  ...passenger,
+                  seatNumber: selectedSeats[index],
+                  ageGroup: calculateAgeGroup(passenger.age),
+              })),
+          });
+          
+          await booking.save();
+  
+          // Generate passenger details and email content
+          const passengerDetails = passengers.map((passenger, index) => {
+            const seatNumber = selectedSeats[index];
+            return `
+                Passenger Name: ${passenger.name}
+                Age: ${passenger.age}
+                Gender: ${passenger.gender}
+                Seat Number: ${seatNumber}
+                -----------------------------------------
+            `;
+        }).join('\n');
+  
+          const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${date} has been confirmed.\n\n Journey Details:\n 
+              Booking ID: ${bookingId} 
+              Bus Number: ${selectedBusInfo.busId.bus_no}
+              Bus Arrival Time:${sourceStopArrivalTime}
+              Source: ${sourceStopDetails.stopName}
+              Destination: ${destinationStopDetails.stopName}
+              Passenger Details:
+              ${passengerDetails}
+              Have a safe journey!
+              Thank you for choosing our service!`;
+  
+          // Generate the QR CODE and send the booking confirmation email
+          const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
+          const qrCodeImage = 'tickit-QRCODE.png';
+          await qrcode.toFile(qrCodeImage, qrCodeData);
+         
+           await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
                   
                           res.status(200).json({ success: true, message: 'Booking successful. Ticket sent to user email.' });
                       } catch (error) {
@@ -1284,39 +1313,48 @@ const fs = require('fs');
                               return res.status(404).json({ success: false, error: 'Booking not found' });
                           }
 
-                            // store cancled seatNumber to update bus seat avaialblity
-                          const canceledSeatNumbers = booking.passengers.map(passenger => passenger.seatNumber);
+                            // check if the booking status allows cancellation 
+                            if(booking.status !=='confirmed')
+                            {
+                              return res.status(400).json({ success : false , error : 'Booking can not be cancelled '})
+                            }
 
+                              // marked the booking as canclled
+                              booking.status = 'cancelled';
+                              await booking.save();
+                              
+                              // update the available seats and booked seats on the bus
 
-                          // Update seat availability on the associated bus route
-                          const busRoute = await BusRoute.findOne({ routeNumber: booking.routeNumber });
-                          if (busRoute) {
-                              const bus = await BusModel.findById(busRoute.busInfo.busId);
-                        if (bus) {
-                            busRoute.passengers = busRoute.passengers.filter(passenger => !canceledSeatNumbers.includes(passenger.seatNumber));
-                            bus.Available_seat += canceledSeatNumbers.length;
-                            await busRoute.save();
-                            await bus.save();
-                        }
-                    }
-                          booking.status = 'cancelled';
-                          await booking.save();
+                              const { busId , selectedSeatNumbers } = booking
+                              const bus = await BusModel.findById(busId)
 
-                          const user = await UserModel.findOne({email});
-                          if (!user) {
-                              return res.status(400).json({ success: false, error: 'User not found' });
-                          }
+                              if(bus)
+                              {
+                                for(const seat of selectedSeatNumbers)
+                                {
+                                  const index = bus.booked_seat.indexOf(seat)
+                                  if(index !== -1)
+                                  {
+                                    bus.booked_seat.splice(index, 1)
+                                    bus.Available_seat.push(seat)
+                                  }
+                                }
+                                    await bus.save()
+                              }
+                                   // send a confirmation email to the user
+                                   const user = await UserModel.findById(booking.userId)
+                                   const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
+                                    await sendCancelEmail(user.email , 'Ticket Cancellation Confirmation', cancellationEmailContent)
+                         
+                                    res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
+                                  } catch (error) {
+                                    console.error(error);
+                                    return res.status(500).json({ success: false, error: 'An error occurred' });
+                                  }
+                                };
 
-                          const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID: ${bookingId} has been cancelled.\n\n your Money will be refund shortly We apologize for any inconvenience caused.\n\nThank you.`;
-
-                          await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
-
-                          res.status(200).json({ success: true, message: 'Ticket cancellation successful, cancellation email sent.' });
-                      } catch (error) {
-                        console.error(error);
-                          return res.status(500).json({ success: false, error: 'An error occurred' });
-                      }
-                    };
+                          
+                   
                         
   // Api for get tickits booked by a user 
 
@@ -1391,14 +1429,21 @@ const fs = require('fs');
                  
           const allBookings = async (req, res) => {
             try {
-              const status = req.query.status;
+              const {status , date} = req.query
           
               let bookings;
+              if (!date) {
+                return res.status(400).json({ success: false, error: 'Date is required' });
+              }
+              const dateQuery = new Date(date);
               if (status === 'confirmed') {
-                bookings = await BookingModel.find({ status: 'confirmed' });
+                bookings = await BookingModel.find({ status: 'confirmed' , date : dateQuery });
               } else if (status === 'pending' || status ==='cancelled') {
-                bookings = await BookingModel.find({ status:  {$in:['pending','cancelled'] }});
-              } else {
+                bookings = await BookingModel.find({ status:  {$in:['pending','cancelled'] } , date : dateQuery});
+              }
+              else if (!status) {
+                bookings = await BookingModel.find({ date: dateQuery });
+               } else {
                 return res.status(400).json({ success: false, error: 'Invalid status value' });
               }
                 
@@ -1414,25 +1459,25 @@ const fs = require('fs');
                       
                         const countBookings = async (req, res) => {                          
                             try {
-                              const starting_Date = req.query.starting_Date;
-                              const status = req.query.status;
+                              const { status , date} = req.query
                           
-                              if (!starting_Date) {
-                                return res.status(400).json({ success: false, error: 'starting date is required' });
+                              if (!date) {
+                                return res.status(400).json({ success: false, error: ' date is required' });
                               }
                           
                               let bookings;
+                              const dateQuery = new Date(date);
                               if (status === 'confirmed') {
-                                bookings = await BookingModel.find({ status: 'confirmed', starting_Date });
+                                bookings = await BookingModel.find({ status: 'confirmed',  date : dateQuery });
                               } else if (status === 'pending' || status === 'cancelled') {
-                                bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] }, starting_Date });
+                                bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] },  date : dateQuery });
                               } else {
                                 return res.status(400).json({ success: false, error: 'Invalid status value' });
                               }
                           
                               const count = bookings.length;
                           
-                              res.status(200).json({ success: true, message: `Count and details of ${status} bookings for departure date ${starting_Date}`, count, bookings });
+                              res.status(200).json({ success: true, message: `Count of ${status} bookings for date ${date}`, count});
                             } catch (error) {
                               res.status(500).json({ success: false, error: 'An error occurred while retrieving bookings' });
                             }

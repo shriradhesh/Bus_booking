@@ -11,6 +11,9 @@ const bookingSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Bus',
       },
+      date :{
+        type : Date,
+      },
 
    selectedSeatNumbers: [{
     type : Number,
@@ -24,7 +27,7 @@ const bookingSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['confirmed', 'pending', 'cancelled'],
-        default: 'pending'
+        default: 'confirmed'
     },
          paymentMethod : {
             type : String 
@@ -50,9 +53,6 @@ const bookingSchema = new mongoose.Schema({
             gender: {
                 type: String,
                 enum: ['male', 'female', 'other'],
-            },
-            seatNumber: {
-                type: Number,
             },
             ageGroup: {
                 type: String,
