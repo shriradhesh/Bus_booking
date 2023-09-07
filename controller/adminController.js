@@ -10,7 +10,6 @@ const sendBookingEmail =require("../utils/sendBookingEmail")
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
 const DriverModel = require('../models/driverModel')
-const sendSms = require('../utils/smsNotification')
 const cors = require('cors')
 const multer = require('multer')
 const path = require('path')
@@ -18,6 +17,8 @@ const shortid = require('shortid')
 const qrcode = require('qrcode')
 const { error } = require('console')
 const fs = require('fs');
+const moment = require('moment');
+
 
 
                       /* -->  ADMIN Api'S   <--    */
@@ -1386,14 +1387,14 @@ const fs = require('fs');
                     }
                    }
 
-        // APi for ModifyTicket ( starting_Date , seatNumber)
+        // APi for changeDate 
 
-                      const modifyTicket = async (req,res)=>{
+                      const changeDate = async (req,res)=>{
                         try{
-                          const { bookingId , newstarting_Date } = req.body
+                          const { bookingId , newDate } = req.body
                           const requiredFields = [                
                             'bookingId',
-                            'newstarting_Date',                               
+                            'newDate',                               
                         ];
                     
                         for (const field of requiredFields) {
@@ -1407,15 +1408,15 @@ const fs = require('fs');
                           return res.status(404).json({ success: false, error: 'Booking not found' });
                         }   
 
-                         if(booking.starting_DateUpdated)
+                         if(booking.DateUpdated)
                          {
-                          return res.status(400).json({ success : false , error: 'Departure date already updated once'})
+                          return res.status(400).json({ success : false , error: ' date already updated once'})
                          }
-                              booking.starting_Date = newstarting_Date
-                              booking.starting_DateUpdated = true
+                              booking.date = newDate
+                              booking.DateUpdated = true
                               await booking.save()
                                 
-                                res.status(200).json({ success : true , message : ' Tickit details modified Successfully '})
+                                res.status(200).json({ success : true , message : ' Tickit date modified Successfully '})
                         
                         }catch(error)
                         {
@@ -1619,7 +1620,73 @@ const fs = require('fs');
                             }
                             
 
-  
+        // API for TrackBus
+      
+                                  const trackBus = async (req, res) => {
+                                    try {
+                                      const { busId } = req.params;
+                                      const currentStopName = req.body.currentStopName;
+                                  
+                                      // Find the bus by its Bus Id
+                                      const bus = await BusModel.findOne({ _id: busId });
+                                  
+                                      if (!bus) {
+                                        return res.status(400).json({ success: false, error: 'Bus Not found' });
+                                      }
+                                  
+                                      // Get the stops and arrival times for the bus
+                                      const stops = bus.stops || [];
+                                  
+                                      // Find the currentStop
+                                      const currentStop = stops.find((stop) => stop.stopName === currentStopName);
+                                  
+                                      if (!currentStop) {
+                                        return res.status(400).json({ success: false, error: 'Current stop not found' });
+                                      }                                   
+                                     
+
+                                      // Calculate travel time to the current stop
+                                      const travelTime = calculateTravelTime(stops, currentStop); 
+                                     
+                                      res.status(200).json({
+                                        success: true,
+                                        message: 'BUS Tracking Information',
+                                        Bus_Tracking: {
+                                         
+                                          currentStop: {
+                                            stopName: currentStop.stopName,
+                                            arrivalTime: currentStop.arrivalTime,
+                                          },
+                                          timeTaken_from_prevStop : travelTime,
+                                         
+                                          
+                                        },
+                                      });
+                                    } catch (error) {
+                                      console.error(error);
+                                      res.status(500).json({ success: false, error: 'There is an error tracking the BUS' });
+                                    }
+                                  };
+                                  
+                                  // Function to calculate travel time to the current stop
+                          const calculateTravelTime = (stops, currentStop) => {
+                            const currentStopIndex = stops.findIndex((stop) => stop.stopName === currentStop.stopName);
+
+                            if (currentStopIndex <= 0) {
+                              return 'none'; // If the current stop is the first stop, travel time is not applicable
+                            }
+
+                            const prevStop = stops[currentStopIndex - 1];
+                            const prevTime = moment(prevStop.departureTime, 'hh:mm A'); 
+                            const currentTime = moment(currentStop.arrivalTime, 'hh:mm A');
+
+                            const timeDiff = currentTime.diff(prevTime, 'minutes');
+                            return `${Math.floor(timeDiff / 60)} hours ${timeDiff % 60} minutes`;
+                          };
+    
+
+
+                
   
           
                 
@@ -1633,7 +1700,7 @@ const fs = require('fs');
                         deleteBusId,deleteRoute  , searchBuses , addStop , editStop ,
                         addStopBeforeStop, allStops ,deleteStop ,calculateStopfare, 
                         changeProfile , addDriver ,editDriver,deleteDriver , allDrivers ,
-                         getDriver , bookTicket, cancelTicket, userTickets , modifyTicket , allBookings,
-                         countBookings , viewSeats ,calculateFareForSelectedSeats 
+                         getDriver , bookTicket, cancelTicket, userTickets , changeDate , allBookings,
+                         countBookings , viewSeats ,calculateFareForSelectedSeats , trackBus
                      }
                     

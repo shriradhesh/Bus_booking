@@ -17,6 +17,7 @@ app.use(express.json())
 app.use(bodyParser.urlencoded({ extended : true}))
 app.use(cors())
 
+
 app.get('/', (req, res) => {
  res.sendFile(__dirname +'/booking.html')
 });

@@ -91,7 +91,7 @@ const upload = require('../uploadImage')
 // APi for get all tickets of user 
         router.get('/userTickets/:userId', adminController.userTickets)
 // Api for Modify Ticket (departure date)
-        router.post('/modifyTicket', adminController.modifyTicket)
+        router.post('/changeDate', adminController.changeDate)
                                  
                                         /*  Booking Manage */
 // Api for get all Tickits done by users
@@ -102,6 +102,8 @@ const upload = require('../uploadImage')
         router.get('/viewSeats/:busId', adminController.viewSeats)
 // Api for calculate Fare For SelectedSeats in a Bus
         router.post('/calculateFareForSelectedSeats/:busId', adminController.calculateFareForSelectedSeats)
+// Api for traclBus
+        router.get('/trackBus/:busId', adminController.trackBus)
 
                                    
                                      
