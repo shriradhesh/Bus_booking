@@ -54,14 +54,20 @@ const bookingSchema = new mongoose.Schema({
                 type: String,
                 enum: ['male', 'female', 'other'],
             },
+            seatNumber :{
+                type : Number,
+                required: false 
+            },
             ageGroup: {
                 type: String,
                 enum: ['baby', 'children', 'adult'],
                 default: 'adult'
             }
         }
-    ]
-}, {
+    ],
+    
+}, 
+{
     timestamps: true,
     });
 

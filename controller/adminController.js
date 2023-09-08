@@ -18,6 +18,12 @@ const qrcode = require('qrcode')
 const { error } = require('console')
 const fs = require('fs');
 const moment = require('moment');
+const twilio = require('twilio')
+
+const accountSid = 'ACea0cb782d52a715846acedc254632e9e';
+const authToken = '9920e53cb0ddef7283f32ec3a392e531';
+const twilioPhoneNumber ='+16205914136';
+const client = new twilio(accountSid , authToken)
 
 
 
@@ -1141,161 +1147,162 @@ const moment = require('moment');
 
     // api for book tickit               
        
-    const bookTicket = async (req, res) => {
-      try {
-          const { routeNumber, date, selectedSeatNumbers, status, email, source, destination, passengers } = req.body;
-          const selectedBusId = req.query.selectedBusId;
-  
-          // Checking for required fields in the request
-          const requiredFields = ['routeNumber', 'date', 'email', 'passengers', 'source', 'destination'];
-          if (requiredFields.some(field => !req.body[field])) {
-              return res.status(400).json({ success: false, error: `Missing required field` });
-          }
-  
-          // Fetching user details
-          const user = await UserModel.findOne({ email });
-          if (!user) {
-              return res.status(400).json({ success: false, error: 'User not found' });
-          }
-          const userId = user._id;
-  
-          // Fetching bus route details
-          const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
-          if (!route) {
-              return res.status(400).json({ success: false, error: 'Route not found' });
-          }
-          
-  
-          // Finding the selected bus
-          const selectedBusInfo = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
-          if (!selectedBusInfo) {
-              return res.status(400).json({ success: false, error: 'Selected bus not found' });
-          }
-  
-          // Check if the booking date is valid (today or a future date)
-          const today = new Date().toISOString().split('T')[0];
-          if (new Date(date) < new Date(today)) {
-              return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
-          }
-  
-          // Check if source and destination stops are valid
-          const sourceStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === source);
-          const destinationStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === destination);
-  
-          if (!sourceStopDetails || !destinationStopDetails) {
-              return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
-          }
-  
-          // Check if the selected seats are available and valid
-          const availableSeats = selectedBusInfo.busId.Available_seat;
-          const selectedSeats = selectedSeatNumbers;
-  
-          if (!Array.isArray(selectedSeats) || selectedSeats.length !== passengers.length) {
-              return res.status(400).json({
-                  success: false,
-                  error: 'Invalid selected seat numbers',
-              });
-          }
-  
-          for (const seat of selectedSeats) {
-              if (typeof seat !== 'number' || seat < 1 || seat > availableSeats.length || !availableSeats.includes(seat)) {
-                  return res.status(400).json({
-                      success: false,
-                      error: `Seat ${seat} is not available`,
-                  });
-              }
-          }
-  
-          // Check if selected seats are already booked
-          const bookedSeats = selectedBusInfo.busId.booked_seat;
-          for (const seat of selectedSeats) {
-              if (bookedSeats.includes(seat)) {
-                  return res.status(400).json({ success: false, error: `Seat ${seat} is already booked` });
-              }
-          }
-  
-          // Update Available_seat and booked_seat arrays
-          const bus = selectedBusInfo.busId
-          for (const seat of selectedSeats) {
-              const index = bus.Available_seat.indexOf(seat);
-              if (index !== -1) {
-                  bus.Available_seat.splice(index, 1);
-                  bus.booked_seat.push(seat);
-              }
-          }
+                      const bookTicket = async (req, res) => {
+                        try {
+                            const { routeNumber, date, selectedSeatNumbers, status, email, source, destination, passengers } = req.body;
+                            const selectedBusId = req.query.selectedBusId;
+                    
+                            // Checking for required fields in the request
+                            const requiredFields = ['routeNumber', 'date', 'email', 'passengers', 'source', 'destination'];
+                            if (requiredFields.some(field => !req.body[field])) {
+                                return res.status(400).json({ success: false, error: `Missing required field` });
+                            }
+                    
+                            // Fetching user details
+                            const user = await UserModel.findOne({ email });
+                            if (!user) {
+                                return res.status(400).json({ success: false, error: 'User not found' });
+                            }
+                            const userId = user._id;
+                    
+                            // Fetching bus route details
+                            const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
+                            if (!route) {
+                                return res.status(400).json({ success: false, error: 'Route not found' });
+                            }
+                            
+                    
+                            // Finding the selected bus
+                            const selectedBusInfo = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
+                            if (!selectedBusInfo) {
+                                return res.status(400).json({ success: false, error: 'Selected bus not found' });
+                            }
+                    
+                            // Check if the booking date is valid (today or a future date)
+                            const today = new Date().toISOString().split('T')[0];
+                            if (new Date(date) < new Date(today)) {
+                                return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
+                            }
+                    
+                            // Check if source and destination stops are valid
+                            const sourceStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === source);
+                            const destinationStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === destination);
+                    
+                            if (!sourceStopDetails || !destinationStopDetails) {
+                                return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
+                            }
+                    
+                            // Check if the selected seats are available and valid
+                            const availableSeats = selectedBusInfo.busId.Available_seat;
+                            const selectedSeats = selectedSeatNumbers;
+                    
+                            if (!Array.isArray(selectedSeats) || selectedSeats.length !== passengers.length) {
+                                return res.status(400).json({
+                                    success: false,
+                                    error: 'Invalid selected seat numbers',
+                                });
+                            }
+                    
+                            for (const seat of selectedSeats) {
+                                if (typeof seat !== 'number' || seat < 1 || seat > availableSeats.length || !availableSeats.includes(seat)) {
+                                    return res.status(400).json({
+                                        success: false,
+                                        error: `Seat ${seat} is not available`,
+                                    });
+                                }
+                            }
+                    
+                            // Check if selected seats are already booked
+                            const bookedSeats = selectedBusInfo.busId.booked_seat;
+                            for (const seat of selectedSeats) {
+                                if (bookedSeats.includes(seat)) {
+                                    return res.status(400).json({ success: false, error: `Seat ${seat} is already booked` });
+                                }
+                            }
+                    
+                            // Update Available_seat and booked_seat arrays
+                            const bus = selectedBusInfo.busId
+                            for (const seat of selectedSeats) {
+                                const index = bus.Available_seat.indexOf(seat);
+                                if (index !== -1) {
+                                    bus.Available_seat.splice(index, 1);
+                                    bus.booked_seat.push(seat);
+                                }
+                            }
 
-             await bus.save()
-  
-          // Create a new booking
-          const bookingId = shortid.generate();
-          const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
-  
-          const booking = new BookingModel({
-              routeNumber,
-               busId : bus,
-               date: date,
-              status,
-              bookingId,
-              userId: user._id,
-              selectedSeatNumbers: selectedSeats,
-              passengers: passengers.map((passenger, index) => ({
-                  ...passenger,
-                  seatNumber: selectedSeats[index],
-                  ageGroup: calculateAgeGroup(passenger.age),
-              })),
-          });
-          
-          await booking.save();
-  
-          // Generate passenger details and email content
-          const passengerDetails = passengers.map((passenger, index) => {
-            const seatNumber = selectedSeats[index];
-            return `
-                Passenger Name: ${passenger.name}
-                Age: ${passenger.age}
-                Gender: ${passenger.gender}
-                Seat Number: ${seatNumber}
-                -----------------------------------------
-            `;
-        }).join('\n');
-  
-          const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${date} has been confirmed.\n\n Journey Details:\n 
-              Booking ID: ${bookingId} 
-              Bus Number: ${selectedBusInfo.busId.bus_no}
-              Bus Arrival Time:${sourceStopArrivalTime}
-              Source: ${sourceStopDetails.stopName}
-              Destination: ${destinationStopDetails.stopName}
-              Passenger Details:
-              ${passengerDetails}
-              Have a safe journey!
-              Thank you for choosing our service!`;
-  
-          // Generate the QR CODE and send the booking confirmation email
-          const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
-          const qrCodeImage = 'tickit-QRCODE.png';
-          await qrcode.toFile(qrCodeImage, qrCodeData);
-         
-           await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
-                  
-                          res.status(200).json({ success: true, message: 'Booking successful. Ticket sent to user email.' });
-                      } catch (error) {
-                          console.error(error);
-                          return res.status(500).json({ success: false, error: 'An error occurred' });
-                      }
-                  };
-  
-                              // Function to calculate age group
-                              function calculateAgeGroup(age) {
-                                  if (age >= 0 && age <= 21) {
-                                      return 'baby';
-                                  } else if (age > 2 && age <= 21) {
-                                      return 'children';
-                                  } else {
-                                      return 'adult';
-                                  }
-                              }
-                              
-                         
+                              await bus.save()
+                    
+                            // Create a new booking
+                            const bookingId = shortid.generate();
+                            const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
+                    
+                            const booking = new BookingModel({
+                                routeNumber,
+                                busId : bus,
+                                date: date,
+                                status,
+                                bookingId,
+                                userId: user._id,
+                                selectedSeatNumbers: selectedSeats,
+                                passengers: passengers.map((passenger, index) => ({
+                                    ...passenger,
+                                    seatNumber: selectedSeats[index],
+                                    ageGroup: calculateAgeGroup(passenger.age),
+                                })),
+                            });
+                            
+                            await booking.save();
+                    
+                            // Generate passenger details and email content
+                            const passengerDetails = passengers.map((passenger, index) => {
+                              const seatNumber = selectedSeats[index];
+                              return `
+                                  Passenger Name: ${passenger.name}
+                                  Age: ${passenger.age}
+                                  Gender: ${passenger.gender}
+                                  Seat Number: ${seatNumber}
+                                  -----------------------------------------
+                              `;
+                          }).join('\n');
+                    
+                            const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${date} has been confirmed.\n\n Journey Details:\n 
+                                Booking ID: ${bookingId} 
+                                Bus Number: ${selectedBusInfo.busId.bus_no}
+                                Bus Arrival Time:${sourceStopArrivalTime}
+                                Source: ${sourceStopDetails.stopName}
+                                Destination: ${destinationStopDetails.stopName}
+                                Passenger Details:
+                                ${passengerDetails}
+                                Have a safe journey!
+                                Thank you for choosing our service!`;
+                    
+                            // Generate the QR CODE and send the booking confirmation email
+                            const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
+                            const qrCodeImage = 'tickit-QRCODE.png';
+                            await qrcode.toFile(qrCodeImage, qrCodeData);
+                          
+                            await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
+                                    
+                                            res.status(200).json({ success: true, message: 'Booking successful. Ticket sent to user email.' });
+                                        } catch (error) {
+                                            console.error(error);
+                                            return res.status(500).json({ success: false, error: 'An error occurred' });
+                                        }
+                                    };
+                    
+                                                // Function to calculate age group
+                                                function calculateAgeGroup(age) {
+                                                    if (age > 0 && age <= 2) {
+                                                        return 'baby';
+                                                    } else if (age > 2 && age <= 21) {
+                                                        return 'children';
+                                                    } else {
+                                                        return 'adult';
+                                                    }
+                                                }
+                                                
+                                                    
+                                  
 // Api for cancle tickit 
                   
                     const cancelTicket = async (req, res) => {
@@ -1345,7 +1352,7 @@ const moment = require('moment');
                                    // send a confirmation email to the user
                                    const user = await UserModel.findById(booking.userId)
                                    const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
-                                    await sendCancelEmail(user.email , 'Ticket Cancellation Confirmation', cancellationEmailContent)
+                                    await sendCancelEmail(user.email , 'Ticket Cancellation Confirmation', emailContent)
                          
                                     res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
                                   } catch (error) {
@@ -1485,38 +1492,54 @@ const moment = require('moment');
                           }
 
    // API for View seats in Bus for a route
-                                const  viewSeats = async (req, res) => {
-                                  try {
-                                    const busId = req.params.busId;
-                                
-                                    // Find the bus by its ID
-                                    const bus = await BusModel.findById(busId);
-                                
-                                    if (!bus) {
-                                      return res.status(404).json({ success: false, error: 'Bus not found' });
-                                    }
-                                
-                                    // Convert totalSeats to an array
-                                    const totalSeatsArray = Array.from({ length: bus.seating_capacity }, (_, index) => index + 1);
-                                
-                                    // Calculate availableSeats by subtracting bookedSeats from totalSeats
-                                    const bookedSeats = bus.booked_seat;
-                                    const availableSeats = totalSeatsArray.filter(seat => !bookedSeats.includes(seat));
-                                
-                                    res.status(200).json({
-                                      success: true,
-                                      message: 'Seat information for the bus',
-                                      Seat_Info: {
-                                        totalSeats: totalSeatsArray,
-                                        availableSeats,
-                                        bookedSeats,
-                                      },
-                                    });
-                                  } catch (error) {
-                                    console.error(error);
-                                    res.status(500).json({ success: false, error: 'Error while fetching seat information' });
-                                  }
-                                }
+                                        const viewSeats = async (req, res) => {
+                                          try {
+                                            const busId = req.params.busId;
+                                            const date = req.query.date;
+                                        
+                                            // Find the bus by its ID
+                                            const bus = await BusModel.findById(busId);
+                                        
+                                            if (!bus) {
+                                              return res.status(404).json({ success: false, error: 'Bus not found' });
+                                            }
+                                        
+                                            // Check for bookings on the given date and bus ID
+                                            const bookingsOnDate = await BookingModel.find({ busId, date, status:'confirmed' });
+                                            
+                                        
+                                            console.log('bookingsOnDate:', bookingsOnDate); 
+                                        
+                                            const totalSeatsArray = Array.from({ length: bus.seating_capacity }, (_, index) => index + 1);
+                                        
+                                            let availableSeats = [...totalSeatsArray];
+                                        
+                                            // Initialize bookedSeats as an empty array
+                                            let bookedSeats = [];
+                                        
+                                            // If there are bookings on the given date, update bookedSeats and availableSeats
+                                            if (bookingsOnDate.length > 0) {
+                                              bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
+                                              availableSeats = totalSeatsArray.filter((seat) => !bookedSeats.includes(seat));
+                                            }
+                                        
+                                            console.log('bookedSeats:', bookedSeats); 
+                                        
+                                            res.status(200).json({
+                                              success: true,
+                                              message: 'Seat information for the bus',
+                                              Seat_Info: {
+                                                totalSeats: totalSeatsArray,
+                                                availableSeats,
+                                                bookedSeats,
+                                              },
+                                            });
+                                          } catch (error) {
+                                            console.error(error);
+                                            res.status(500).json({ success: false, error: 'Error while fetching seat information' });
+                                          }
+                                        };
+  
    // APi for calculateFareFor selected seats in Bus 
                             
                             const calculateFareForSelectedSeats = async (req, res) => {

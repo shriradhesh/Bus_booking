@@ -44,7 +44,9 @@ const busRouteSchema = new mongoose.Schema({
      
     Date:{ 
       type : Date,     
-             },
+        },
+    
+            
 
 },
 {timestamps: true}
