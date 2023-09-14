@@ -5,6 +5,7 @@ const changePass  = require('../models/changePassword')
 const BookingModel = require('../models/BookingModel')
 const UserModel = require('../models/userModel');
 const BusModel = require('../models/busModel')
+const stopModel = require('../models/stopModel')
 const sendCancelEmail =require("../utils/sendCancelEmail")
 const sendBookingEmail =require("../utils/sendBookingEmail")
 const upload = require('../uploadImage')
@@ -19,6 +20,10 @@ const { error } = require('console')
 const fs = require('fs');
 const moment = require('moment');
 const twilio = require('twilio')
+const TripModel = require('../models/tripModel')
+const cron = require('node-cron');
+const axios = require('axios');
+
 
 const accountSid = 'ACea0cb782d52a715846acedc254632e9e';
 const authToken = '9920e53cb0ddef7283f32ec3a392e531';
@@ -296,7 +301,7 @@ const client = new twilio(accountSid , authToken)
                             await BusModel.deleteOne({ _id: busId });
                             res.status(200).json({ success: true, message: 'Bus deleted successfully' });
                         } else {
-                            res.status(400).json({ success: false, error: 'Bus cannot be deleted due to status or availability' });
+                            res.status(400).json({ success: false, error: 'Bus cannot be deleted , its currently status : active & Avaialabilty : available ' });
                         }
                     } catch (error) {
                         console.error(error);
@@ -342,344 +347,91 @@ const client = new twilio(accountSid , authToken)
                   }
                 }
                   
-  // Api for searchBuses   
-                    const searchBuses = async (req, res) => {
-                      try {
-                        const { sourceStop, destinationStop, date } = req.body;
-                    
-                        // Find routes that match the selected date
-                        const routes = await BusRoute.find({
-                          starting_Date: { $lte: date },
-                          end_Date: { $gte: date }
-                        });                    
-                       
-                        if (!routes || routes.length === 0) {
-                          return res
-                            .status(404)
-                            .json({ success: false, error: 'No matching routes found for the selected date' });
-                        }                       
-                             
-                        // Extract bus IDs from the matching routes
-                        const busIds = routes.flatMap(route => route.busInfo.map(info => info.busId)).filter(Boolean);
-
-                       
-                        // Find buses with stops matching both source and destination and are in the list of matching bus IDs
-                        const buses = await BusModel.find({
-                          _id: { $in: busIds },
-                          'stops.stopName': { $all: [sourceStop, destinationStop] }
-                          
-                        });             
-                       
-                    
-                        if (!buses || buses.length === 0) {
-                          return res.status(404).json({ success: false, error: 'No matching buses found' });
-                        }
-
-                        // filter buses to include only those where source stop comes before destination stop
-
-                        const filteredBuses = buses.filter(bus => {
-                          const sourceIndex = bus.stops.findIndex(stop => stop.stopName === sourceStop)
-                          const destinationIndex = bus.stops.findIndex(stop => stop.stopName === destinationStop)
-                          return sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex
-                        })
-                    
-                        res.status(200).json({ success: true, message: 'Buses for the route', Bus_Details: filteredBuses });
-                      } catch (error) {
-                        console.error(error);
-                        res.status(500).json({ success: false, error: 'Error while fetching the data' });
-                      }
-                    };
   
-                              
                                               
   
-                                             /*   stops manage for Route   */
+                                             /*   stops management   */
      
-      //API for add stop in a bus with bus id 
+      //API for add stop in Stop Schema 
 
-           const addStop = async (req,res)=>{
-          
-            const busId = req.params.busId
-           const {stopName , arrivalTime, departureTime, distance} = req.body          
-            
-           try{
+                        const createStop = async (req,res)=>{          
+                        
+                        const {stopName} = req.body          
+                          
+                        try{
 
-            const requiredFields = [                
-              'stopName',
-              'arrivalTime',            
-              'departureTime',              
-              'distance'            
-              
-          ];
-      
-          for (const field of requiredFields) {
-              if (!req.body[field]) {
-                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-              }
-          }
-                       
-                const bus = await BusModel.findOne({ _id:busId })
-           
-                if(!bus)
-                {
-                    return res.status(400).json({ success : false , error : `bus not found with the BusId ${busId}`})
-                }
-
-                bus.stops.push({
-                    stopName,
-                    arrivalTime,
-                    departureTime,
-                    distance
-                })
-                await bus.save()
-
-                return res.status(200).json({ success : true , message : `stop added successfully to busId :  ${busId}`})
-            }
-            catch(error)
-            {
-                return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
-            }
-           }
-
-      // Api for EDIT Stops in a bus with bus Id and stop Id
-      const editStop = async (req, res) =>{
-       let busId
-        try{
-            const stopId = req.params.stopId
-             busId = req.params.busId          
-           
-            const {
-              stopName,
-              arrivalTime,
-              departureTime,
-              distance
-            } = req.body
-
-            const requiredFields = [                
-              'stopName',
-              'arrivalTime',            
-              'departureTime',             
-              'distance'            
-              
-          ];
-      
-          for (const field of requiredFields) {
-              if (!req.body[field]) {
-                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-              }
-          }
-
-                 // check for route existance
-                const existBus = await BusModel.findOne({_id:busId})
-                if(!existBus)
-                {
-                  return res.status(404).json({ success: false , error : " bus not found "})
-                }
+                          const requiredFields = [                
+                            'stopName',      
+                        ];
                     
-                    // check for stop
-                const existStop = existBus.stops.find(stop => stop._id.toString() === stopId)                     
-                  if(!existStop)
-                  {
-                    return res.status(404).json({ success : false , error : "stop not found"})
-                  }
-                        //update the property of  stops
-                      existStop.stopName = stopName
-                      existStop.arrivalTime = arrivalTime
-                      existStop.departureTime = departureTime
-                      existStop.distance = distance
-                       
-                         await BusModel.findOneAndUpdate(
-                          {_id: busId, 'stops._id': stopId},
-                          {$set: { 'stops.$' : existStop}
-
-                              }
-                         )
-                           
-                      res.status(200).json({ success : true , message :` stop is edit successfully for BusId : ${busId}`})
-                      
-              }        
-       catch(error)
-       {
-        
-          res.status(500).json({success: false , error : ` there is an error to update the stop in BusId : ${busId}`})
-       }
-       }
-      // Api to add stop before the stop
-      const addStopBeforeStop = async (req, res) => {
-        const busId = req.params.busId;
-        const { beforeStopName, stopName, arrivalTime, departureTime, distance } = req.body;
-    
-        try {
-            const requiredFields = [
-                'beforeStopName',
-                'stopName',
-                'arrivalTime',
-                'departureTime',
-                'distance'
-            ];
-    
-            for (const field of requiredFields) {
-                if (!req.body[field]) {
-                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                }
-            }
-    
-            const bus = await BusModel.findOne({ _id: busId });
-    
-            if (!bus) {
-                return res.status(400).json({ success: false, error: `Bus not found with the BusId ${busId}` });
-            }
-    
-            const beforeStopIndex = bus.stops.findIndex(stop => stop.stopName === beforeStopName);
-    
-            if (beforeStopIndex === -1) {
-                return res.status(400).json({ success: false, error: `Stop '${beforeStopName}' not found on the Bus` });
-            }
-    
-            const newStop = {
-                stopName,
-                arrivalTime,
-                departureTime,
-                distance
-            };
-    
-            bus.stops.splice(beforeStopIndex, 0, newStop);
-            await bus.save();
-    
-            return res.status(200).json({ success: true, message: `Stop '${stopName}' added successfully before '${beforeStopName}' on BusId: ${busId}` });
-        } catch (error) {
-            return res.status(500).json({ success: false, message: 'An error occurred while adding the stop', error });
-        }
-    };
-    
-    // get all stops form the bus ID
-    const allStops = async (req, res) => {
-      
-        try {
-          const busId = req.params.busId;
-      
-          // Check if the bus exists
-          const bus = await BusModel.findById(busId);
-      
-          if (!bus) {
-            return res.status(404).json({ success: false, error: 'Bus not found' });
-          }
-      
-          const stops = bus.stops;
-          return res.status(200).json({ success: true, message: 'All Stops:', stops: stops });
-        } catch (error) {
-          console.error(error);
-          return res.status(500).json({ success: false, error: 'There was an error getting all stops for the bus' });
-        }
-      };
-      
-      
-      
-    
-    
-                      
-                    
-    // Delete a particular stop by stopId with the help of bus
-                
-                    const deleteStop = async (req ,res)=>{
-                      let busId 
-                      try{
-                            const stopId = req.params.stopId
-                            busId = req.params.busId
-                            const existBus = await BusModel.findById(busId)   
-                                                        
-                            if(!existBus)
-                            {
-                              return res.status(404).json({ success : false , error : " bus not found"})
+                        for (const field of requiredFields) {
+                            if (!req.body[field]) {
+                                return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
                             }
+                        } 
+                        
+                        // Check for stopName
+                        const existStop = await stopModel.findOne({ stopName });
+                                  
+                        if (existStop) {
+                          return res.status(400).json({ error: ' StopName already exist ', success: false });
+                        }
+
+                        const newStop = new stopModel({
+                          stopName : stopName
+                        })
+                          const savedStop = await newStop.save()
+
+                              return res.status(200).json({ success : true , message : `stop added successfully `, stop : savedStop})
+                          }
+                          catch(error)
+                          {
+                              console.error(error);
+                              return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
+                          }
+                        }
+     
+
+    
+    // get all stops form the Stop Schema
+
+                      const allStops = async (req, res) => {    
+                      
+                          try {         
                             
-                            // check for stop
-                            const existStopIndex = existBus.stops.findIndex(stop => stop._id.toString() === stopId)
-                               if(existStopIndex === -1)
-                               {
-                                 return res.status(404).json({ success : false , error : " Stop not found"})
-                                }  
-                                // remove the stop from the stop array
-                                
-                                existBus.stops.splice(existStopIndex, 1)
-
-                                await BusModel.findByIdAndUpdate(
-                                      { _id:busId },
-                                      {stops : existBus.stops}
-                                )
-
-                                res.status(200).json({ success : true , message : "stop delete successfully"})
-                      
+                          
+                            const stops = await stopModel.find();         
+                              
+                            res.status(200).json({ success: true, message: 'All Stops', stop_details : stops });
+                          } catch (error) {
+                            
+                            res.status(500).json({ success: false, error: 'There is an error to find all Stops ' });
+                          }
                         }
-                       catch(error)
-                       {
-                            res.status(500).json({ success : false , error :  ` there is an error to delete the stop `})
-                       }
-                      }
+                            
+    // Delete a particular stop by stopId 
+                
+                        const deleteStop = async (req, res) => {
+                          try {
+                            const stopId = req.params.stopId;
+                        
+                            // Check for route existence
+                            const existingStop = await stopModel.findOne({ _id: stopId });
+                            if (!existingStop) {
+                              return res.status(404).json({ success: false, error: `stop not found` });
+                            }
+                        
+                            // Delete the route from the database
+                            await existingStop.deleteOne();
+                            
+                            res.status(200).json({ success: true, message: 'Stop deleted successfully' });
+                          } catch (error) {
+                            console.error(error);
+                            res.status(500).json({ success: false, error: 'Error while deleting the Stop' });
+                          }
+                        };
             
-                                                  /* fare Manage for Stops */
-  // API FOR calculate and assign fare between stops
-                  const calculateStopfare = async (req, res) => {
-                    try {
-                      const busId = req.params.busId;
-                      const { source, destination } = req.body;
-                  
-                      if (source === undefined || destination === undefined) {
-                        return res.status(400).json({ error: 'Missing stop indices', success: false });
-                      }
-                      // Access the bus Route from the Database
-                      const bus = await BusModel.findById(busId);
-                      if (!bus) {
-                        return res.status(400).json({ success: false, error: 'Bus not found' });
-                      }
-
-                      // calculate the discance between source and destination stops
-                      const stops = bus.stops;
-                      
-                      const sourceIndex = stops.findIndex(stop => stop.stopName === source);
-                      const destinationIndex = stops.findIndex(stop => stop.stopName === destination);
-                      
-                      if (sourceIndex === -1 || destinationIndex === -1) {
-                        return res.status(400).json({ success: false, error: 'Source or destination stop not found' });
-                      }   
-                      const sourceDistance = stops[sourceIndex].distance;
-                      const destinationDistance = stops[destinationIndex].distance;
-                  
-                      // calculate total distance and fare based on bus type
-
-                      const totalDistance = destinationDistance - sourceDistance
-
-                          // check the bus type and set farePerUnitDistance accordingly
-                          let farePerUnitDistance
-                          switch (bus.bus_type) {
-                            case 'Non-AC':
-                                farePerUnitDistance = 0.2;
-                              break;
-                             case 'AC' :
-                                farePerUnitDistance = 0.24;
-                                break;
-                             case 'luxury' :
-                              farePerUnitDistance = 0.3;
-                              break; 
-                            default:
-                                  farePerUnitDistance = 0.2;
-                              }                     
-                              // Calculate total fare 
-                              const totalFare = totalDistance * farePerUnitDistance                              
-                         
-                          return res.status(200).json({
-                            success: true,
-                            message: 'Fare calculated successfully',
-                            busType: bus.bus_type,
-                            totalFare : totalFare 
-                          });
-
-                        } catch (error) {
-                          console.error(error);
-                          return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
-                        }
-                      };
-                      
+                          
 
                                                     /* Route Management */
 
@@ -687,9 +439,8 @@ const client = new twilio(accountSid , authToken)
                  
                   const addRoute = async(req,res)=>{
                     try{
-                        const { s_no , routeNumber ,source , destination,
-                                starting_Date , end_Date , 
-                              contact_no , status } = req.body
+                        const { s_no , routeNumber ,source , destination, status,
+                                stops } = req.body
                       
                         
                         
@@ -698,12 +449,7 @@ const client = new twilio(accountSid , authToken)
                                   's_no',
                                   'routeNumber',
                                   'source',            
-                                  'destination',
-                                  'starting_Date',
-                                  'end_Date',                                
-                                  'contact_no',               
-                                  'status',
-                                
+                                  'destination'
                                   
                               ];
                           
@@ -719,22 +465,14 @@ const client = new twilio(accountSid , authToken)
                               {
                             return res.status(400).json({ success : false ,  error : `route already exit with the route number : ${routeNumber} `})
                             }
-                                  
-                                 // Convert string dates to Date objects
-                              const startDate = new Date(starting_Date);
-                              const endDate = new Date(end_Date);
-
-
+                              
                         const newRoute = new BusRoute({
 
                             s_no : s_no,
                             routeNumber : routeNumber,
                             source : source,
                             destination : destination,
-                            starting_Date: startDate,
-                            end_Date: endDate,                                
-                            contact_no : contact_no,                                  
-                            status: status,
+                            stops : stops
                                             
                           });
                                 
@@ -779,51 +517,22 @@ const client = new twilio(accountSid , authToken)
                                     const {
                                         
                                         source,
-                                        destination,
-                                        starting_Date,
-                                        end_Date,                             
-                                        contact_no,                              
+                                        destination,                                                                   
                                         status
                                         
-                                    } = req.body;
-                                          
-                                    // // Check field validation
-                                    // const requiredFields = [
-                                        
-                                    //     'source',
-                                    //     'destination',
-                                    //     'starting_Date',
-                                    //     'end_Date',                              
-                                    //     'contact_no',                             
-                                    //     'status',
-                                        
-                                    // ];
-                                        
-                                    // for (const field of requiredFields) {
-                                    //     if (!req.body[field]) {
-                                    //         return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                    //     }
-                                    // }
+                                    } = req.body;                                       
+                                   
 
                                     // Check for route existence
                                     const existRoute = await BusRoute.findOne({ _id: routeId });
                                     if (!existRoute) {
                                         return res.status(404).json({ success: false, error: `Route not found` });
                                     }
-                                       // Convert string dates to Date objects
-                                    const startDate = new Date(starting_Date);
-                                     const endDate = new Date(end_Date);
-
-                                        console.log(typeof(startDate));
-                                        console.log(typeof(endDate));
-
+                                    
                                     // Update the properties of the existing route
                                     
                                     existRoute.source = source;
-                                    existRoute.destination = destination;
-                                    existRoute.starting_Date = startDate;
-                                    existRoute.end_Date = endDate;                         
-                                    existRoute.contact_no = contact_no;                         
+                                    existRoute.destination = destination;                                                       
                                     existRoute.status = status;                                   
                                   
                                     // Save the updated route details to the database
@@ -835,76 +544,212 @@ const client = new twilio(accountSid , authToken)
                                 }
                               };
 
-  // APi for add BusId in a Route
-                 const addBusId = async (req,res)=>{
-          
-                  const routeId = req.params.routeId
-                 const { busId } = req.body          
-                  
-                 try{
-      
-                  const requiredFields = [                
-                    'busId' ];
-            
-                for (const field of requiredFields) {
-                    if (!req.body[field]) {
-                        return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                    }
-                }                             
-                      const route = await BusRoute.findOne({ _id:routeId })
-                 
-                      if(!route)
-                      {
-                          return res.status(400).json({ success : false , error : `route not found with the routeId ${routeId}`})
-                      }
-      
-                      route.busInfo.push({
-                          busId
-                      })
-                      await route.save()
-      
-                      return res.status(200).json({ success : true , message : `busId added successfully to route :  ${routeId}`})
-                  }
-                  catch(error)
-                  {
-                      return res.status(500).json({ success : false , message : ` an error occured while adding the busId` , error : error})
-                  }
-                 }
+     //API for add stop in a bus with bus id 
 
-   // Api for Delete busId in a Route
-              const deleteBusId = async (req, res) => {
-                try {
-                    const busId = req.params.Id; // Updated to use :Id
-                    const routeId = req.params.routeId;
+                            const addStop_in_Route = async (req,res)=>{
+                                  
+                              const routeId = req.params.routeId
+                            const {stopName ,arrivalTime, departureTime, distance} = req.body          
+                              
+                            try{
 
-                    // Find the route by its ID
-                    const existRoute = await BusRoute.findById(routeId);
+                              const requiredFields = [                
+                                'stopName', 
+                                'arrivalTime',
+                                'departureTime',                                            
+                                'distance'          
+                        
+                            ];
 
-                    if (!existRoute) {
-                        return res.status(404).json({ success: false, error: "Route not found" });
-                    }
+                            for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                            }
+                                        
+                                  const route = await BusRoute.findOne({ _id:routeId })
+                            
+                                  if(!route)
+                                  {
+                                      return res.status(400).json({ success : false , error : `route not found with the BusId ${routeId}`})
+                                  }
+                                         // Check if the stopName exists in the StopModel
+                                    const existingStop = await stopModel.findOne({ stopName });
 
-                    // Check for busId in busInfo
-                    const existBusIdIndex = existRoute.busInfo.findIndex(bus => bus._id.toString() === busId);
+                                    if (!existingStop) {
+                                      return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
+                                    }
+                                   //  stops is an array in the BusRoute model
+                                    const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
 
-                    if (existBusIdIndex === -1) {
-                        return res.status(404).json({ success: false, error: "BusId not found" });
-                    }
+                                    if (duplicateStop) {
+                                      return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
+                                    }
+                                  route.stops.push({
+                                      stopName, 
+                                      arrivalTime,
+                                      departureTime,                                     
+                                      distance
+                                  })
+                                  await route.save()
 
-                    // Remove the busId from the busInfo array
-                    existRoute.busInfo.splice(existBusIdIndex, 1);
+                                  return res.status(200).json({ success : true , message : `stop added successfully in routeID : ${routeId}`})
+                              }
+                              catch(error)
+                              {
+                                   console.error(error);
+                                  return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
+                              }
+                            }
 
-                    // Update the BusRoute document with the modified busInfo
-                    await BusRoute.findByIdAndUpdate(routeId, { busInfo: existRoute.busInfo });
+      // Api for Edit Stop in a Route
+                        
+                              const editStop_in_Route = async (req, res) =>{
+                                let routeId
+                                try{
+                                    const stopId = req.params.stopId
+                                    routeId = req.params.routeId          
+                                    
+                                    const {
+                                      arrivalTime,
+                                      departureTime,
+                                      distance
+                                    } = req.body                       
+                                    
+                        
+                                          // check for route existance
+                                        const existRoute = await BusRoute.findOne({_id:routeId})
+                                        if(!existRoute)
+                                        {
+                                          return res.status(404).json({ success: false , error : " Route not found "})
+                                        }
 
-                    res.status(200).json({ success: true, message: "BusId deleted successfully" });
-                } catch (error) {
-                    console.error(error);
-                    res.status(500).json({ success: false, error: "There is an error while deleting the busId" });
-                }
-            };
+                                            // Check if the stops array exists within existRoute
+                                              if (!existRoute.stops || !Array.isArray(existRoute.stops)) {
+                                                return res.status(404).json({ success: false, error: "Stops not found in the route" });
+                                            }
+                                            
+                                            // check for stopIndex
+                                        const existStopIndex = existRoute.stops.findIndex(stop => stop._id.toString() === stopId)                     
+                                          if(!existStopIndex === -1)
+                                          {
+                                            return res.status(404).json({ success : false , error : "stop not found"})
+                                          }
+                                          // Update the properties of the stop
+                                            existRoute.stops[existStopIndex].arrivalTime = arrivalTime;
+                                            existRoute.stops[existStopIndex].departureTime = departureTime;
+                                            existRoute.stops[existStopIndex].distance = distance;
 
-            
+                                            // Save the updated route back to the database
+                                            await existRoute.save();
+
+                                                    
+                                              res.status(200).json({ success : true , message :` stop is edit successfully for routeId : ${routeId}`})
+                                              
+                                      }        
+                                catch(error)
+                                {
+                                    console.error(error);
+                                  res.status(500).json({success: false , error : ` there is an error to update the stop in routeId : ${routeId}`})
+                                }
+                                }
+                                        
+    
+
+        
+      // Api to add stop before the stop in a route
+                      const addStopBeforeStop = async (req, res) => {
+                        const routeId = req.params.routeId;
+                        const { beforeStopName, stopName, arrivalTime, departureTime , distance } = req.body;
+                    
+                        try {
+                            const requiredFields = [
+                                'beforeStopName',
+                                'stopName',   
+                                'arrivalTime',
+                                'departureTime',                             
+                                'distance'
+                            ];
+                    
+                            for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                            }
+                    
+                            const route = await BusRoute.findOne({ _id: routeId });
+                    
+                            if (!route) {
+                                return res.status(400).json({ success: false, error: `route not found with the route ID ${routeId}` });
+                            }
+                            
+                                 // Check if the stopName exists in the StopModel
+                                 const existingStop = await stopModel.findOne({ stopName });
+
+                               if (!existingStop) {
+                                  return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
+                                  }
+                    
+                            const beforeStopIndex = route.stops.findIndex(stop => stop.stopName === beforeStopName);
+                    
+                            if (beforeStopIndex === -1) {
+                                return res.status(400).json({ success: false, error: `Stop '${beforeStopName}' not found on the route` });
+                            }
+                    
+                            const newStop = {
+                              stopName, 
+                              arrivalTime,
+                              departureTime,                                     
+                              distance
+                            };
+                    
+                            route.stops.splice(beforeStopIndex, 0, newStop);
+                            await route.save();
+                    
+                            return res.status(200).json({ success: true, message: `Stop '${stopName}' added successfully before '${beforeStopName}' on routeId: ${routeId}` });
+                        } catch (error) {
+                            return res.status(500).json({ success: false, message: 'An error occurred while adding the stop', error });
+                        }
+                    };
+
+    
+    // Delete a particular stop by stopId with the help of bus
+                
+                      const deleteStop_in_Route = async (req ,res)=>{
+                        let routeId 
+                        try{
+                              const stopId = req.params.stopId
+                              routeId = req.params.routeId
+                              const existRoute = await BusRoute.findById(routeId)   
+                                                          
+                              if(!existRoute)
+                              {
+                                return res.status(404).json({ success : false , error : " Route not found"})
+                              }
+                              
+                              // check for stop
+                              const existStopIndex = existRoute.stops.findIndex(stop => stop._id.toString() === stopId)
+                                if(existStopIndex === -1)
+                                {
+                                  return res.status(404).json({ success : false , error : " Stop not found"})
+                                  }  
+                                  // remove the stop from the stop array
+                                  
+                                  existRoute.stops.splice(existStopIndex, 1)
+
+                                  await BusRoute.findByIdAndUpdate(
+                                        { _id:routeId },
+                                        {stops : existRoute.stops}
+                                  )
+
+                                  res.status(200).json({ success : true , message : "stop delete successfully in Route"})
+                        
+                          }
+                        catch(error)
+                        {
+                              res.status(500).json({ success : false , error :  ` there is an error to delete the stop `})
+                        }
+                        }         
 
 
 
@@ -1083,231 +928,645 @@ const client = new twilio(accountSid , authToken)
                      } 
   
         // Api for Delete Driver
-                const deleteDriver = async (req, res) => {
-                  try {
-                    const driverId = req.params.driverId;
-                    const driver = await DriverModel.findById(driverId);
-                
-                    if (!driver) {
-                      return res.status(404).json({ success: false, error: 'driver not found' });
-                    }
-                // Check if driver status is inactive and availability is unavailable
-                if (driver.status === 'inactive' && driver.availability === 'unavailable') {
-                  await driver.deleteOne();
-                  res.status(200).json({ success: true, message: 'Driver deleted successfully' });
-                } else {
-                  res.status(400).json({ success: false, error: 'Driver booked with other bus and route ' });
-                }
-                }
-                 catch (error) {                    
-                    res.status(500).json({ error: 'Error while deleting the Driver' });
-                  }
-                };
+                            const deleteDriver = async (req, res) => {
+                              try {
+                                const driverId = req.params.driverId;
+                                const driver = await DriverModel.findById(driverId);
+                            
+                                if (!driver) {
+                                  return res.status(404).json({ success: false, error: 'driver not found' });
+                                }
+                            // Check if driver status is inactive and availability is unavailable
+                            if (driver.status === 'inactive' && driver.availability === 'unavailable') {
+                              await driver.deleteOne();
+                              res.status(200).json({ success: true, message: 'Driver deleted successfully' });
+                            } else {
+                              res.status(400).json({ success: false, error: 'Driver booked with other bus and route ' });
+                            }
+                            }
+                            catch (error) {                    
+                                res.status(500).json({ error: 'Error while deleting the Driver' });
+                              }
+                            };
 
       // Api for get all driver
-                  const allDrivers = async (req, res) => {
-                    try {
-                      const status = req.query.status;
-                  
-                      let Drivers;
-                      if (status === 'active') {
-                        Drivers = await DriverModel.find({ status: 'active', availability: { $in: ['available', 'booked'] } });
-                      } else if (status === 'inactive') {
-                        buses = await DriverModel.find({ status: 'inactive', availability: 'unavailable' });
-                      } else {
-                        return res.status(400).json({ success: false, error: 'Invalid status value' });
-                      }
-                        
-                      res.status(200).json({ success: true, message: 'All Drivers', Driver_Details: Drivers });
-                    } catch (error) {
-                      
-                      res.status(500).json({ success: false, error: 'There is an error to find Drivers' });
-                    }
-                  }
+                            const allDrivers = async (req, res) => {
+                              try {
+                                const status = req.query.status;
+                            
+                                let Drivers;
+                                if (status === 'active') {
+                                  Drivers = await DriverModel.find({ status: 'active', availability: { $in: ['available', 'booked'] } });
+                                } else if (status === 'inactive') {
+                                  buses = await DriverModel.find({ status: 'inactive', availability: 'unavailable' });
+                                } else {
+                                  return res.status(400).json({ success: false, error: 'Invalid status value' });
+                                }
+                                  
+                                res.status(200).json({ success: true, message: 'All Drivers', Driver_Details: Drivers });
+                              } catch (error) {
+                                
+                                res.status(500).json({ success: false, error: 'There is an error to find Drivers' });
+                              }
+                            }
                
     // Api for Get a driver details by driver id
-                const getDriver = async (req, res) => {
-                  try {
-                    const driverId = req.params.driverId;
-                    const driver = await DriverModel.findById(driverId);
+                              const getDriver = async (req, res) => {
+                                try {
+                                  const driverId = req.params.driverId;
+                                  const driver = await DriverModel.findById(driverId);
 
-                    if (!driver) {
-                      return res.status(404).json({success : false ,  error: 'Driver not found' });
-                    }
+                                  if (!driver) {
+                                    return res.status(404).json({success : false ,  error: 'Driver not found' });
+                                  }
 
-                    res.status(200).json({ success : true , message : " driver found" , Driver_Details : driver });
-                  } catch (err) {
-                    res.status(500).json({ success : false , error: 'Error while finding the driver' });
-                  }
-                }
+                                  res.status(200).json({ success : true , message : " driver found" , Driver_Details : driver });
+                                } catch (err) {
+                                  res.status(500).json({ success : false , error: 'Error while finding the driver' });
+                                }
+                              }
 
+
+                                                        /* TRIP Management */
+
+
+//API for create a new trip
+                    const createTrip = async(req,res) =>{
+                      try{
+                        const {
+                          tripNumber,
+                          busId,
+                          driverId,
+                          routeId,
+                          startingDate,
+                          endDate,
+                          scheduled_ArrivalTime,
+                          scheduled_DepartureTime,
+                          status
+                         
+                        } = req.body
+
+                        const requiredFields = [
+                          'busId',
+                          'driverId',
+                          'routeId',
+                          'startingDate',
+                          'endDate'                         
+
+                        ]
+                        for(const field of requiredFields){
+                          if(!req.body[field]){
+                            return res.status(400).json({ error : `missing ${field.replace('_',' ')} field`, success : false})
+                          }
+                        }
+                           // Check if a trip with the same busId and startingDate already exists
+                                const existingbus = await TripModel.findOne({
+                                  busId,
+                                  startingDate,
+                                });
+
+                                if (existingbus) {
+                                  return res
+                                    .status(400)
+                                    .json({
+                                      error: 'A trip with the same Bus and starting date already exists',
+                                      success: false,
+                                    });
+                                }
+                                
+                           // Check if a trip with the same routeId and startingDate already exists
+                                const existingRoute = await TripModel.findOne({
+                                  routeId,
+                                  startingDate,
+                                });
+
+                                if (existingRoute) {
+                                  return res
+                                    .status(400)
+                                    .json({
+                                      error: 'A trip with the same Route and starting date already exists',
+                                      success: false,
+                                    });
+                                }
+                           // Check if a trip with the same driver ID and startingDate already exists
+                                const existingdriver = await TripModel.findOne({
+                                  driverId,
+                                  startingDate,
+                                });
+
+                                if (existingdriver) {
+                                  return res
+                                    .status(400)
+                                    .json({
+                                      error: 'A trip with the same Driver and starting date already exists',
+                                      success: false,
+                                    });
+                                }
+
+                                // check for Trip number
+                                const existingTripNumber = await TripModel.findOne({
+                                  tripNumber,
+                                      })
+                                      if(existingTripNumber)
+                                      {
+                                        return res.status(400).json({
+                                                    error : ' trip number already exist',
+                                                    success : false
+                                        })
+                                      }
+
+                        // Check for bus number
+                        const bus = await BusModel.findOne({ _id:busId });
+                    
+                        if (!bus) {
+                          return res.status(400).json({ error: 'Bus not found ', success: false });
+                        }
+                           
+                        // Check for Route number
+                        const route = await BusRoute.findOne({ _id:routeId });
+                    
+                        if (!route) {
+                          return res.status(400).json({ error: 'Route not found', success: false });
+                        }
+                          // Check for Driver existence
+                          const driver = await DriverModel.findOne({ _id:driverId })
+
+                          if (!driver) {
+                            return res.status(400).json({ error: 'Driver with the specified ID does not exist', success: false });
+                          }                          
+                          
+                            const newTrip = new TripModel({
+                              tripNumber,
+                              startingDate,
+                              endDate,
+                              busId,
+                              driverId,
+                              routeId,
+                              scheduled_ArrivalTime,
+                              scheduled_DepartureTime,                             
+                              status
+                            })
+
+                            const savedTrip = await newTrip.save()
+                            res.status(200).json({ success : true , message : 'new trip created successfully', Trip_Detail : savedTrip})
+
+                      }
+                      catch(error)
+                      {
+                            res.status(500).json({success : false , error : ' there is an error while creating the trip'})
+                      }
+                    } 
+
+                                // schedule a job to update trip status
+                                
+                                cron.schedule('* * * * *', async ()=>{
+                                  try{
+                                    const currentDate = new Date()
+                                         // find trips with end Date
+                                    const expiredTrips = await TripModel.find({
+                                      endDate : {
+                                        $lt : currentDate
+                                      }                                     
+                                    })
+                                    if(expiredTrips.length > 0)
+                                     {
+                                        await TripModel.updateMany({ _id:{
+                                                                  $in : expiredTrips.map(trip => trip._id)}} ,
+                                                                   { status : 'completed'}
+                                                                   )
+                                          }
+                                           }
+                                             catch(error)
+                                                 {
+                                                console.error('Error while updating trip status :', error);
+                                                 }
+                                     })
+                                     
+      // Api for searchtrips    
+                              const searchTrips = async (req, res) => {
+                                try {
+                                  const { sourceStop, destinationStop, date } = req.body;
+                              
+                                  // Aggregate trips based on the specified criteria
+                                  const matchingTrips = await TripModel.aggregate([
+                                    {
+                                      $match: {
+                                        startingDate: new Date(date), 
+                                      },
+                                    },
+                                    {
+                                      $lookup: {
+                                        from: 'busroutes', 
+                                        localField: 'routeId',
+                                        foreignField: '_id',
+                                        as: 'route',
+                                      },
+                                    },
+                                    {
+                                      $match: {
+                                        'route.stops.stopName': { $all: [sourceStop, destinationStop] },
+                                      },
+                                    },
+                                    {
+                                      $project: {
+                                        tripId: '$_id',
+                                        source: sourceStop,
+                                        destination: destinationStop,
+                                        status: 1, 
+                                        stops: '$route.stops',
+                                      },
+                                    },
+                                  ]);
+                              
+                                  if (!matchingTrips || matchingTrips.length === 0) {
+                                    return res.status(404).json({ success: false, error: 'No matching trips found' });
+                                  }
+
+                                  // Return the matching trips along with sourceStop and destinationStop
+                                  res.status(200).json({ success: true, message: 'Trips for the route', trip_Details: matchingTrips });
+                                } catch (error) {
+                                  console.error(error);
+                                  res.status(500).json({ success: false, error: 'Error while fetching the data' });
+                                }
+                              };
+
+ // API for View seats in Bus for a trip
+                            
+                                    const viewSeats = async (req, res) => {
+                                      try {
+                                        const tripId = req.params.tripId;                                        
+
+                                        // Find the trip by its ID
+                                        const trip = await TripModel.findById(tripId);
+
+                                        if (!trip) {
+                                          return res.status(404).json({ success: false, error: 'Trip not found' });
+                                        }   
+                                        const busId = trip.busId;
+
+                                        // Find the bus by its ID
+                                        const bus = await BusModel.findById(busId);
+
+                                        if (!bus) {
+                                          return res.status(404).json({ success: false, error: 'Bus not found' });
+                                        }
+                                        const totalSeatsArray = Array.from({ length: bus.seating_capacity }, (_, index) => index + 1);
+
+                                        let availableSeats = Array.from({ length: bus.seating_capacity }, (_, index) => index + 1);
+
+                                          // Initialize bookedSeats as an empty array
+                                        let bookedSeats = [];
+
+                                        // Check for bookings on the given date and bus ID within the trip's date range
+                                        const bookingsOnDate = await BookingModel.find({
+                                          tripId,                                          
+                                          status: 'confirmed',
+                                        });
+                                       
+                                        // If there are bookings on the given date, update bookedSeats and availableSeats
+                                        if (bookingsOnDate.length > 0) {
+                                          bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
+                                          availableSeats = availableSeats.filter((seat) => !bookedSeats.includes(seat));
+                                        }
+                                       
+                                        res.status(200).json({
+                                          success: true,
+                                          message: 'Seat information for the bus in a Trip',
+                                          Seat_Info: {
+                                            totalSeats: totalSeatsArray,
+                                            availableSeats,
+                                            bookedSeats,
+                                          },
+                                        });
+                                      } catch (error) {
+                                        console.error(error);
+                                        res.status(500).json({ success: false, error: 'Error while fetching seat information' });
+                                      }
+                                    };
+
+
+// APi for calculateFareFor selected seats in Bus for trip
+                            
+                                  const calculateFareForSelectedSeats = async (req, res) => {
+                                    try {
+                                      const tripId = req.params.tripId;
+                                      const { selectedSeatNumbers } = req.body;
+                                      const { sourceStop, destinationStop } = req.query;
+
+                                      // Find the trip by its ID
+                                      const trip = await TripModel.findById(tripId);                                            
+                                      if (!trip) {
+                                        return res.status(404).json({ success: false, error: 'Trip not found' });
+                                      }
+
+                                      const busId = trip.busId;
+
+                                      // Input Validation for selected seat numbers
+                                      if (!Array.isArray(selectedSeatNumbers) || selectedSeatNumbers.length === 0) {
+                                        return res.status(400).json({ error: 'Invalid or empty selected seat numbers', success: false });
+                                      }
+
+                                      // Access the bus route and available seats from the Database
+                                      const bus = await BusModel.findById(busId);
+                                          
+                                      if (!bus) {
+                                        return res.status(404).json({ success: false, error: 'Bus not found' });
+                                      }
+
+                                      const availableSeats = bus.Available_seat || [];
+                                     
+                                      // Check if selected bus seats are valid and available
+                                      const invalidSeatNumbers = selectedSeatNumbers.filter(seatNumber => !availableSeats.includes(seatNumber));
+
+                                      if (invalidSeatNumbers.length > 0) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          error: 'Selected seat numbers are invalid or not available',
+                                          invalidSeatNumbers,
+                                        });
+                                      }
+
+                                      // Access the stops from the bus route
+                                      const routeId = trip.routeId;
+                                      const route = await BusRoute.findById(routeId);
+                                          
+                                      if (!route) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          error: 'Route not found',
+                                        });
+                                      }
+
+                                      const stops = route.stops || [];
+
+                                      // Calculate the distance between source and destination stops
+                                      const distance = calculateDistanceBetweenStops(stops, sourceStop, destinationStop);
+
+                                      // Check the bus type and set farePerUnitDistance accordingly
+                                      let farePerUnitDistance;
+
+                                      switch (bus.bus_type) {
+                                        case 'Non-AC':
+                                          farePerUnitDistance = 0.2;
+                                          break;
+                                        case 'AC':
+                                          farePerUnitDistance = 0.24;
+                                          break;
+                                        case 'luxury':
+                                          farePerUnitDistance = 0.3;
+                                          break;
+                                        default:
+                                          farePerUnitDistance = 0.2;
+                                      }
+
+                                      // Calculate the total fare for selected seats
+                                      const totalFare = selectedSeatNumbers.length * distance * farePerUnitDistance;
+
+                                      return res.status(200).json({
+                                        success: true,
+                                        message: 'Fare calculated successfully',
+                                        busType: bus.bus_type,
+                                        boardingPoint: sourceStop,
+                                        droppingPoint: destinationStop,
+                                        seatNumber: selectedSeatNumbers,
+                                        totalFare_in_Euro : totalFare,
+                                      });
+                                    } catch (error) {
+                                      console.error(error);
+                                      return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
+                                    }
+                                  };
+
+                                  // Helper function to calculate distance between stops
+                                  function calculateDistanceBetweenStops(stops, sourceStop, destinationStop) {
+                                    const sourceIndex = stops.findIndex(stop => stop.stopName === sourceStop);
+                                    const destinationIndex = stops.findIndex(stop => stop.stopName === destinationStop);
+
+                                    if (sourceIndex === -1 || destinationIndex === -1 || sourceIndex >= destinationIndex) {
+                                      return 0;
+                                    }
+
+                                    let distance = 0;
+                                    for (let i = sourceIndex; i < destinationIndex; i++) {
+                                      distance += stops[i + 1].distance - stops[i].distance;
+                                    }
+
+                                    return distance;
+                                  }
 
 
                                              /*  Manage Tickit */
 
+
+
     // api for book tickit               
        
-                      const bookTicket = async (req, res) => {
-                        try {
-                            const { routeNumber, date, selectedSeatNumbers, status, email, source, destination, passengers } = req.body;
-                            const selectedBusId = req.query.selectedBusId;
-                    
-                            // Checking for required fields in the request
-                            const requiredFields = ['routeNumber', 'date', 'email', 'passengers', 'source', 'destination'];
-                            if (requiredFields.some(field => !req.body[field])) {
-                                return res.status(400).json({ success: false, error: `Missing required field` });
-                            }
-                    
-                            // Fetching user details
-                            const user = await UserModel.findOne({ email });
-                            if (!user) {
-                                return res.status(400).json({ success: false, error: 'User not found' });
-                            }
-                            const userId = user._id;
-                    
-                            // Fetching bus route details
-                            const route = await BusRoute.findOne({ routeNumber }).populate('busInfo.busId');
-                            if (!route) {
-                                return res.status(400).json({ success: false, error: 'Route not found' });
-                            }
-                            
-                    
-                            // Finding the selected bus
-                            const selectedBusInfo = route.busInfo.find(busInfo => busInfo.busId && busInfo.busId._id.toString() === selectedBusId);
-                            if (!selectedBusInfo) {
-                                return res.status(400).json({ success: false, error: 'Selected bus not found' });
-                            }
-                    
-                            // Check if the booking date is valid (today or a future date)
-                            const today = new Date().toISOString().split('T')[0];
-                            if (new Date(date) < new Date(today)) {
-                                return res.status(400).json({ success: false, error: 'Booking can only be made for today or a future date' });
-                            }
-                    
-                            // Check if source and destination stops are valid
-                            const sourceStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === source);
-                            const destinationStopDetails = selectedBusInfo.busId.stops.find(stop => stop.stopName === destination);
-                    
-                            if (!sourceStopDetails || !destinationStopDetails) {
-                                return res.status(400).json({ success: false, error: 'Invalid source or destination stop' });
-                            }
-                    
-                            // Check if the selected seats are available and valid
-                            const availableSeats = selectedBusInfo.busId.Available_seat;
-                            const selectedSeats = selectedSeatNumbers;
-                    
-                            if (!Array.isArray(selectedSeats) || selectedSeats.length !== passengers.length) {
-                                return res.status(400).json({
-                                    success: false,
-                                    error: 'Invalid selected seat numbers',
-                                });
-                            }
-                    
-                            for (const seat of selectedSeats) {
-                                if (typeof seat !== 'number' || seat < 1 || seat > availableSeats.length || !availableSeats.includes(seat)) {
-                                    return res.status(400).json({
-                                        success: false,
-                                        error: `Seat ${seat} is not available`,
-                                    });
-                                }
-                            }
-                    
-                            // Check if selected seats are already booked
-                            const bookedSeats = selectedBusInfo.busId.booked_seat;
-                            for (const seat of selectedSeats) {
-                                if (bookedSeats.includes(seat)) {
-                                    return res.status(400).json({ success: false, error: `Seat ${seat} is already booked` });
-                                }
-                            }
-                    
-                            // Update Available_seat and booked_seat arrays
-                            const bus = selectedBusInfo.busId
-                            for (const seat of selectedSeats) {
-                                const index = bus.Available_seat.indexOf(seat);
-                                if (index !== -1) {
-                                    bus.Available_seat.splice(index, 1);
-                                    bus.booked_seat.push(seat);
-                                }
-                            }
-
-                              await bus.save()
-                    
-                            // Create a new booking
-                            const bookingId = shortid.generate();
-                            const sourceStopArrivalTime = sourceStopDetails.arrivalTime;
-                    
-                            const booking = new BookingModel({
-                                routeNumber,
-                                busId : bus,
-                                date: date,
-                                status,
-                                bookingId,
-                                userId: user._id,
-                                selectedSeatNumbers: selectedSeats,
-                                passengers: passengers.map((passenger, index) => ({
-                                    ...passenger,
-                                    seatNumber: selectedSeats[index],
-                                    ageGroup: calculateAgeGroup(passenger.age),
-                                })),
-                            });
-                            
-                            await booking.save();
-                    
-                            // Generate passenger details and email content
-                            const passengerDetails = passengers.map((passenger, index) => {
-                              const seatNumber = selectedSeats[index];
-                              return `
-                                  Passenger Name: ${passenger.name}
-                                  Age: ${passenger.age}
-                                  Gender: ${passenger.gender}
-                                  Seat Number: ${seatNumber}
-                                  -----------------------------------------
-                              `;
-                          }).join('\n');
-                    
-                            const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${date} has been confirmed.\n\n Journey Details:\n 
-                                Booking ID: ${bookingId} 
-                                Bus Number: ${selectedBusInfo.busId.bus_no}
-                                Bus Arrival Time:${sourceStopArrivalTime}
-                                Source: ${sourceStopDetails.stopName}
-                                Destination: ${destinationStopDetails.stopName}
-                                Passenger Details:
-                                ${passengerDetails}
-                                Have a safe journey!
-                                Thank you for choosing our service!`;
-                    
-                            // Generate the QR CODE and send the booking confirmation email
-                            const qrCodeData = `http://192.168.1.25:3000/${bookingId}`;
-                            const qrCodeImage = 'tickit-QRCODE.png';
-                            await qrcode.toFile(qrCodeImage, qrCodeData);
-                          
-                            await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
-                                    
-                                            res.status(200).json({ success: true, message: 'Booking successful. Ticket sent to user email.' });
-                                        } catch (error) {
-                                            console.error(error);
-                                            return res.status(500).json({ success: false, error: 'An error occurred' });
+                                  const bookTicket = async (req, res) => {
+                                    try {
+                                        const {
+                                            tripId,
+                                            date,
+                                            selectedSeatNumbers,
+                                            status,
+                                            email,
+                                            passengers,
+                                            totalFare_in_Euro
+                                        } = req.body;
+                                        const {
+                                            source,
+                                            destination
+                                        } = req.query;
+                                
+                                        // Checking for required fields in the request
+                                        const requiredFields = [
+                                            'tripId',                                          
+                                            'email',
+                                            'totalFare_in_Euro',
+                                            'passengers'
+                                        ];
+                                        for (const field of requiredFields) {
+                                            if (!req.body[field]) {
+                                                return res.status(400).json({
+                                                    error: `Missing ${field.replace('_', ' ')} field`,
+                                                    success: false
+                                                });
+                                            }
                                         }
-                                    };
-                    
-                                                // Function to calculate age group
-                                                function calculateAgeGroup(age) {
-                                                    if (age > 0 && age <= 2) {
-                                                        return 'baby';
-                                                    } else if (age > 2 && age <= 21) {
-                                                        return 'children';
-                                                    } else {
-                                                        return 'adult';
-                                                    }
+                                
+                                        // Fetching user details
+                                        const user = await UserModel.findOne({
+                                            email
+                                        });
+                                        if (!user) {
+                                            return res.status(400).json({
+                                                success: false,
+                                                error: 'User not found'
+                                            });
+                                        }
+                                        const userId = user._id;
+                                
+                                        
+                                        // Fetch trip and check if it exists
+                                        const trip = await TripModel.findById(tripId)
+                                
+                                        if (!trip) {
+                                            return res.status(400).json({
+                                                success: false,
+                                                error: 'Trip not found'
+                                            });
+                                        }
+                                
+                                        const busId = trip.busId;
+
+                                        if (!busId) {
+                                            return res.status(400).json({
+                                                success: false,
+                                                error: 'busId not found'
+                                            });
+                                        }
+                                
+                                        const bus = await BusModel.findById(busId);
+                                        if (!bus) {
+                                            return res.status(400).json({
+                                                success: false,
+                                                error: 'Bus Details not found'
+                                            });
+                                        }
+                                            const driverId = trip.driverId
+                                          const Driver = await DriverModel.findById(driverId)
+
+                                          if(!Driver)
+                                          {
+                                            return res.status(400).json({
+                                                          success : false ,
+                                                          error : 'Driver not found'
+                                            })
+                                          }
+
+                                
+                                        if (!Array.isArray(selectedSeatNumbers) || selectedSeatNumbers.length !== passengers.length) {
+                                            return res.status(400).json({
+                                                success: false,
+                                                error: 'Invalid selected seat numbers'
+                                            });
+                                        }
+                                
+                                        // Check if selected seat is already booked in a Bus
+                                        const bookedSeats = bus.booked_seat || [];
+                                
+                                        for (const seat of selectedSeatNumbers) {
+                                            if (bookedSeats.includes(seat)) {
+                                                return res.status(400).json({
+                                                    success: false,
+                                                    error: `Seat ${seat} is already booked`
+                                                });
+                                            }
+                                        }
+                                
+                                        // Update Available_seat and booked_seat arrays
+                                        if (bus && Array.isArray(bus.Available_seat)) {
+                                            for (const seat of selectedSeatNumbers) {
+                                                const index = bus.Available_seat.indexOf(seat);
+                                                if (index !== -1) {
+                                                    bus.Available_seat.splice(index, 1);
+                                                    bus.booked_seat.push(seat);
                                                 }
-                                                
+                                            }
+                                        }
+                                
+                                        await bus.save();
+                                
+                                        // Save the changes to the trip
+                                        await trip.save();
+                                
+                                        // Create a new booking
+                                        const bookingId = shortid.generate();
+                                
+                                        const booking = new BookingModel({
+                                            tripId,
+                                            date,
+                                            status,
+                                            bookingId,
+                                            userId,
+                                            selectedSeatNumbers,
+                                            passengers: passengers.map((passenger, index) => ({
+                                                ...passenger,
+                                                seatNumber: selectedSeatNumbers[index],
+                                                ageGroup: calculateAgeGroup(passenger.age)
+                                            })),
+                                            totalFare : totalFare_in_Euro
+                                        });
+                                
+                                        await booking.save();
+                                
+                                        // Generate passenger details and email content
+                                        const passengerDetails = passengers.map((passenger, index) => {
+                                            const seatNumber = selectedSeatNumbers[index];
+                                            return `
+                                                Passenger Name: ${passenger.name}
+                                                Age: ${passenger.age}
+                                                Gender: ${passenger.gender}
+                                                Seat Number: ${seatNumber}
+                                                -----------------------------------------
+                                            `;
+                                        }).join('\n');
+                                
+                                        const emailContent = `Dear ${user.fullName}\n Your booking for departure on ${date} has been confirmed.\n\n Journey Details:\n 
+                                            Booking ID: ${bookingId} 
+                                            Trip Number : ${trip.tripNumber}
+                                            Bus Arrival Time: ${source.arrivalTime} 
+                                            Source: ${source} 
+                                            Destination: ${destination}                                 
+                                            Passenger Details:
+                                            ${passengerDetails}  \n
+                                            Driver Details : 
+                                            \t Driver Name : ${Driver.driverName}\n
+                                                Driver Contact : ${Driver.driverContact}                                       
+                                            
+                                
+                                            Have a safe journey!
+                                            Thank you for choosing our service!`;
+                                
+                                        // Generate the QR CODE and send the booking confirmation email
+                                        const qrCodeData = `http://192.168.1.28:3000/${bookingId}`;
+                                        const qrCodeImage = 'ticket-QRCODE.png';
+                                        await qrcode.toFile(qrCodeImage, qrCodeData);
+                                
+                                        await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
+                                
+                                        res.status(200).json({
+                                            success: true,
+                                            message: 'Booking successful. Ticket sent to user email.'
+                                        });
+                                    } catch (error) {
+                                        console.error(error);
+                                        return res.status(500).json({
+                                            success: false,
+                                            error: 'An error occurred'
+                                        });
+                                    }
+                                };
+                                
+                                // Function to calculate age group
+                                function calculateAgeGroup(age) {
+                                    if (age > 0 && age <= 2) {
+                                        return 'baby';
+                                    } else if (age > 2 && age <= 21) {
+                                        return 'children';
+                                    } else {
+                                        return 'adult';
+                                    }
+                                }
+  
+                                        
+                                        
                                                     
                                   
 // Api for cancle tickit 
                   
                     const cancelTicket = async (req, res) => {
                       try {
-                          const { email , bookingId } = req.body;
+                          const {tripId , email , bookingId } = req.body;
 
                           if (!email) {
                               return res.status(400).json({ success: false, error: 'Missing Email' });
@@ -1324,7 +1583,7 @@ const client = new twilio(accountSid , authToken)
                             // check if the booking status allows cancellation 
                             if(booking.status !=='confirmed')
                             {
-                              return res.status(400).json({ success : false , error : 'Booking can not be cancelled '})
+                              return res.status(400).json({ success : false , error : 'Booking already cancelled '})
                             }
 
                               // marked the booking as canclled
@@ -1332,8 +1591,17 @@ const client = new twilio(accountSid , authToken)
                               await booking.save();
                               
                               // update the available seats and booked seats on the bus
-
-                              const { busId , selectedSeatNumbers } = booking
+                                const trip = await TripModel.findById(tripId)
+                                if(!trip)
+                                {
+                                  res.status(400).json({
+                                                    success : false ,
+                                                    error : 'trip not found'
+                                  })
+                                }
+                                  const busId = trip.busId
+                                  const { selectedSeatNumbers } = booking                             
+                            
                               const bus = await BusModel.findById(busId)
 
                               if(bus)
@@ -1351,18 +1619,20 @@ const client = new twilio(accountSid , authToken)
                               }
                                    // send a confirmation email to the user
                                    const user = await UserModel.findById(booking.userId)
+                                   
                                    const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
                                     await sendCancelEmail(user.email , 'Ticket Cancellation Confirmation', emailContent)
-                         
+                                      
+                                      
+
                                     res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
                                   } catch (error) {
                                     console.error(error);
                                     return res.status(500).json({ success: false, error: 'An error occurred' });
                                   }
-                                };
-
-                          
-                   
+                                };                                        
+   
+                                        
                         
   // Api for get tickits booked by a user 
 
@@ -1394,44 +1664,149 @@ const client = new twilio(accountSid , authToken)
                     }
                    }
 
-        // APi for changeDate 
+  // APi for change trip Date 
 
-                      const changeDate = async (req,res)=>{
-                        try{
-                          const { bookingId , newDate } = req.body
-                          const requiredFields = [                
-                            'bookingId',
-                            'newDate',                               
-                        ];
-                    
-                        for (const field of requiredFields) {
-                            if (!req.body[field]) {
-                                return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                          const selectUpcomingTrip_for_DateChange = async (req, res) => {
+                            try {
+                            
+                                    const currentDate = new Date();
+                          
+                              // Aggregate trips and group them by routeId
+                              const aggregatedTrips = await TripModel.aggregate([
+                                {
+                                  $match: {
+                                    startingDate: { $gt: currentDate },
+                                  },
+                                },
+                                {
+                                  $group: {
+                                    _id: '$routeId', 
+                                    trips: { $push: '$$ROOT' }, 
+                                    count: { $sum: 1 }, 
+                                  },
+                                },
+                                {
+                                  $match: {
+                                    count: { $gt: 1 }, 
+                                  },
+                                },
+                              ]);
+                          
+                              // Extract the trips from the aggregation result
+                              const commonRouteIdTrips = aggregatedTrips.map((group) => group.trips).flat();
+                          
+                              res.status(200).json({ success: true, message: 'Select the trips for changing the Date', trips: commonRouteIdTrips });
+                            } 
+                            catch (error) {
+                              console.error('Error while fetching trips:', error);
+                              res.status(500).json({ success: false, error: 'There was an error while fetching trips' });
                             }
-                        }    
-                        
-                        const booking = await BookingModel.findOne({ bookingId})
-                        if (!booking) {
-                          return res.status(404).json({ success: false, error: 'Booking not found' });
-                        }   
+                          };     
+                          
+      // change Trip
 
-                         if(booking.DateUpdated)
-                         {
-                          return res.status(400).json({ success : false , error: ' date already updated once'})
-                         }
-                              booking.date = newDate
-                              booking.DateUpdated = true
-                              await booking.save()
-                                
-                                res.status(200).json({ success : true , message : ' Tickit date modified Successfully '})
-                        
-                        }catch(error)
-                        {
-                            console.error(error);
-                            return res.status(500).json({ success : false , error : 'An error occured '})
-                        }
-                      }
-               
+                      const changeTrip = async (req ,res )=>{
+                          try{
+                              const { bookingId , newTripId } = req.body;
+
+                              const requiredFields = ['bookingId' , 'tripId' ];
+                      
+                              for (const field of requiredFields) {
+                                  if (!req.body[field]) {
+                                      return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                  }
+                              }
+                      
+                              const booking = await BookingModel.findOne({ bookingId });
+                      
+                              if (!booking) {
+                                  return res.status(404).json({ success: false, error: 'Booking not found' });
+                              }                       
+                      
+                              if (booking.tripUpdated) {
+                                  return res.status(400).json({ success: false, error: 'trip already updated once' });
+                              }
+                                // Find the old and new trips based on tripIds
+                              const oldTrip = await TripModel.findOne({ tripId: booking.tripId });
+                              const newTrip = await TripModel.findOne({ tripId: newTripId });
+                                  
+                              if (!oldTrip || !newTrip) {
+                                return res.status(404).json({ success: false, error: 'Old or new Trip not found' });
+                              } 
+
+                              const oldBus = await BusModel.findById(oldTrip.busId);
+                              const newBus = await BusModel.findById(newTrip.busId);
+
+                              if (!oldBus || !newBus) {
+                                return res.status(404).json({ success: false, error: 'Old or new Bus not found' });
+                              }
+                                if(!Array.isArray(booking.selectedSeatNumbers) ||
+                                booking.selectedSeatNumbers.length !==
+                                booking.passengers.length )
+                                {
+                                  return res.status(400).json({ success : false ,
+                                                        error : 'Invalid selected seat number'})
+                                }
+
+                                // check if selected seat is already booked on the old trip 
+
+                                for(const seat of booking.selectedSeatNumbers)
+                                {
+                                  if(!oldTrip.availableSeats.includes(seat))
+                                  {
+                                    return res.status(400).json({
+                                                  success : false ,
+                                                  error : `seat ${seat} is not avaialable in old trip`
+                                    })
+                                  }
+                                }
+                                  
+                                          // transfer the seat from old trip to new trip
+
+                                    for (const seat of booking.selectedSeatNumbers)
+                                    {
+                                        oldTrip.availableSeats = 
+                                        oldTrip.availableSeats.filter(oldSeat => oldSeat !== seat)
+                                        newTrip.availableSeats.push(seat)
+                                    }
+
+                                      // update booked seat in the bus for both the old and new trips
+
+                                      oldBus.booked_seat =[...oldBus.booked_seat, ...booking.selectedSeatNumbers]
+                                      newBus.booked_seat =[...newBus.booked_seat, ...booking.selectedSeatNumbers]
+
+                                      // update available seats based on busId
+
+                                      oldTrip.availableSeats = oldBus.Available_seat
+                                      newTrip.availableSeats = newBus.Available_seat
+
+                                      // update booking with new Trip Id and mark it as updated
+
+                                          booking.tripId = newTripId
+                                          booking.tripUpdated = true
+
+                                        // save changes
+                                          await Promise.all([oldTrip.save() ,
+                                                              newTrip.save() ,
+                                                              booking.save(),
+                                                                oldBus.save(),
+                                                              newBus.save() ])
+                                          return res.status(200).json({
+                                            success : true,
+                                            message : 'trip changed successfully'
+                                          })
+
+                                      }
+                                      catch(error)
+                                      {
+                                          return res.status(500).json({
+                                            success : false ,
+                                            error : 'there is an error'
+                                          })
+                                      }
+                                    }
+                          
+                 
                                                       /* Booking Manage */
           //Api for get all Bookings
                  
@@ -1491,156 +1866,9 @@ const client = new twilio(accountSid , authToken)
                             }
                           }
 
-   // API for View seats in Bus for a route
-                                        const viewSeats = async (req, res) => {
-                                          try {
-                                            const busId = req.params.busId;
-                                            const date = req.query.date;
-                                        
-                                            // Find the bus by its ID
-                                            const bus = await BusModel.findById(busId);
-                                        
-                                            if (!bus) {
-                                              return res.status(404).json({ success: false, error: 'Bus not found' });
-                                            }
-                                        
-                                            // Check for bookings on the given date and bus ID
-                                            const bookingsOnDate = await BookingModel.find({ busId, date, status:'confirmed' });
-                                            
-                                        
-                                            console.log('bookingsOnDate:', bookingsOnDate); 
-                                        
-                                            const totalSeatsArray = Array.from({ length: bus.seating_capacity }, (_, index) => index + 1);
-                                        
-                                            let availableSeats = [...totalSeatsArray];
-                                        
-                                            // Initialize bookedSeats as an empty array
-                                            let bookedSeats = [];
-                                        
-                                            // If there are bookings on the given date, update bookedSeats and availableSeats
-                                            if (bookingsOnDate.length > 0) {
-                                              bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
-                                              availableSeats = totalSeatsArray.filter((seat) => !bookedSeats.includes(seat));
-                                            }
-                                        
-                                            console.log('bookedSeats:', bookedSeats); 
-                                        
-                                            res.status(200).json({
-                                              success: true,
-                                              message: 'Seat information for the bus',
-                                              Seat_Info: {
-                                                totalSeats: totalSeatsArray,
-                                                availableSeats,
-                                                bookedSeats,
-                                              },
-                                            });
-                                          } catch (error) {
-                                            console.error(error);
-                                            res.status(500).json({ success: false, error: 'Error while fetching seat information' });
-                                          }
-                                        };
+   
   
-   // APi for calculateFareFor selected seats in Bus 
-                            
-                            const calculateFareForSelectedSeats = async (req, res) => {
-                              try {
-                                const busId = req.params.busId;
-                                const { selectedSeatNumbers, source, destination } = req.body;
-                            
-                                // Input Validation for selected seat numbers
-                                if (!Array.isArray(selectedSeatNumbers) || selectedSeatNumbers.length === 0) {
-                                  return res.status(400).json({ error: 'Invalid or empty selected seat numbers', success: false });
-                                }
-                            
-                                // Access the bus route and available seats from the Database
-                                const bus = await BusModel.findById(busId);
-                            
-                                if (!bus) {
-                                  return res.status(404).json({ success: false, error: 'Bus not found' });
-                                }
-                            
-                                const availableSeats = bus.Available_seat || [];
-                            
-                                // Check if selected bus seats are valid and available
-                                const invalidSeatNumbers = selectedSeatNumbers.filter(seatNumber => !availableSeats.includes(seatNumber));
-                            
-                                if (invalidSeatNumbers.length > 0) {
-                                  return res.status(400).json({
-                                    success: false,
-                                    error: 'Selected seat numbers are invalid or not available',
-                                    invalidSeatNumbers,
-                                  });
-                                }
-                            
-                                // Access the stops from the bus route
-                                const stops = bus.stops || []; 
-                            
-                                // Find the source and destination stops
-                                const sourceStop = stops.find(stop => stop.stopName === source);
-                                const destinationStop = stops.find(stop => stop.stopName === destination);
-                            
-                                if (!sourceStop || !destinationStop) {
-                                  return res.status(400).json({
-                                    success: false,
-                                    error: 'Source or destination stop not found',
-                                  });
-                                }
-                            
-                                // Calculate the distance between source and destination stops
-                                const distance = calculateDistanceBetweenStops(stops, sourceStop, destinationStop);
-                            
-                                // Check the bus type and set farePerUnitDistance accordingly
-                                let farePerUnitDistance;
-                            
-                                switch (bus.bus_type) {
-                                  case 'Non-AC':
-                                    farePerUnitDistance = 0.2; 
-                                    break;
-                                  case 'AC':
-                                    farePerUnitDistance = 0.24; 
-                                    break;
-                                  case 'luxury':
-                                    farePerUnitDistance = 0.3; 
-                                    break;
-                                  default:
-                                    farePerUnitDistance = 0.2; 
-                                }
-                            
-                                // Calculate the total fare for selected seats
-                                const totalFare = selectedSeatNumbers.length * distance * farePerUnitDistance;
-                                
-                                return res.status(200).json({
-                                  success: true,
-                                  message: 'Fare calculated successfully',
-                                  busType: bus.bus_type,
-                                  bordingPoint :source ,
-                                  droppingPoint : destination ,
-                                  seatNumber : selectedSeatNumbers,
-                                  totalFare
-                                 
-                                });
-                              } catch (error) {
-                                console.error(error);
-                                return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
-                              }
-                            };
-                            
-                            // Helper function to calculate distance between stops
-                            function calculateDistanceBetweenStops(stops, sourceStop, destinationStop) {
-                              const sourceIndex = stops.indexOf(sourceStop);
-                              const destinationIndex = stops.indexOf(destinationStop);
-                            
-                              if (sourceIndex === -1 || destinationIndex === -1 || sourceIndex >= destinationIndex) {
-                                return 0;
-                              }
-                            
-                              let distance = 0;
-                              for (let i = sourceIndex; i < destinationIndex; i++) {
-                                distance += stops[i + 1].distance - stops[i].distance;
-                              }
-                            
-                              return distance;
-                            }
+   
                             
 
         // API for TrackBus
@@ -1708,6 +1936,10 @@ const client = new twilio(accountSid , authToken)
                           };
     
 
+  
+  
+  
+  
 
                 
   
@@ -1719,11 +1951,17 @@ const client = new twilio(accountSid , authToken)
                 
     module.exports = { 
                         adminLogin , changePassword, addBus , updateBus ,
-                        deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute, addBusId,
-                        deleteBusId,deleteRoute  , searchBuses , addStop , editStop ,
-                        addStopBeforeStop, allStops ,deleteStop ,calculateStopfare, 
-                        changeProfile , addDriver ,editDriver,deleteDriver , allDrivers ,
-                         getDriver , bookTicket, cancelTicket, userTickets , changeDate , allBookings,
-                         countBookings , viewSeats ,calculateFareForSelectedSeats , trackBus
-                     }
+                        deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,addStop_in_Route,
+                        editStop_in_Route, addStopBeforeStop, deleteStop_in_Route,  deleteRoute ,
+                         searchTrips , createStop ,  addStopBeforeStop, allStops ,
+                         deleteStop , changeProfile , addDriver ,editDriver,
+                         deleteDriver , allDrivers ,getDriver , createTrip, bookTicket, cancelTicket,
+                          userTickets , selectUpcomingTrip_for_DateChange , allBookings,countBookings , viewSeats ,
+                          calculateFareForSelectedSeats , trackBus 
+                         
+                         
+                         
+                        
+                      }
+                       
                     

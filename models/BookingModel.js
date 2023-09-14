@@ -1,4 +1,3 @@
-const { Timestamp } = require('mongodb');
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
@@ -7,41 +6,46 @@ const bookingSchema = new mongoose.Schema({
         ref: 'UserModel'      
     },  
 
-    busId: {
+    tripId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Bus',
-      },
-      date :{
-        type : Date,
-      },
+        ref: 'TripModel', 
+        required: true, 
+    },
 
-   selectedSeatNumbers: [{
-    type : Number,
-    required : true
-        }],
+    date: {
+        type: Date,
+        required: true,
+    },
 
-    totalFare : {
-        type : Number
-        
-    },    
+    selectedSeatNumbers: [{
+        type: Number,
+        required: true,
+    }],
+
+    totalFare: {
+        type: Number,
+    },
+
     status: {
         type: String,
         enum: ['confirmed', 'pending', 'cancelled'],
-        default: 'confirmed'
+        default: 'confirmed',
     },
-         paymentMethod : {
-            type : String 
-           
-         },
+
+    paymentMethod: {
+        type: String,
+    },
 
     paymentStatus: {
         type: String,
         enum: ['paid', 'pending', 'failed'],
-        default: 'pending'
-    },   
-    bookingId: {
-        type: String
+        default: 'pending',
     },
+
+    bookingId: {
+        type: String,
+    },
+
     passengers: [
         {
             name: {
@@ -54,22 +58,21 @@ const bookingSchema = new mongoose.Schema({
                 type: String,
                 enum: ['male', 'female', 'other'],
             },
-            seatNumber :{
-                type : Number,
-                required: false 
+            seatNumber: {
+                type: Number,
+                required: false,
             },
             ageGroup: {
                 type: String,
                 enum: ['baby', 'children', 'adult'],
-                default: 'adult'
-            }
+                default: 'adult',
+            },
         }
     ],
-    
-}, 
-{
+
+}, {
     timestamps: true,
-    });
+});
 
 const BookingModel = mongoose.model('BookingModel', bookingSchema);
 

@@ -8,46 +8,31 @@ const busRouteSchema = new mongoose.Schema({
         required : true,
     },
     source :String,
-    destination: String,
-    starting_Date:{ 
-        type : Date,
-        required : true
-               },
-    end_Date: {
-          type : Date, 
-          required : true
-    },   
-    busInfo : [{
-                  busId : {
-                        type: mongoose.Schema.Types.ObjectId,
-                        ref: 'BusModel',                        
-                }
-              }],
-    
-    
-    driverId:[ {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'DriverModel', 
-           
-  }],
-   
-    contact_no : { 
+    destination: String,  
+    stops:[{
+      stopName : {
         type : String,
-       required : true,
-     },
-    
-     status: {
+       
+      },
+      arrivalTime : {
+        type : String,
+        
+      },            
+      departureTime:{
         type: String,
-        enum: ['active', 'inactive'],
-        default: 'active', 
+        
+      },
+      distance: {
+        type: Number,  
+       
       },
      
-    Date:{ 
-      type : Date,     
-        },
-    
-            
-
+}],
+status: {
+  type: String,
+  enum: ['active', 'inactive'],  
+  default :'active'
+},
 },
 {timestamps: true}
 )

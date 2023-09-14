@@ -16,12 +16,12 @@ const bodyParser = require('body-parser')
 app.use(express.json())
 app.use(bodyParser.urlencoded({ extended : true}))
 app.use(cors())
+app.use( express.static('uploads'));
 
 
 app.get('/', (req, res) => {
  res.sendFile(__dirname +'/booking.html')
 });
-
 
 //Router configuration   
 app.use('/api', userRoutes );
@@ -32,6 +32,8 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   next();
 });
+
+
 
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);

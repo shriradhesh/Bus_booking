@@ -33,18 +33,19 @@ const upload = require('../uploadImage')
         router.get('/allBuses', adminController.allBuses)
 // APi for get a Bus by busID
         router.get('/getBus/:busId',adminController.getBus)
-//Api for add Stop in a Route with the help of bus id 
-        router.post('/addStop/:busId',adminController.addStop)
-//Api for edit Stop in a Route with the help of stop id and busId
-        router.put('/editStop/:stopId/:busId',adminController.editStop)
-// Api to add stop before the stop
-         router.post('/addStopBeforeStop/:busId', adminController.addStopBeforeStop)
-// Api for get all stops in a bus
-        router.get('/allStops/:busId', adminController.allStops)
+                           
+                             /* STOP MANAGEMENT  */
+
+
+
+//Api for add Stop in a stop Schema
+        router.post('/createStop',adminController.createStop)
+
+// Api for get all stops in a Stop Schema 
+        router.get('/allStops', adminController.allStops)
 // Api for delete a stop by stop id and bus id
-        router.delete('/deleteStop/:stopId/:busId', adminController.deleteStop)
-//Api for assign stop price
-        router.post('/calculateStopfare/:busId', adminController.calculateStopfare)
+        router.delete('/deleteStop/:stopId', adminController.deleteStop)
+
 
 
                               
@@ -55,14 +56,16 @@ const upload = require('../uploadImage')
         router.get('/allRoute',adminController.allroutes)
 //Api for edit Route details by id
         router.put('/editRoute/:routeId',adminController.editRoute)
-//Api for add BusId in a Route
-        router.post('/addBusId/:routeId',adminController.addBusId) 
-//Api for add BusId in a Route
-        router.delete('/deleteBusId/:Id/:routeId',adminController.deleteBusId) 
 //Api for delete Route by id
         router.delete('/deleteRoute/:routeId', adminController.deleteRoute)
-//Api for get a Route by  routeId
-        router.get('/searchBuses',adminController.searchBuses)
+//Api for add Stop in a route 
+        router.post('/addStop_in_Route/:routeId',adminController.addStop_in_Route)
+//Api for edit stop in a Route
+        router.put('/editStop_in_Route/:stopId/:routeId', adminController.editStop_in_Route )
+// Api to add stop before the stop in a Route 
+        router.post('/addStopBeforeStop/:routeId', adminController.addStopBeforeStop)
+// Api to add stop before the stop in a Route 
+        router.delete('/deleteStop_in_Route/:stopId/:routeId', adminController.deleteStop_in_Route)
 
 
                                 /* Admin change Profile */
@@ -82,6 +85,18 @@ const upload = require('../uploadImage')
 // Api for get a Driver by driver id
         router.get('/getDriver/:driverId', adminController.getDriver)
 
+                                                  /*  Trip Management  */
+// Api for create a trip 
+          router.post('/createTrip', adminController.createTrip)
+// Api for get a Trip for desired source , destination and Date
+          router.get('/searchTrips',adminController.searchTrips)
+// Api for view seats in Bus for a Route
+           router.get('/viewSeats/:tripId', adminController.viewSeats)
+// Api for calculate Fare For SelectedSeats in a Bus
+router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateFareForSelectedSeats)
+
+
+
 
                                      /*  Tickit Manage  */
 //Api for Book Tickit
@@ -91,19 +106,17 @@ const upload = require('../uploadImage')
 // APi for get all tickets of user 
         router.get('/userTickets/:userId', adminController.userTickets)
 // Api for Modify Ticket (departure date)
-        router.post('/changeDate', adminController.changeDate)
+        router.get('/selectUpcomingTrip_for_DateChange', adminController.selectUpcomingTrip_for_DateChange)
                                  
                                         /*  Booking Manage */
 // Api for get all Tickits done by users
         router.get('/allBookings', adminController.allBookings)
 // APi for count bookings for particular date
         router.get('/countBookings',adminController.countBookings)
-// Api for view seats in Bus for a Route
-        router.get('/viewSeats/:busId', adminController.viewSeats)
-// Api for calculate Fare For SelectedSeats in a Bus
-        router.post('/calculateFareForSelectedSeats/:busId', adminController.calculateFareForSelectedSeats)
+
 // Api for traclBus
         router.get('/trackBus/:busId', adminController.trackBus)
+
 
                                    
                                      

@@ -7,17 +7,16 @@ const busSchema = new mongoose.Schema({
   seating_capacity: {
     type : Number,
     required : true,
-  
-},
+  },
     Available_seat : [{
       type : Number,
-      min : 0,
-      
+      min : 0,      
     },],
+
     booked_seat : [{
-      type : Number,  
-      
+      type : Number,       
     }],
+    
   bus_no: {
     type : String,
     required : true
@@ -53,28 +52,6 @@ const busSchema = new mongoose.Schema({
 
     },
     
-     stops:[{
-              stopName : {
-                type : String,
-               
-              },
-              arrivalTime : {
-                type : String,
-                
-              },            
-              departureTime:{
-                type: String,
-                
-              },
-              distance: {
-                type: Number,  
-               
-              },
-             
-     }],
-   
-      
-   
   },
     {timestamps: true}
      
