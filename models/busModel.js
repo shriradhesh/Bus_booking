@@ -7,15 +7,7 @@ const busSchema = new mongoose.Schema({
   seating_capacity: {
     type : Number,
     required : true,
-  },
-    Available_seat : [{
-      type : Number,
-      min : 0,      
-    },],
-
-    booked_seat : [{
-      type : Number,       
-    }],
+  },   
     
   bus_no: {
     type : String,

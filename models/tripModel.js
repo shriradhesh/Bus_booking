@@ -4,7 +4,6 @@ const tripSchema = new mongoose.Schema({
     tripNumber : {
         type : Number,
         required : true
-
     },
  startingDate: {
         type: Date,
@@ -43,6 +42,14 @@ const tripSchema = new mongoose.Schema({
     enum: ['scheduled', 'completed', 'cancelled'],
     default: 'scheduled',
   },
+  Available_seat : [{
+    type : Number,
+    min : 0,      
+  },],
+
+  booked_seat : [{
+    type : Number,       
+  }],
  
 }, { timestamps: true });
 
