@@ -1718,128 +1718,130 @@ const client = new twilio(accountSid , authToken)
                           
       // change Trip
 
-                                        const changeTrip = async (req, res) => {
-                                          try {
-                                            const { bookingId, newTripId } = req.body;
-                                        
-                                            const requiredFields = ['bookingId', 'newTripId'];
-                                        
-                                            for (const field of requiredFields) {
-                                              if (!req.body[field]) {
-                                                return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                              }
-                                            }
-                                        
-                                            const booking = await BookingModel.findOne({ bookingId });
-                                        
-                                            if (!booking) {
-                                              return res.status(404).json({ success: false, error: 'Booking not found' });
-                                            }
-                                        
-                                            if (booking.tripUpdated) {
-                                              return res.status(400).json({ success: false, error: 'Trip already updated once' });
-                                            }
-                                        
-                                            const oldTripId = booking.tripId;
-                                        
-                                            // Find the old and new trips based on tripIds
-                                            const oldTrip = await TripModel.findById(oldTripId);
-                                        
-                                            if (!oldTrip) {
-                                              console.error(`Old Trip not found for ID: ${oldTripId}`);
-                                              return res.status(404).json({ success: false, error: 'Old Trip not found' });
-                                            }
-                                        
-                                            const newTrip = await TripModel.findById(newTripId);
-                                        
-                                            if (!newTrip) {
-                                              console.error(`New Trip not found for ID: ${newTripId}`);
-                                              return res.status(404).json({ success: false, error: 'New trip not found' });
-                                            }
-                                        
-                                            if (!Array.isArray(booking.selectedSeatNumbers) || booking.selectedSeatNumbers.length !== booking.passengers.length) {
-                                              return res.status(400).json({ success: false, error: 'Invalid selected seat number' });
-                                            }
-                                        
-                                            // Check if oldTrip and oldTrip.booked_seat are defined and are arrays
-                                            if (!oldTrip || !Array.isArray(oldTrip.booked_seat)) {
-                                              return res.status(400).json({
-                                                success: false,
-                                                error: 'Invalid old trip data',
-                                              });
-                                            }
-                                        
-                                            // Transfer the selected seats from the old trip to the new trip's booked_seat and vice versa
-                                            for (const seat of booking.selectedSeatNumbers) {
-                                              const oldSeatIndex = oldTrip.booked_seat.indexOf(seat);
-                                              const newSeatIndex = newTrip.Available_seat.indexOf(seat);
-                                        
-                                              if (oldSeatIndex !== -1) {
-                                                oldTrip.booked_seat.splice(oldSeatIndex, 1);
-                                                oldTrip.Available_seat.push(seat);
-                                              }
-                                        
-                                              if (newSeatIndex !== -1) {
-                                                newTrip.Available_seat.splice(newSeatIndex, 1);
-                                                newTrip.booked_seat.push(seat);
-                                              }
-                                            }
-                                        
-                                            // Check if the same selectedSeatNumbers of the new trip are already booked in BookingModel
-                                            const existingBooking = await BookingModel.findOne({
-                                              tripId: newTripId,
-                                              selectedSeatNumbers: { $in: booking.selectedSeatNumbers },
-                                            });
-                                        
-                                            if (existingBooking) {
-                                              // Assign different seat numbers to the user on the same bookingId
-                                              const availableSeatsInNewTrip = newTrip.Available_seat;
-                                              const newSelectedSeatNumbers = [];
-                                        
-                                              for (const seat of booking.selectedSeatNumbers) {
-                                                if (availableSeatsInNewTrip.includes(seat)) {
-                                                  newSelectedSeatNumbers.push(seat);
-                                                  availableSeatsInNewTrip.splice(availableSeatsInNewTrip.indexOf(seat), 1);
-                                                } else {
-                                                  // Find and assign a different seat
-                                                  const differentSeat = availableSeatsInNewTrip.shift(); 
-                                                  newSelectedSeatNumbers.push(differentSeat);
-                                                }
-                                              }
-                                        
-                                              // Update the selectedSeatNumbers and passengers of the existing booking
-                                              existingBooking.selectedSeatNumbers = newSelectedSeatNumbers;
-                                              // Update passengers accordingly
-                                              for (let i = 0; i < booking.passengers.length; i++) {
-                                                existingBooking.passengers[i].seat = newSelectedSeatNumbers[i];
-                                              }
-                                            }
-                                        
-                                            // Check if there are available seats in the new trip
-                                            if (newTrip.Available_seat.length === 0) {
-                                              return res.status(400).json({
-                                                success: false,
-                                                error: 'No available seats in the new trip. Please select another trip.',
-                                              });
-                                            }
-                                        
-                                            // Save changes
-                                            await Promise.all([oldTrip.save(), newTrip.save(), booking.save(), existingBooking ? existingBooking.save() : null]);
-                                        
-                                            return res.status(200).json({
-                                              success: true,
-                                              message: 'Trip changed successfully',
-                                            });
-                                        
-                                          } catch (error) {
-                                            console.error(error);
-                                            return res.status(500).json({
-                                              success: false,
-                                              error: 'There is an error',
-                                            });
-                                          }
-                                        };
-      
+                          const changeTrip = async (req, res) => {
+                            try {
+                              const { bookingId, newTripId } = req.body;
+                          
+                              const requiredFields = ['bookingId', 'newTripId'];
+                          
+                              for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                              }
+                          
+                              const booking = await BookingModel.findOne({ bookingId });
+                          
+                              if (!booking) {
+                                return res.status(404).json({ success: false, error: 'Booking not found' });
+                              }
+                          
+                              if (booking.tripUpdated) {
+                                return res.status(400).json({ success: false, error: 'Trip already updated once' });
+                              }
+                          
+                              const oldTripId = booking.tripId;
+                          
+                              // Find the old and new trips based on tripIds
+                              const oldTrip = await TripModel.findById(oldTripId);
+                          
+                              if (!oldTrip) {
+                                console.error(`Old Trip not found for ID: ${oldTripId}`);
+                                return res.status(404).json({ success: false, error: 'Old Trip not found' });
+                              }
+                          
+                              const newTrip = await TripModel.findById(newTripId);
+                          
+                              if (!newTrip) {
+                                console.error(`New Trip not found for ID: ${newTripId}`);
+                                return res.status(404).json({ success: false, error: 'New trip not found' });
+                              }
+                          
+                              if (!Array.isArray(booking.selectedSeatNumbers) || booking.selectedSeatNumbers.length !== booking.passengers.length) {
+                                return res.status(400).json({ success: false, error: 'Invalid selected seat number' });
+                              }
+                          
+                              // Check if oldTrip and oldTrip.booked_seat are defined and are arrays
+                              if (!oldTrip || !Array.isArray(oldTrip.booked_seat)) {
+                                return res.status(400).json({
+                                  success: false,
+                                  error: 'Invalid old trip data',
+                                });
+                              }
+                          
+                              // Transfer the selected seats from the old trip to the new trip's booked_seat and vice versa
+                              for (const seat of booking.selectedSeatNumbers) {
+                                const oldSeatIndex = oldTrip.booked_seat.indexOf(seat);
+                                const newSeatIndex = newTrip.Available_seat.indexOf(seat);
+                          
+                                if (oldSeatIndex !== -1) {
+                                  oldTrip.booked_seat.splice(oldSeatIndex, 1);
+                                  oldTrip.Available_seat.push(seat);
+                                }
+                          
+                                if (newSeatIndex !== -1) {
+                                  newTrip.Available_seat.splice(newSeatIndex, 1);
+                                  newTrip.booked_seat.push(seat);
+                                }
+                              }
+                          
+                              // Check if the same selectedSeatNumbers of the new trip are already booked in BookingModel
+                              const existingBooking = await BookingModel.findOne({
+                                tripId: newTripId,
+                                selectedSeatNumbers: { $in: booking.selectedSeatNumbers },
+                              });
+                          
+                              if (existingBooking) {
+                                // Assign different seat numbers to the user on the same bookingId
+                                const availableSeatsInNewTrip = newTrip.Available_seat;
+                                const newSelectedSeatNumbers = [];
+                          
+                                for (const seat of booking.selectedSeatNumbers) {
+                                  if (availableSeatsInNewTrip.includes(seat)) {
+                                    newSelectedSeatNumbers.push(seat);
+                                    availableSeatsInNewTrip.splice(availableSeatsInNewTrip.indexOf(seat), 1);
+                                  } else {
+                                    // Find and assign a different seat
+                                    const differentSeat = availableSeatsInNewTrip.shift(); 
+                                    newSelectedSeatNumbers.push(differentSeat);
+                                  }
+                                }
+                          
+                                // Update the selectedSeatNumbers and passengers of the existing booking
+                                existingBooking.selectedSeatNumbers = newSelectedSeatNumbers;
+                                // Update passengers accordingly
+                                for (let i = 0; i < booking.passengers.length; i++) {
+                                  existingBooking.passengers[i].seat = newSelectedSeatNumbers[i];
+                                }
+                              }
+                          
+                              // Check if there are available seats in the new trip
+                              if (newTrip.Available_seat.length === 0) {
+                                return res.status(400).json({
+                                  success: false,
+                                  error: 'No available seats in the new trip. Please select another trip.',
+                                });
+                              }
+                          
+                              // Save changes
+                              await Promise.all([oldTrip.save(), newTrip.save(), booking.save(), existingBooking ? existingBooking.save() : null]);
+                          
+                              return res.status(200).json({
+                                success: true,
+                                message: 'Trip changed successfully',
+                              });
+                          
+                            } catch (error) {
+                              console.error(error);
+                              return res.status(500).json({
+                                success: false,
+                                error: 'There is an error',
+                              });
+                            }
+                          };
+                                                            
+                                                            
+                          
       
                                 
                  
@@ -1848,21 +1850,16 @@ const client = new twilio(accountSid , authToken)
                  
                   const allBookings = async (req, res) => {
                     try {
-                      const {status , date} = req.query
+                      const {status} = req.query
                   
-                      let bookings;
-                      if (!date) {
-                        return res.status(400).json({ success: false, error: 'Date is required' });
-                      }
-                      const dateQuery = new Date(date);
+                      let bookings;                     
+                     
                       if (status === 'confirmed') {
-                        bookings = await BookingModel.find({ status: 'confirmed' , date : dateQuery });
+                        bookings = await BookingModel.find({ status: 'confirmed'  });
                       } else if (status === 'pending' || status ==='cancelled') {
-                        bookings = await BookingModel.find({ status:  {$in:['pending','cancelled'] } , date : dateQuery});
+                        bookings = await BookingModel.find({ status:  {$in:['pending','cancelled'] }});
                       }
-                      else if (!status) {
-                        bookings = await BookingModel.find({ date: dateQuery });
-                      } else {
+                      else {
                         return res.status(400).json({ success: false, error: 'Invalid status value' });
                       }
                         
@@ -1896,83 +1893,88 @@ const client = new twilio(accountSid , authToken)
                           
                               const count = bookings.length;
                           
-                              res.status(200).json({ success: true, message: `Count of ${status} bookings for date ${date}`, count});
+                              res.status(200).json({ success: true, message: `Count of ${status} bookings for date ${date}`, count , Bookings : bookings});
                             } catch (error) {
                               res.status(500).json({ success: false, error: 'An error occurred while retrieving bookings' });
                             }
                           }
-
-   
-  
-   
                             
 
     // API for TrackBus
       
-                                  const trackBus = async (req, res) => {
-                                    try {
-                                      const { busId } = req.params;
-                                      const currentStopName = req.body.currentStopName;
-                                  
-                                      // Find the bus by its Bus Id
-                                      const bus = await BusModel.findOne({ _id: busId });
-                                  
-                                      if (!bus) {
-                                        return res.status(400).json({ success: false, error: 'Bus Not found' });
+                          const trackBus = async (req, res) => {
+                            try {
+                              const { tripId } = req.params;
+                              const yourStopName = req.body.yourStopName;
+                          
+                              // Find the trip by Trip Id
+                              const trip = await TripModel.findById(tripId);
+                          
+                              if (!trip) {
+                                return res.status(400).json({ success: false, error: 'Trip not found' });
+                              }
+                              
+                              // Find the route in a trip using tripId
+                              const routeId = trip.routeId;
+                          
+                              const route = await BusRoute.findById(routeId);
+                              if (!route) {
+                                return res.status(400).json({ success: false, error: 'Route not found in trip' });
+                              }
+                          
+                              // Get the stops and arrival times for the route
+                              const stops = route.stops || [];
+                          
+                              // Find the currentStop
+                              const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
+                          
+                              if (currentStopIndex === -1) {
+                                return res.status(400).json({ success: false, error: 'Current stop not found' });
+                              }
+                          
+                              const currentStop = stops[currentStopIndex];
+                              let previousStop = null;
+                              let timeTakenFromPrevStop = 'none';
+                          
+                              if (currentStopIndex > 0) {
+                                previousStop = stops[currentStopIndex - 1];
+                                timeTakenFromPrevStop = calculateTravelTime(previousStop.departureTime, currentStop.arrivalTime);
+                              }
+                          
+                              res.status(200).json({
+                                success: true,
+                                message: 'Bus Tracking Information',
+                                Bus_Tracking: {
+                                  your_Stop: {
+                                    stopName: currentStop.stopName,
+                                    arrivalTime: currentStop.arrivalTime,
+                                  },
+                                  previousStop: previousStop
+                                    ? {
+                                        stopName: previousStop.stopName,
+                                        departureTime: previousStop.departureTime,
                                       }
-                                  
-                                      // Get the stops and arrival times for the bus
-                                      const stops = bus.stops || [];
-                                  
-                                      // Find the currentStop
-                                      const currentStop = stops.find((stop) => stop.stopName === currentStopName);
-                                  
-                                      if (!currentStop) {
-                                        return res.status(400).json({ success: false, error: 'Current stop not found' });
-                                      }                                   
-                                     
-
-                                      // Calculate travel time to the current stop
-                                      const travelTime = calculateTravelTime(stops, currentStop); 
-                                     
-                                      res.status(200).json({
-                                        success: true,
-                                        message: 'BUS Tracking Information',
-                                        Bus_Tracking: {
-                                         
-                                          currentStop: {
-                                            stopName: currentStop.stopName,
-                                            arrivalTime: currentStop.arrivalTime,
-                                          },
-                                          timeTaken_from_prevStop : travelTime,
-                                         
-                                          
-                                        },
-                                      });
-                                    } catch (error) {
-                                      console.error(error);
-                                      res.status(500).json({ success: false, error: 'There is an error tracking the BUS' });
-                                    }
-                                  };
-                                  
-                                  // Function to calculate travel time to the current stop
-                          const calculateTravelTime = (stops, currentStop) => {
-                            const currentStopIndex = stops.findIndex((stop) => stop.stopName === currentStop.stopName);
-
-                            if (currentStopIndex <= 0) {
-                              return 'none'; // If the current stop is the first stop, travel time is not applicable
+                                    : null,
+                                    timeTaken_From_PrevStop: timeTakenFromPrevStop,
+                                },
+                              });
+                            } catch (error) {
+                              console.error(error);
+                              res.status(500).json({ success: false, error: 'There is an error tracking the BUS' });
                             }
-
-                            const prevStop = stops[currentStopIndex - 1];
-                            const prevTime = moment(prevStop.departureTime, 'hh:mm A'); 
-                            const currentTime = moment(currentStop.arrivalTime, 'hh:mm A');
-
+                          };
+                          
+                          // Function to calculate travel time
+                          const calculateTravelTime = (departureTime, arrivalTime) => {
+                            const prevTime = moment(departureTime, 'hh:mm A');
+                            const currentTime = moment(arrivalTime, 'hh:mm A');
+                          
                             const timeDiff = currentTime.diff(prevTime, 'minutes');
                             return `${Math.floor(timeDiff / 60)} hours ${timeDiff % 60} minutes`;
                           };
-    
+                          
 
-  
+            
   
   
   

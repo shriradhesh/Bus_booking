@@ -117,7 +117,7 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
         router.get('/countBookings',adminController.countBookings)
 
 // Api for traclBus
-        router.get('/trackBus/:busId', adminController.trackBus)
+        router.get('/trackBus/:tripId', adminController.trackBus)
 
 
                                    
