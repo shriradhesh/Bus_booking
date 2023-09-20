@@ -8,6 +8,7 @@ const BusModel = require('../models/busModel')
 const stopModel = require('../models/stopModel')
 const sendCancelEmail =require("../utils/sendCancelEmail")
 const sendBookingEmail =require("../utils/sendBookingEmail")
+const NotificationDetail = require('../models/notificationDetails')
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
 const DriverModel = require('../models/driverModel')
@@ -24,10 +25,13 @@ const TripModel = require('../models/tripModel')
 const cron = require('node-cron');
 const axios = require('axios');
 const FcmAdmin = require('firebase-admin');
+const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
+const _ = require('lodash')
+
 
     
  // Initialize Firebase Admin SDK with credentials
- const serviceAccount = require('../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json')
+ 
  FcmAdmin.initializeApp({
    credential : FcmAdmin.credential.cert(serviceAccount)
  })
@@ -1209,6 +1213,28 @@ const FcmAdmin = require('firebase-admin');
                                                 console.error('Error while updating trip status :', error);
                                                  }
                                      })
+      // Api to get all the Trip for a particular StartingDate
+                                    const allTrips =  async (req, res) => {
+                                      try {
+                                        const { startingDate } = req.query;
+                                    
+                                        if (!startingDate) {
+                                          return res.status(400).json({ error: 'Starting date is required', success: false });
+                                        }
+                                    
+                                        // Find trips with the specified startingDate
+                                        const trips = await TripModel.find({ startingDate });
+                                    
+                                        if (trips.length === 0) {
+                                          return res.status(404).json({ error: 'No trips found for the specified startingDate', success: false });
+                                        }
+                                    
+                                        res.status(200).json({ success: true, trips });
+                                      } catch (error) {
+                                        console.error(error);
+                                        res.status(500).json({ success: false, error: 'There was an error while fetching trips' });
+                                      }
+                                    };
                                      
       // Api for searchtrips    
                                   const searchTrips = async (req, res) => {
@@ -1984,77 +2010,126 @@ const FcmAdmin = require('firebase-admin');
 
     // API for TrackBus
       
-                          const trackBus = async (req, res) => {
-                            try {
-                              const { tripId } = req.params;
-                              const yourStopName = req.body.yourStopName;
-                          
-                              // Find the trip by Trip Id
-                              const trip = await TripModel.findById(tripId);
-                          
-                              if (!trip) {
-                                return res.status(400).json({ success: false, error: 'Trip not found' });
-                              }
+                              const trackBus = async (req, res) => {
+                                try {
+                                  const { tripId } = req.params;
+                                  const yourStopName = req.body.yourStopName;
                               
-                              // Find the route in a trip using tripId
-                              const routeNumber = trip.routeNumber;
-                          
-                              const route = await BusRoute.findOne({ routeNumber } );
-                              if (!route) {
-                                return res.status(400).json({ success: false, error: 'Route not found in trip' });
-                              }
-                          
-                              // Get the stops and arrival times for the route
-                              const stops = route.stops || [];
-                          
-                              // Find the currentStop
-                              const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
-                          
-                              if (currentStopIndex === -1) {
-                                return res.status(400).json({ success: false, error: 'Current stop not found' });
-                              }
-                          
-                              const currentStop = stops[currentStopIndex];
-                              let previousStop = null;
-                              let timeTakenFromPrevStop = 'none';
-                          
-                              if (currentStopIndex > 0) {
-                                previousStop = stops[currentStopIndex - 1];
-                                timeTakenFromPrevStop = calculateTravelTime(previousStop.departureTime, currentStop.arrivalTime);
-                              }
-                          
-                              res.status(200).json({
-                                success: true,
-                                message: 'Bus Tracking Information',
-                                Bus_Tracking: {
-                                  your_Stop: {
-                                    stopName: currentStop.stopName,
-                                    arrivalTime: currentStop.arrivalTime,
-                                  },
-                                  previousStop: previousStop
-                                    ? {
-                                        stopName: previousStop.stopName,
-                                        departureTime: previousStop.departureTime,
-                                      }
-                                    : null,
-                                    timeTaken_From_PrevStop: timeTakenFromPrevStop,
-                                },
-                              });
-                            } catch (error) {
-                              console.error(error);
-                              res.status(500).json({ success: false, error: 'There is an error tracking the BUS' });
-                            }
-                          };
-                          
-                          // Function to calculate travel time
-                          const calculateTravelTime = (departureTime, arrivalTime) => {
-                            const prevTime = moment(departureTime, 'hh:mm A');
-                            const currentTime = moment(arrivalTime, 'hh:mm A');
-                          
-                            const timeDiff = currentTime.diff(prevTime, 'minutes');
-                            return `${Math.floor(timeDiff / 60)} hours ${timeDiff % 60} minutes`;
-                          };
-                          
+                                  // Find the trip by Trip Id
+                                  const trip = await TripModel.findById(tripId);
+                              
+                                  if (!trip) {
+                                    return res.status(400).json({ success: false, error: 'Trip not found' });
+                                  }
+                              
+                                  // Find the route in a trip using tripId
+                                  const routeNumber = trip.routeNumber;
+                              
+                                  const route = await BusRoute.findOne({ routeNumber });
+                                  if (!route) {
+                                    return res.status(400).json({ success: false, error: 'Route not found in trip' });
+                                  }
+                              
+                                  // Get the stops for the route
+                                  const stops = route.stops || [];
+                              
+                                  // Find the currentStop
+                                  const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
+                              
+                                  if (currentStopIndex === -1) {
+                                    return res.status(400).json({ success: false, error: 'Current stop not found' });
+                                  }
+                              
+                                  const currentStop = stops[currentStopIndex];
+                                  let previousStop = null;
+                              
+                                  if (currentStopIndex > 0) {
+                                    previousStop = stops[currentStopIndex - 1];
+                                  }
+                              
+                                  res.status(200).json({
+                                    success: true,
+                                    message: 'Bus Tracking Information',
+                                    Bus_Tracking: {
+                                      your_Stop: {
+                                        stopName: currentStop.stopName,
+                                        EstimatedTimeTaken : currentStop.EstimatedTimeTaken,
+                                      },
+                                      previousStop: previousStop
+                                        ? {
+                                            stopName: previousStop.stopName,
+                                            
+                                          }
+                                        : null,
+                                    },
+                                  });
+                                } catch (error) {
+                                  console.error(error);
+                                  res.status(500).json({ success: false, error: 'There is an error tracking the BUS' });
+                                }
+                              };
+                              
+   // send PUSH Notification
+                                  
+                                const sendUpcomingNotifications = async () => {
+                                  try {
+                                    const currentTime = new Date();
+                                    const threeHoursLater = new Date(currentTime.getTime() + 3 * 60 * 60 * 1000);
+                                
+                                    const upcomingBookings = await BookingModel.find({
+                                      'tripId.startingDate': {
+                                        $gte: currentTime,
+                                        $lte: threeHoursLater,
+                                      },
+                                    });
+                                
+                                    if (upcomingBookings.length === 0) {
+                                      console.log('No upcoming bookings found');
+                                      return;
+                                    }
+                                
+                                    const registrationTokens = upcomingBookings.map((booking) => booking.userId);
+                                
+                                    const message = {
+                                      notification: {
+                                        title: 'Upcoming Journey Reminder',
+                                        body: 'You have an upcoming journey.',
+                                      },
+                                      tokens: registrationTokens,
+                                    };
+                                
+                                    // Send notifications to users with upcoming journeys
+                                    const response = await FcmAdmin.messaging().sendMulticast(message);
+                                
+                                    // Save the responses in the database
+                                    const chunkSize = 100;
+                                    const chunkedResponse = _.chunk(response.responses, chunkSize);
+                                
+                                    for (let index = 0; index < chunkedResponse.length; index++) {
+                                      const chunk = chunkedResponse[index];
+                                      const docsToInsertInBulk = chunk.map((resp, idx) => ({
+                                        userId: registrationTokens[index * chunkSize + idx],
+                                        status: resp.success,
+                                        messageId: resp.success ? resp.messageId : undefined,
+                                      }));
+                                
+                                      await NotificationDetail.insertMany(docsToInsertInBulk);
+                                    }
+                                
+                                    console.log('Notifications sent successfully');
+                                  } catch (error) {
+                                    console.error('Error sending notifications:', error);
+                                  }
+                                };
+                                
+                                // Schedule the job to run every hour
+                                cron.schedule('0 * * * *', () => {
+                                  sendUpcomingNotifications();
+                                });
+                                                                
+
+
+                               
 
 
   
@@ -2075,13 +2150,10 @@ const FcmAdmin = require('firebase-admin');
                         editStop_in_Route, addStopBeforeStop, deleteStop_in_Route,  deleteRoute ,
                          searchTrips , createStop ,  addStopBeforeStop, allStops ,
                          deleteStop , changeProfile , addDriver ,editDriver,
-                         deleteDriver , allDrivers ,getDriver , createTrip, bookTicket, cancelTicket,
+                         deleteDriver , allDrivers ,getDriver , createTrip, allTrips , bookTicket, cancelTicket,
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
-                          calculateFareForSelectedSeats , trackBus 
+                          calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications
                          
-                         
-                         
-                        
                       }
                        
                     

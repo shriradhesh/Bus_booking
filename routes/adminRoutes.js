@@ -4,6 +4,7 @@ const adminController = require('../controller/adminController')
 const multer = require('multer')
 const path = require('path')
 const upload = require('../uploadImage')
+const { sendUpcomingNotifications } = require('../controller/adminController');
 
 
 
@@ -88,6 +89,8 @@ const upload = require('../uploadImage')
                                                   /*  Trip Management  */
 // Api for create a trip 
           router.post('/createTrip', adminController.createTrip)
+// Api to get all trips on particualr startingDate
+          router.get('/allTrips', adminController.allTrips)
 // Api for get a Trip for desired source , destination and Date
           router.get('/searchTrips',adminController.searchTrips)
 // Api for view seats in Bus for a Route

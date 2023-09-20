@@ -11,6 +11,15 @@ const path =require('path')
 const bodyParser = require('body-parser')
 
 
+const { sendUpcomingNotifications } = require('./controller/adminController');
+const cron = require('node-cron');
+
+// Schedule the job to run every hour
+cron.schedule('0 * * * *', () => {
+  sendUpcomingNotifications();
+});
+
+
 
 //middleware
 
