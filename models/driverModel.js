@@ -1,6 +1,11 @@
 const mongoose = require('mongoose')
 const driverSchema = new mongoose.Schema({
    
+    driverId : {
+      type : String,
+      required : true,
+      unique : true
+    },
     driverName : {
         type : String,
         required : true,
@@ -12,6 +17,7 @@ const driverSchema = new mongoose.Schema({
     driverLicence_number : {
         type : String,
         required : true,
+        unique : true
     },
     status: {
       type: String,

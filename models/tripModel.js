@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const tripSchema = new mongoose.Schema({
-    tripNumber : {
+  tripNumber : {
         type : Number,
         required : true
     },
@@ -9,34 +9,32 @@ const tripSchema = new mongoose.Schema({
         type: Date,
         required: true,
       },
+  
  endDate: {
         type: Date,
         required: true,
       },
-  busId: {
-    type: mongoose.Schema.Types.ObjectId,
+  bus_no : {
+    type: String,
     ref: 'BusModel',
     required: true,
   },
   driverId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'DriverModel',
     required: true,
   },
-  routeId:
+  routeNumber:
   {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Number,
     ref: 'DriverModel',
     required: true,
   },
 
-  scheduled_DepartureTime: {
-    type: Date,
-    
+  startingTime: {
+    type: String,    
   },
-  scheduled_ArrivalTime: {
-    type: Date,
-  },
+  
   status: {
     type: String,
     enum: ['scheduled', 'completed', 'cancelled'],
