@@ -48,6 +48,9 @@ const tripSchema = new mongoose.Schema({
   booked_seat : [{
     type : Number,       
   }],
+  bus_type: String,
+  amenities: [String],
+  images: [String],
  
 }, { timestamps: true });
 

@@ -27,6 +27,7 @@ const axios = require('axios');
 const FcmAdmin = require('firebase-admin');
 const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
 const _ = require('lodash')
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
     
@@ -1147,6 +1148,7 @@ const _ = require('lodash')
                           return res.status(400).json({ error: 'Bus not found ', success: false });
                         }
                            
+                        const { bus_type , amenities , images } = bus
                         // Check for Route number
                         const route = await BusRoute.findOne({routeNumber });
                     
@@ -1175,7 +1177,10 @@ const _ = require('lodash')
                               driverId,
                               routeNumber,                                                                               
                               status,
-                              Available_seat
+                              Available_seat,
+                              bus_type,
+                              amenities,
+                              images,
                             })
 
                             const savedTrip = await newTrip.save()
@@ -1237,58 +1242,61 @@ const _ = require('lodash')
                                     };
                                      
       // Api for searchtrips    
-                                  const searchTrips = async (req, res) => {
-                                    try {
-                                      const { sourceStop, destinationStop, date } = req.body;
-                                  
-                                      // Find trips that match the source stop, destination stop, and starting date
-                                      const matchingTrips = await TripModel.aggregate([
-                                        {
-                                          $match: {
-                                            startingDate: new Date(date),
+                                    const searchTrips = async (req, res) => {
+                                      try {
+                                        const { sourceStop, destinationStop, date } = req.body;
+                                    
+                                        // Find trips that match the source stop, destination stop, and starting date
+                                        const matchingTrips = await TripModel.aggregate([
+                                          {
+                                            $match: {
+                                              startingDate: new Date(date),
+                                            },
                                           },
-                                        },
-                                        {
-                                          $lookup: {
-                                            from: 'busroutes',
-                                            localField: 'routeNumber',
-                                            foreignField: 'routeNumber',
-                                            as: 'route',
+                                          {
+                                            $lookup: {
+                                              from: 'busroutes',
+                                              localField: 'routeNumber',
+                                              foreignField: 'routeNumber',
+                                              as: 'route',
+                                            },
                                           },
-                                        },
-                                        {
-                                          $match: {
-                                            'route.stops.stopName': { $all: [sourceStop, destinationStop] },
+                                          {
+                                            $match: {
+                                              'route.stops.stopName': { $all: [sourceStop, destinationStop] },
+                                            },
                                           },
-                                        },
-                                        {
-                                          $project: {
-                                            tripId: '$_id',
-                                            source: sourceStop,
-                                            destination: destinationStop,
-                                            status: 1,
-                                            stops: '$route.stops',
-                                            bus_no: 1,
-                                            driverId: 1,
-                                            tripNumber: 1,
-                                            startingDate: 1,
-                                            endDate: 1,
-                                            startingTime : 1
+                                          {
+                                            $project: {
+                                              // tripId: '$_id',
+                                              source: sourceStop,
+                                              destination: destinationStop,
+                                              status: 1,
+                                              stops: '$route.stops',
+                                              bus_no: 1,
+                                              driverId: 1,
+                                              tripNumber: 1,
+                                              startingDate: 1,
+                                              endDate: 1,
+                                              startingTime : 1,
+                                              bus_type : 1,
+                                              amenities : 1,
+                                              images : 1,
+                                            },
                                           },
-                                        },
-                                      ]);
-                                  
-                                      if (!matchingTrips || matchingTrips.length === 0) {
-                                        return res.status(404).json({ success: false, error: 'No matching trips found' });
+                                        ]);
+                                    
+                                        if (!matchingTrips || matchingTrips.length === 0) {
+                                          return res.status(404).json({ success: false, error: 'No matching trips found' });
+                                        }
+                                    
+                                        // Return the matching trips along with sourceStop and destinationStop
+                                        res.status(200).json({ success: true, message: 'Trips for the route', trip_Details: matchingTrips });
+                                      } catch (error) {
+                                        console.error(error);
+                                        res.status(500).json({ success: false, error: 'Error while fetching the data' });
                                       }
-                                  
-                                      // Return the matching trips along with sourceStop and destinationStop
-                                      res.status(200).json({ success: true, message: 'Trips for the route', trip_Details: matchingTrips });
-                                    } catch (error) {
-                                      console.error(error);
-                                      res.status(500).json({ success: false, error: 'Error while fetching the data' });
-                                    }
-                                  };
+                                    };
                                   
 
  // API for View seats in Bus for a trip
@@ -1303,6 +1311,7 @@ const _ = require('lodash')
                                         if (!trip) {
                                           return res.status(404).json({ success: false, error: 'Trip not found' });
                                         } 
+                                           let tripNumber = trip.tripNumber
                                           // Initialize availableSeats with the trip's available seats
 
                                           let availableSeats = trip.Available_seat || []
@@ -1325,8 +1334,8 @@ const _ = require('lodash')
                                        
                                         res.status(200).json({
                                           success: true,
-                                          message: 'Seat information in a Trip for the Bus',
-                                          tripId : tripId,
+                                          message: 'Seat information in a Trip for the Bus',                                          
+                                          tripNumber : tripNumber,
                                           Seat_Info: {                                           
                                             availableSeats,
                                             bookedSeats,
@@ -2074,15 +2083,19 @@ const _ = require('lodash')
                                 const sendUpcomingNotifications = async () => {
                                   try {
                                     const currentTime = new Date();
-                                    const threeHoursLater = new Date(currentTime.getTime() + 3 * 60 * 60 * 1000);
-                                
+                                    const threeHoursLater = new Date(currentTime.getTime()  + 3 * 60 * 60 * 1000 )
+                                                                        
+                                    console.log('Current Time:', currentTime);
+                                    console.log('Three Hours Later:', threeHoursLater);
+
                                     const upcomingBookings = await BookingModel.find({
                                       'tripId.startingDate': {
                                         $gte: currentTime,
                                         $lte: threeHoursLater,
                                       },
                                     });
-                                
+                                     console.log('Upcoming Bookings:', upcomingBookings);
+
                                     if (upcomingBookings.length === 0) {
                                       console.log('No upcoming bookings found');
                                       return;
