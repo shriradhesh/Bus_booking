@@ -1520,6 +1520,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                           email,
                                           passengers,
                                           totalFare_in_Euro,
+                                                                           
+                                          
                                         } = req.body;
                                     
                                         const { source, destination } = req.query;
@@ -1540,6 +1542,13 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                           }
                                         }
                                     
+                                        if (!tripId) {
+                                          return res.status(400).json({
+                                            success: false,
+                                            error: 'Trip ID is missing or undefined',
+                                          });
+                                        }
+                                          
                                         // Fetching user details
                                         const user = await UserModel.findOne({ email });
                                         if (!user) {
@@ -1640,45 +1649,64 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             error: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
                                           });
                                         }
-                                                   // Check if this booking ID has already been paid
-                                          const existingTransaction = await TransactionModel.findOne({ bookingId: bookingId });
-                                          if (existingTransaction) {
-                                            return res.status(400).json({
-                                              success: false,
-                                              error: 'Booking has already been paid',
-                                            });
-                                          }
-                                            // Create a Payment Intent with Stripe
-                                            const paymentIntent = await stripe.paymentIntents.create({
-                                              amount: totalFare_in_Euro * 100, // Amount in cents
-                                              currency: 'eur',
-                                              description: 'Bus ticket booking',
-                                              payment_method: paymentMethodId,
-                                              confirm: true,
-                                            });
-                                            if (paymentIntent.status !== 'succeeded') {
-                                              return res.status(400).json({
-                                                success: false,
-                                                error: 'Payment confirmation failed',
-                                              });
-                                            }
-                                                        // Store the payment transaction
-                                              const transaction = new TransactionModel({
-                                                bookingId: bookingId,
-                                                paymentIntentId: paymentIntent.id,
-                                                amount: totalFare_in_Euro,
-                                                currency: 'eur',
-                                                paymentStatus: 'paid',
-                                              });
+                                    
+                                       //  Create a Payment Method for testing purposes
 
-                                              await transaction.save();
+                                        const paymentMethod = await stripe.paymentMethods.create({
+                                          type: 'card',
+                                          card: {
+                                            number: '4242424242424242',
+                                            exp_month: 12,
+                                            exp_year: 2025,
+                                            cvc: '123',
+                                          },
+                                        });
+                                           
+                                           //Create a Payment Intent
+                                           const paymentIntent = await stripe.paymentIntents.create({
+                                            amount: totalFare_in_Euro ,
+                                            currency: 'usd',
+                                            description: 'Bus ticket booking',
+                                            payment_method: paymentMethod.id,
+                                            confirm: true,
+                                            receipt_email : 'radhesh.mobapps12@gmail.com',
+                                            return_url: 'http://192.168.1.41:3000/',
+                                          });
+
+                                        if (paymentIntent.status !== 'succeeded') {
+                                          return res.status(400).json({
+                                            success: false,
+                                            error: 'Payment confirmation failed',
+                                          });
+                                        }
+                                    
+                                        // Check if this booking ID has already been paid
+                                        const bookingId = shortid.generate();
+                                    
+                                        const existingTransaction = await TransactionModel.findOne({ bookingId: bookingId });
+                                        if (existingTransaction) {
+                                          return res.status(400).json({
+                                            success: false,
+                                            error: 'Booking has already been paid',
+                                          });
+                                        }
+                                    
+                                        // Store the payment transaction
+                                        const transaction = new TransactionModel({
+                                          bookingId: bookingId,
+                                          paymentIntentId: paymentIntent.id,
+                                          amount: totalFare_in_Euro,
+                                          currency: 'usd',
+                                          paymentStatus : 'paid',
+                                          status: 'success',
+                                        });
+                                    
+                                        await transaction.save();
                                     
                                         // Save the updated trip
                                         await trip.save();
                                     
                                         // Create a new booking
-                                        const bookingId = shortid.generate();
-                                    
                                         const booking = new BookingModel({
                                           tripId,
                                           date,
