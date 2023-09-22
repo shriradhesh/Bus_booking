@@ -33,7 +33,7 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
 //Api for get AllBuses with there status
         router.get('/allBuses', adminController.allBuses)
 // APi for get a Bus by busID
-        router.get('/getBus/:busId',adminController.getBus)
+        router.post('/getBus',adminController.getBus)
                            
                              /* STOP MANAGEMENT  */
 
