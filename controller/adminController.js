@@ -1130,7 +1130,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                       success: false,
                                     });
                                 }
-
+                                      
                                 // check for Trip number
                                 const existingTripNumber = await TripModel.findOne({
                                   tripNumber,
@@ -1168,12 +1168,14 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                           const busCapacity = bus.seating_capacity;
                           const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
                                 
-                         
+                             
 
                             const newTrip = new TripModel({
                               tripNumber,
                               startingDate,
                               endDate,
+                              source : route.source,
+                              destination :route.destination,
                               startingTime,
                               bus_no,
                               driverId,
@@ -1649,7 +1651,13 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             error: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
                                           });
                                         }
-                                    
+                                           // Create a customer in Stripe
+                                          const customer = await stripe.customers.create({
+                                            email: email, 
+                                          });
+                                          // Store the customer ID in your database or application
+                                          const customerId = customer.id;
+                                             
                                        //  Create a Payment Method for testing purposes
 
                                         const paymentMethod = await stripe.paymentMethods.create({
@@ -1661,15 +1669,20 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             cvc: '123',
                                           },
                                         });
-                                           
+                                           // Attach the payment method to the customer
+                                            await stripe.paymentMethods.attach(paymentMethod.id, {
+                                              customer: customerId,
+                                            });
+                                            const totalFareInCents = totalFare_in_Euro * 100 
                                            //Create a Payment Intent
                                            const paymentIntent = await stripe.paymentIntents.create({
-                                            amount: totalFare_in_Euro ,
+                                            amount:totalFareInCents,
                                             currency: 'usd',
                                             description: 'Bus ticket booking',
                                             payment_method: paymentMethod.id,
+                                            customer: customerId,
                                             confirm: true,
-                                            receipt_email : 'radhesh.mobapps12@gmail.com',
+                                            receipt_email : email,
                                             return_url: 'http://192.168.1.41:3000/',
                                           });
 
@@ -2239,8 +2252,30 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                 });
                                                                 
 
-
-                               
+                                            /* Manage Transaction */
+          // Api for get All transaction
+                                  const All_Transaction =  async (req, res) => {
+                                    try {
+                                      const date = new Date(req.query.date);
+                                      const startDate = new Date(date);
+                                      startDate.setHours(0, 0, 0, 0);
+                                      const endDate = new Date(date);
+                                      endDate.setHours(23, 59, 59, 999);
+                                  
+                                      const transactions = await TransactionModel.find({
+                                        createdAt: {
+                                          $gte: startDate,
+                                          $lte: endDate,
+                                        },
+                                      });
+                                  
+                                      res.status(200).json({success : true , message : 'All Transaction', transaction:transactions});
+                                    } catch (error) {
+                                      console.error('Error fetching transactions:', error);
+                                      res.status(500).json({ error: 'Internal server error' });
+                                    }
+                                  }
+                                                      
 
 
   
@@ -2263,7 +2298,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                          deleteStop , changeProfile , addDriver ,editDriver,
                          deleteDriver , allDrivers ,getDriver , createTrip, allTrips , bookTicket, cancelTicket,
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
-                          calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications
+                          calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction
                          
                       }
                        

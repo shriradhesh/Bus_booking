@@ -30,6 +30,8 @@ const tripSchema = new mongoose.Schema({
     ref: 'DriverModel',
     required: true,
   },
+  source : String,
+  destination : String,
 
   startingTime: {
     type: String,    

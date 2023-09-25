@@ -122,6 +122,10 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 // Api for traclBus
         router.get('/trackBus/:tripId', adminController.trackBus)
 
+                                      /*  transaction Manage */
+// Api for get all transaction on Date
+         router.get('/All_Transaction', adminController.All_Transaction)
+
 
                                    
                                      
