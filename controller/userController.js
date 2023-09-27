@@ -14,7 +14,8 @@ const crypto = require('crypto');
 const { error, log } = require('console');
 const upload = require('../uploadImage')
 const shortid = require('shortid')
-const cron = require('node-cron')
+const cron = require('node-cron');
+const { TokenExpiredError } = require('jsonwebtoken');
                         
                                     /* --> User API <-- */
 
@@ -179,7 +180,7 @@ const cron = require('node-cron')
                        const link = `${process.env.BASE_URL}/password-reset/${user._id}/${token.token}`
                        await sendEmails(user.email, "Password reset", link)
 
-                       res.status(200).json({success : true ,messsage  : "password reset link sent to your email account"})
+                       res.status(200).json({success : true ,messsage  : "password reset link sent to your email account" , token : token})
                       
               }
               catch(error)

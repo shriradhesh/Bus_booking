@@ -6,13 +6,27 @@ const adminSchema = mongoose.Schema({
     },
     password : {
         type : String,
-        required : true
+        
     },
     profileImage: {
         type: String,
         default: '',
       },
+      googleId : String,
+
+      linkedinId : String,
+      
+      facebookId :{ 
+        type: String,
+         unique: true },
+
+      twitterId :{ 
+        type: String,
+         unique: true },
 })
+
+  
+
 const Admin = mongoose.model('Admin', adminSchema);
 
 module.exports = Admin;

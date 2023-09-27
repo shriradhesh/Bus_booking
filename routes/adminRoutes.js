@@ -8,16 +8,12 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
 
 
 
-
-
-
-   
-
             /* ==>   Admin Api's    <== */
 
 
 // admin login
         router.post('/adminLogin',adminController.adminLogin)
+ 
 
 //admin changePass
          router.post('/changePass/:id', adminController.changePassword)

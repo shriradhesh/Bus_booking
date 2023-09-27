@@ -13,6 +13,7 @@ const TransactionModel = require('../models/transactionModel')
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
 const DriverModel = require('../models/driverModel')
+const passport = require('passport');
 const cors = require('cors')
 const multer = require('multer')
 const path = require('path')
@@ -29,6 +30,8 @@ const FcmAdmin = require('firebase-admin');
 const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
 const _ = require('lodash')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+
 
 
     
@@ -48,8 +51,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                 const { username, password } = req.body;
                                     
                                 // Find Admin by username
-                                const admin = await Admin.findOne({ username });
-                                    
+                                const admin = await Admin.findOne({ username });                                
+
                                 if (!admin) {
                                     
                                     return res.status(400).json({ message: 'Username incorrect ', success: false });
@@ -69,6 +72,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                             }
                         };
 
+  
+                           
 
 
 
@@ -160,8 +165,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                           'model',
                           'manufacture_year',
                           'amenities',        
-                          'status',
-                          
+                          'status',                          
                       ];
 
                       for (const field of requiredFields) {
@@ -1246,65 +1250,74 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                     };
                                      
       // Api for searchtrips    
-                                    const searchTrips = async (req, res) => {
-                                      try {
-                                        const { sourceStop, destinationStop, date } = req.body;
-                                    
-                                        // Find trips that match the source stop, destination stop, and starting date
-                                        const matchingTrips = await TripModel.aggregate([
-                                          {
-                                            $match: {
-                                              startingDate: new Date(date),
-                                            },
-                                          },
-                                          {
-                                            $lookup: {
-                                              from: 'busroutes',
-                                              localField: 'routeNumber',
-                                              foreignField: 'routeNumber',
-                                              as: 'route',
-                                            },
-                                          },
-                                          {
-                                            $match: {
-                                              'route.stops.stopName': { $all: [sourceStop, destinationStop] },
-                                            },
-                                          },
-                                          {
-                                            $project: {
-                                              // tripId: '$_id',
-                                              source: sourceStop,
-                                              destination: destinationStop,
-                                              status: 1,
-                                              stops: '$route.stops',
-                                              bus_no: 1,
-                                              driverId: 1,
-                                              tripNumber: 1,
-                                              startingDate: 1,
-                                              endDate: 1,
-                                              startingTime : 1,
-                                              bus_type : 1,
-                                              amenities : 1,
-                                              images : 1,
-                                              Available_seat : 1,
-                                              booked_seat :1,
-                                            },
-                                          },
-                                        ]);
-                                    
-                                        if (!matchingTrips || matchingTrips.length === 0) {
-                                          return res.status(404).json({ success: false, error: 'No matching trips found' });
-                                        }
-                                    
-                                        // Return the matching trips along with sourceStop and destinationStop
-                                        res.status(200).json({ success: true, message: 'Trips for the route', trip_Details: matchingTrips });
-                                      } catch (error) {
-                                        console.error(error);
-                                        res.status(500).json({ success: false, error: 'Error while fetching the data' });
-                                      }
-                                    };
+                                  const searchTrips = async (req, res) => {
+                                    try {
+                                      const { sourceStop, destinationStop, date } = req.body;
                                   
+                                      // Find trips that match the given date
+                                      const trips = await TripModel.find({
+                                        startingDate: { $lte: date },
+                                        endDate: { $gte: date }
+                                      });
+                                  
+                                      if (!trips || trips.length === 0) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          error: 'No matching trips found for the selected date'
+                                        });
+                                      }
+                                  
+                                      // Filter trips to include only those with matching source and destination stops
+                                      const matchingTrips = [];
+                                  
+                                      for (const trip of trips) {
+                                        const routeNumber = trip.routeNumber;
+                                        // Find the route with the same routeNumber
+                                        const route = await BusRoute.findOne({ routeNumber });
+                                  
+                                        if (!route) {
+                                          continue; 
+                                        }
+                                  
+                                        const sourceIndex = route.stops.findIndex((stop) => stop.stopName === sourceStop);
+                                        const destinationIndex = route.stops.findIndex((stop) => stop.stopName === destinationStop);
+                                  
+                                        if (sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex) {
+                                          const stops = sourceIndex + 1 < destinationIndex ? route.stops.slice(sourceIndex + 1, destinationIndex) : [];
+        
+                                          matchingTrips.push({
+                                            trip ,
+                                            stops} );
+                                        }
+                                      }
+                                  
+                                      if (matchingTrips.length === 0) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          error: 'No matching trips found for the selected stops'
+                                        });
+                                      }
+                                  
+                                      res.status(200).json({
+                                        success: true,
+                                        message: 'Trips for the search criteria',
+                                        trips: matchingTrips
+                                      });
+                                    } catch (error) {
+                                      res.status(500).json({
+                                        success: false,
+                                        error: 'Error while fetching the data'
+                                      });
+                                    }
+                                  };
+                                  
+      
+                                      
+                                      
+    
 
+      
+                 
  // API for View seats in Bus for a trip
                             
                                     const viewSeats = async (req, res) => {
@@ -1337,6 +1350,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
                                             availableSeats = availableSeats.filter((seat) => !bookedSeats.includes(seat));
                                           }
+                                          
                                        
                                         res.status(200).json({
                                           success: true,
@@ -1810,44 +1824,63 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                   
 // Api for cancle tickit 
                   
-                                const cancelTicket = async (req, res) => {
-                                  try {
-                                    const { tripId } = req.params;
-                                    const { email, bookingId } = req.body;
+                                  const cancelTicket = async (req, res) => {
+                                    try {
+                                      const { tripId } = req.params;
+                                      const { email, bookingId } = req.body;
 
-                                    if (!email) {
-                                      return res.status(400).json({ success: false, error: 'Missing Email' });
-                                    }
-                                    if (!bookingId) {
-                                      return res.status(400).json({ success: false, error: 'Missing bookingId' });
-                                    }
+                                      if (!email) {
+                                        return res.status(400).json({ success: false, error: 'Missing Email' });
+                                      }
+                                      if (!bookingId) {
+                                        return res.status(400).json({ success: false, error: 'Missing bookingId' });
+                                      }
 
-                                    const booking = await BookingModel.findOne({ bookingId });
-                                    if (!booking) {
-                                      return res.status(404).json({ success: false, error: 'Booking not found' });
-                                    }
+                                      const booking = await BookingModel.findOne({ bookingId });
+                                      if (!booking) {
+                                        return res.status(404).json({ success: false, error: 'Booking not found' });
+                                      }
 
-                                    // check if the booking status allows cancellation
-                                    if (booking.status !== 'confirmed') {
-                                      return res.status(400).json({ success: false, error: 'Booking already cancelled' });
-                                    }
+                                      // Check if the booking status allows cancellation
+                                      if (booking.status !== 'confirmed') {
+                                        return res.status(400).json({ success: false, error: 'Booking already cancelled' });
+                                      }
 
-                                    // mark the booking as cancelled
-                                    booking.status = 'cancelled';
-                                    await booking.save();
+                                      // Get the trip details
+                                      const trip = await TripModel.findById(tripId);
+                                      if (!trip) {
+                                        return res.status(400).json({ success: false, error: 'Trip not found' });
+                                      }
 
-                                    // update the available seats and booked seats on the bus
-                                    const trip = await TripModel.findById(tripId);
-                                    if (!trip) {
-                                      res.status(400).json({
-                                        success: false,
-                                        error: 'Trip not found',
-                                      });
-                                    }
+                                      // Check the cancellation policy
+                                      const currentDate = new Date();
+                                      const journeyDate = new Date(trip.date);
 
-                                    const { selectedSeatNumbers } = booking;
+                                      // Calculate the time difference in milliseconds
+                                      const timeDifference = journeyDate - currentDate;
+                                      const hoursDifference = Math.floor(timeDifference / (1000 * 3600));
 
-                                    if (trip) {
+                                      if (hoursDifference < 0) {
+                                        // Journey date has already passed, apply the cancellation charge
+                                        const cancellationCharge = 100; // Set cancellation charge as per your policy
+
+                                        // Deduct the cancellation charge from the refund amount (if applicable)
+                                        const refundAmount = booking.totalAmount - cancellationCharge;
+
+                                        // Update the booking status, cancellation charge, and refund amount
+                                        booking.status = 'cancelled';
+                                        booking.cancellationCharge = cancellationCharge;
+                                        booking.refundAmount = refundAmount;
+                                        await booking.save();
+                                      } else {
+                                        // Cancellation before the journey date, refund the full ticket amount
+                                        booking.status = 'cancelled';
+                                        await booking.save();
+                                      }
+
+                                      // Update the available seats and booked seats on the bus
+                                      const { selectedSeatNumbers } = booking;
+
                                       for (const seat of selectedSeatNumbers) {
                                         const index = trip.booked_seat.indexOf(seat);
                                         if (index !== -1) {
@@ -1856,21 +1889,20 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                         }
                                       }
                                       await trip.save();
+
+                                      // Send a confirmation email to the user
+                                      const user = await UserModel.findById(booking.userId);
+
+                                      const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
+                                      await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
+
+                                      res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
+                                    } catch (error) {
+                                      console.error(error);
+                                      return res.status(500).json({ success: false, error: 'An error occurred' });
                                     }
-
-                                    // send a confirmation email to the user
-                                    const user = await UserModel.findById(booking.userId);
-
-                                    const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
-                                    await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
-
-                                    res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
-                                  } catch (error) {
-                                    console.error(error);
-                                    return res.status(500).json({ success: false, error: 'An error occurred' });
-                                  }
-                                };
-                                            
+                                  };
+      
    
                                         
                         
@@ -2161,7 +2193,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                   const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
                               
                                   if (currentStopIndex === -1) {
-                                    return res.status(400).json({ success: false, error: 'Current stop not found' });
+                                    return res.status(400).json({ success: false, error: 'your stop not found enter valid Stop' });
                                   }
                               
                                   const currentStop = stops[currentStopIndex];
@@ -2256,11 +2288,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
           // Api for get All transaction
                                   const All_Transaction =  async (req, res) => {
                                     try {
-                                      const date = new Date(req.query.date);
-                                      const startDate = new Date(date);
-                                      startDate.setHours(0, 0, 0, 0);
-                                      const endDate = new Date(date);
-                                      endDate.setHours(23, 59, 59, 999);
+                                      const startDate = new Date(req.query.startDate);
+                                      const endDate = new Date(req.query.endDate);
+                                   
+                                        endDate.setHours(23, 59, 59, 999);
                                   
                                       const transactions = await TransactionModel.find({
                                         createdAt: {
@@ -2272,7 +2303,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                       res.status(200).json({success : true , message : 'All Transaction', transaction:transactions});
                                     } catch (error) {
                                       console.error('Error fetching transactions:', error);
-                                      res.status(500).json({ error: 'Internal server error' });
+                                      res.status(500).json({success: false ,  error: 'Internal server error' });
                                     }
                                   }
                                                       
