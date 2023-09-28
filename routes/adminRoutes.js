@@ -122,6 +122,20 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 // Api for get all transaction on Date
          router.get('/All_Transaction', adminController.All_Transaction)
 
+                                  /* Import and Export */
+// Api for import Buses data
+         router.post('/import_Buses', upload.single('file') , adminController.import_Buses)
+// Api for download sample file for buses
+         router.get('/generate_sampleFile', adminController.generate_sampleFile)
+// Api for export bookings 
+         router.get('/export_Bookings' , adminController.export_Bookings)
+// Api for export transaction
+          router.get('/export_Transactions' , adminController.export_Transactions)
+// Api for export transaction
+          router.get('/export_Trips' , adminController.export_Trips)
+// Api for export transaction
+          router.get('/export_Users' , adminController.export_Users)
+
 
                                    
                                      

@@ -26,6 +26,7 @@ const twilio = require('twilio')
 const TripModel = require('../models/tripModel')
 const cron = require('node-cron');
 const axios = require('axios');
+const ExcelJs = require('exceljs')
 const FcmAdmin = require('firebase-admin');
 const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
 const _ = require('lodash')
@@ -1320,52 +1321,59 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                  
  // API for View seats in Bus for a trip
                             
-                                    const viewSeats = async (req, res) => {
-                                      try {
-                                        const tripId = req.params.tripId;                                        
+                                              const viewSeats = async (req, res) => {
+                                                try {
+                                                  const tripId = req.params.tripId;
 
-                                        // Find the trip by its ID
-                                        const trip = await TripModel.findById(tripId);
+                                                  // Find the trip by its ID
+                                                  const trip = await TripModel.findById(tripId);
 
-                                        if (!trip) {
-                                          return res.status(404).json({ success: false, error: 'Trip not found' });
-                                        } 
-                                           let tripNumber = trip.tripNumber
-                                          // Initialize availableSeats with the trip's available seats
+                                                  if (!trip) {
+                                                    return res.status(404).json({ success: false, error: 'Trip not found' });
+                                                  }
+                                                  
+                                                  let tripNumber = trip.tripNumber;
 
-                                          let availableSeats = trip.Available_seat || []
-                                       
+                                                  // Initialize seats array with status codes
+                                                  let seats = [];
 
-                                          // Initialize bookedSeats with the trip's booked seats
-                                        let bookedSeats = trip.booked_seat || [];
+                                                  
+                                                  const bookingsOnDate = await BookingModel.find({
+                                                    tripId,
+                                                    status: 'confirmed',
+                                                  });
 
-                                        // Check for bookings on the given date and bus ID within the trip's date range
-                                        const bookingsOnDate = await BookingModel.find({
-                                          tripId,                                          
-                                          status: 'confirmed',
-                                        });
-                                       
-                                        // If there are bookings on the given trip, update bookedSeats and availableSeats
-                                          if (bookingsOnDate.length > 0) {
-                                            bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
-                                            availableSeats = availableSeats.filter((seat) => !bookedSeats.includes(seat));
-                                          }
-                                          
-                                       
-                                        res.status(200).json({
-                                          success: true,
-                                          message: 'Seat information in a Trip for the Bus',                                          
-                                          tripNumber : tripNumber,
-                                          Seat_Info: {                                           
-                                            availableSeats,
-                                            bookedSeats,
-                                          },
-                                        });
-                                      } catch (error) {
-                                        console.error(error);
-                                        res.status(500).json({ success: false, error: 'Error while fetching seat information' });
-                                      }
-                                    };
+                                                  // If there are bookings on the given trip, populate seats array
+                                                  if (bookingsOnDate.length > 0) {
+                                                    const bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
+                                                    trip.Available_seat.forEach((seat) => {
+                                                      const status = bookedSeats.includes(seat) ? 1 : 0;
+                                                      seats.push({ seat, status });
+                                                    });
+                                                    
+                                                    // Also add the booked seats with status 1
+                                                    bookedSeats.forEach((seat) => {
+                                                      seats.push({ seat, status: 1 });
+                                                    });
+                                                  } else {
+                                                    // If there are no bookings, all seats are marked as available.
+                                                    trip.Available_seat.forEach((seat) => {
+                                                      seats.push({ seat, status: 0 });
+                                                    });
+                                                  }
+
+                                                  res.status(200).json({
+                                                    success: true,
+                                                    message: 'Seat information in a Trip for the Bus',
+                                                    tripNumber: tripNumber,
+                                                    Seat_Info: seats,
+                                                  });
+                                                } catch (error) {
+                                                  console.error(error);
+                                                  res.status(500).json({ success: false, error: 'Error while fetching seat information' });
+                                                }
+                                              };
+
 
 
 // APi for calculateFareFor selected seats in Bus for trip
@@ -2307,15 +2315,366 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                     }
                                   }
                                                       
+                                        /* Import and Export Data  */
+// APi for Import Buses record -
+                            const import_Buses = async(req, res) =>{
+                              try {
+                                  const workbook = new ExcelJs.Workbook()
+                                  await workbook.xlsx.readFile(req.file.path);
+
+                                  const worksheet = workbook.getWorksheet(1)
+                                  const busesData = []
+
+                                  worksheet.eachRow((row , rowNumber)=>{
+                                    if(rowNumber !== 1)
+                                    {
+                                          // skip the header row 
+
+                                          const rowData = {
+                                                  bus_type         : row.getCell(1).value,
+                                                  seating_capacity : row.getCell(2).value,
+                                                  bus_no           : row.getCell(3).value,
+                                                  model            : row.getCell(4).value,
+                                                  manufacture_year : row.getCell(5).value,
+                                                  amenities        : row.getCell(6).value.split(',').map((item) => item.trim()),
+                                                images             : row.getCell(7).value.split(',').map((item)=> item.trim()),
+                                          }
+                                            busesData.push(rowData)
+                                    }
+                                  })
+
+                                          // insert the buses into the database
+
+                                          const insertedBuses = await BusModel.insertMany(busesData)
+
+                                          res.status(200).json({success : true , message : 'Buses imported successfully', buses : insertedBuses})
+                              }
+                              catch(error)
+                              {
+                                console.error(error);
+                                res.status(500).json({ success : false , error : ' there is an error while importing Buses'})
+                              }
+                            } 
+   
+  
+   // Api to create sample_buses
+                             
+                                        const generate_sampleFile = async (req, res) => {
+                                          try {
+                                            const workbook = new ExcelJs.Workbook();
+                                            const worksheet = workbook.addWorksheet('Buses');                                        
+                                          
+                                            worksheet.addRow(['bus_type', 'seating_capacity', 'bus_no', 'model', 'manufacturing_year', 'amenities', 'images']);
+                                        
+                                            // Add sample data
+                                            worksheet.addRow(['AC', 28, 'A11290', 'Ashok Leyland', 2018, 'wifi, AC, TV', 'image1.jpg']);
+                                        
+                                            // Set response headers for Excel download with the filename
+                                            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                                            res.setHeader('Content-Disposition', 'attachment; filename=sample_Buses.xlsx'); 
+                                        
+                                            // Send the Excel file as a response
+                                            await workbook.xlsx.write(res);
+                                            res.end();
+                                            console.log('Excel file sent');
+                                          } catch (error) {
+                                            console.error('Error sending Excel file:', error);
+                                            res.status(500).send('Internal Server Error');
+                                          }
+                                        };
+
+        // Api to export Bookings
+                                                const export_Bookings = async (req, res) => {
+                                                  try {
+                                                    // Fetch all booking data from the booking Database
+                                                    const bookings = await BookingModel.find({});
+                                                
+                                                    // Create Excel workbook and worksheet
+                                                    const workbook = new ExcelJs.Workbook();
+                                                    const worksheet = workbook.addWorksheet('Bookings');
+                                                
+                                                    // Define the Excel Header
+                                                    worksheet.columns = [
+                                                      { 
+                                                        header: 'Booking ID', key: 'bookingId' 
+                                                      },
+                                                      {
+                                                         header: 'User ID', key: 'userId'
+                                                      },
+                                                      {
+                                                         header: 'Trip ID', key: 'tripId'
+                                                      },
+                                                      {
+                                                         header: 'Journey Date', key: 'date'
+                                                      },
+                                                      {
+                                                         header: 'Status', key: 'status' 
+                                                      },
+                                                      { 
+                                                        header: 'Payment Status', key: 'paymentStatus' 
+                                                      },
+                                                      {
+                                                         header: 'Total Fare', key: 'totalFare'
+                                                      },
+                                                    ];
+                                                
+                                                    // Add Booking data to the worksheet
+                                                    bookings.forEach((booking) => {
+                                                      worksheet.addRow({
+                                                        bookingId: booking.bookingId,
+                                                        userId: booking.userId,
+                                                        tripId: booking.tripId,
+                                                        date: booking.date,
+                                                        status: booking.status,
+                                                        paymentStatus: booking.paymentStatus,
+                                                        totalFare: booking.totalFare,
+                                                      });
+                                                    });
+                                                
+                                                    // Set response headers for downloading the Excel file
+                                                    res.setHeader(
+                                                      'Content-Type',
+                                                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                                    );
+                                                
+                                                    res.setHeader('Content-Disposition', 'attachment; filename=bookings.xlsx');
+                                                
+                                                    // Generate and send the Excel File as a response
+                                                    await workbook.xlsx.write(res);
+                                                
+                                                    // End the response
+                                                    res.end();
+                                                  } catch (error) {
+                                                    console.error(error);
+                                                    res.status(500).json({ error: 'Internal server error' });
+                                                  }
+                                                };
 
 
-  
-  
-  
+        // Api for Export Transactions 
+                                                  const export_Transactions = async (req, res) => {
+                                                    try {
+                                                      // Fetch all transaction data from the transaction Database
+                                                      const transactions = await TransactionModel.find({});
+                                                  
+                                                      // Create Excel workbook and worksheet
+                                                      const workbook = new ExcelJs.Workbook();
+                                                      const worksheet = workbook.addWorksheet('Transactions');
+                                                  
+                                                      // Define the Excel Header
+                                                      worksheet.columns = [
+                                                        {
+                                                           header: 'Booking ID', key: 'bookingId'
+                                                        },
+                                                        {
+                                                           header: 'PaymentIntent ID', key: 'paymentIntentId'
+                                                        },
+                                                        { 
+                                                          header: 'Amount', key: 'amount' 
+                                                        },
+                                                        {
+                                                           header: 'Payment Status', key: 'status' 
+                                                        },
+                                                      ];
+                                                  
+                                                      // Add transaction data to the worksheet
+                                                      transactions.forEach((transaction) => {
+                                                        worksheet.addRow({
+                                                          bookingId: transaction.bookingId,
+                                                          paymentIntentId: transaction.paymentIntentId,
+                                                          amount: transaction.amount,
+                                                          status: transaction.status,
+                                                        });
+                                                      });
+                                                  
+                                                      // Set response headers for downloading the Excel file
+                                                      res.setHeader(
+                                                        'Content-Type',
+                                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                                      );
+                                                  
+                                                      res.setHeader('Content-Disposition', 'attachment; filename=transactions.xlsx');
+                                                  
+                                                      // Generate and send the Excel File as a response
+                                                      await workbook.xlsx.write(res);
+                                                  
+                                                      // End the response
+                                                      res.end();
+                                                    } catch (error) {
+                                                      console.error(error);
+                                                      res.status(500).json({ error: 'Internal server error' });
+                                                    }
+                                                  };
+        
+        // Api for export trips 
+                                                const export_Trips = async (req, res) => {
+                                                  try {
+                                                    // Fetch all trips data from the Trip Database
+                                                    const trips = await TripModel.find({});
+                                                
+                                                    // Create Excel workbook and worksheet
+                                                    const workbook = new ExcelJs.Workbook();
+                                                    const worksheet = workbook.addWorksheet('Trips');
+                                                
+                                                    // Define the Excel Header
+                                                    worksheet.columns = [
+                                                      {
+                                                        header: 'Trip Number', key: 'tripNumber'
+                                                      },
+                                                      {
+                                                        header: 'Starting Date', key: 'startingDate'
+                                                      },
+                                                      { 
+                                                        header: 'End Date', key: 'endDate' 
+                                                      },
+                                                      {
+                                                        header: 'Bus no ', key: 'bus_no' 
+                                                      },
+                                                      {
+                                                        header: 'Driver Id', key: 'driverId'
+                                                      },
+                                                      {
+                                                        header: 'Route Number', key: 'routeNumber'
+                                                      },
+                                                      { 
+                                                        header: 'Source', key: 'source' 
+                                                      },
+                                                      {
+                                                        header: 'Destination', key: 'destination' 
+                                                      },
+                                                      {
+                                                        header: 'Starting Time', key: 'startingTime'
+                                                      },
+                                                      {
+                                                        header: 'Status', key: 'status'
+                                                      },
+                                                      { 
+                                                        header: 'Available_seat', key: 'Available_seat' 
+                                                      },
+                                                      {
+                                                        header: 'Booked_seat', key: 'booked_seat' 
+                                                      },
+                                                      {
+                                                        header: 'Bus Type', key: 'bus_type'
+                                                      },
+                                                      { 
+                                                        header: 'Amenities', key: 'amenities' 
+                                                      },
+                                                      {
+                                                        header: 'Bus Images', key: 'images' 
+                                                      },
+                                                    ];
+                                                
+                                                    // Add trips data to the worksheet
+                                                    trips.forEach((trip) => {
+                                                      worksheet.addRow({
+                                                        tripNumber : trip.tripNumber,
+                                                        startingDate : trip.startingDate,
+                                                        endDate : trip.endDate,
+                                                        bus_no : trip.bus_no,
+                                                        driverId : trip.driverId,
+                                                        routeNumber : trip.routeNumber,
+                                                        source : trip.source,
+                                                        destination : trip.destination,
+                                                        startingTime : trip.startingTime,
+                                                        status : trip.status,
+                                                        Available_seat : trip.Available_seat,
+                                                        booked_seat : trip.booked_seat,
+                                                        bus_type : trip.bus_type,
+                                                        amenities : trip.amenities,
+                                                        images : trip.images,
 
-                
-  
-          
+                                                      });
+                                                    });
+                                                
+                                                    // Set response headers for downloading the Excel file
+                                                    res.setHeader(
+                                                      'Content-Type',
+                                                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                                    );
+                                                
+                                                    res.setHeader('Content-Disposition', 'attachment; filename=trips.xlsx');
+                                                
+                                                    // Generate and send the Excel File as a response
+                                                    await workbook.xlsx.write(res);
+                                                
+                                                    // End the response
+                                                    res.end();
+                                                  } catch (error) {
+                                                    console.error(error);
+                                                    res.status(500).json({ error: 'Internal server error' });
+                                                  }
+                                                };
+
+        
+ // Api for Export User Data
+                                            const export_Users = async (req, res) => {
+                                              try {
+                                                // Fetch all users data from the users Database
+                                                const users = await UserModel.find({});
+
+                                                // Create Excel workbook and worksheet
+                                                const workbook = new ExcelJs.Workbook();
+                                                const worksheet = workbook.addWorksheet('Users');
+
+                                                // Define the Excel Header
+                                                worksheet.columns = [
+                                                  {
+                                                    header: 'Full Name', key: 'fullname'
+                                                  },
+                                                  {
+                                                    header: 'Email', key: 'email' 
+                                                  },
+                                                  {
+                                                    header: 'Phone No', key: 'phone_no'
+                                                  },
+                                                  {
+                                                    header: 'Age', key: 'age'
+                                                  },
+                                                  {
+                                                    header: 'Gender', key: 'gender'
+                                                  },
+                                                  {
+                                                    header: 'Profile Image', key: 'profileImage' 
+                                                  }
+                                                ];
+
+                                                // Add users' data to the worksheet
+                                                users.forEach((user) => {
+                                                  worksheet.addRow({
+                                                    fullname: user.fullName,
+                                                    email: user.email, 
+                                                    phone_no: user.phone_no,
+                                                    age: user.age,
+                                                    gender: user.gender,
+                                                    profileImage: user.profileImage
+                                                  });
+                                                });
+
+                                                // Set response headers for downloading the Excel file
+                                                res.setHeader(
+                                                  'Content-Type',
+                                                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                                );
+
+                                                res.setHeader('Content-Disposition', 'attachment; filename=users.xlsx');
+
+                                                // Generate and send the Excel File as a response
+                                                await workbook.xlsx.write(res);
+
+                                                // End the response
+                                                res.end();
+                                              } catch (error) {
+                                                console.error(error);
+                                                res.status(500).json({ error: 'Internal server error' });
+                                              }
+                                            };
+
+                                                                                                        
+
+
+                                    
+                                            
                 
 
                     
@@ -2329,7 +2688,12 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                          deleteStop , changeProfile , addDriver ,editDriver,
                          deleteDriver , allDrivers ,getDriver , createTrip, allTrips , bookTicket, cancelTicket,
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
-                          calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction
+                          calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction,
+                          import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
+                          export_Users
+
+
+
                          
                       }
                        

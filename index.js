@@ -96,6 +96,9 @@ app.use(passport.session())
 app.get('/', (req, res) => {
  res.sendFile(__dirname +'/booking.html')
 });
+app.get('/api/import_Buses', (req, res) => {
+ res.sendFile(__dirname +'/import_Buses.html')
+});
 
 app.get('/admin', (req, res) => {
   

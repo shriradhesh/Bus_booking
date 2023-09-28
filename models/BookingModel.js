@@ -32,9 +32,9 @@ const bookingSchema = new mongoose.Schema({
         default: 'confirmed',
     },
 
-    paymentMethod: {
-        type: String,
-    },
+    // paymentMethod: {
+    //     type: String,
+    // },
 
     paymentStatus: {
         type: String,
