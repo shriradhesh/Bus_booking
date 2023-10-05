@@ -34,6 +34,10 @@ router.post('/userChangePass', userController.userChangePass)
 
  //update profile by id
  router.put('/updateUser/:id', upload.single('profileImage'), userController.updateUser)
+
+ // get user by Email
+router.get('/getUser/:email', userController.getUser) 
+
                        
                                   /*      see Routes      */
 // APi for seeRoutes                              

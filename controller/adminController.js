@@ -212,78 +212,73 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
   // Api for update bus with id
-                      const updateBus = async (req, res) => {
-                        try {
-                            const id = req.params.id;
-                            const {
-                              bus_type,
-                              seating_capacity,
-                              model,
-                              manufacture_year,
-                              amenities,
-                              status,
-                              availability
-                                
-                          } = req.body;
-                          
+  const updateBus = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const {
+            bus_type,
+            seating_capacity,
+            model,
+            manufacture_year,
+            amenities,
+            status,
+            availability
+        } = req.body;
 
-                            const requiredFields = [
-                                'bus_type',
-                                'seating_capacity',            
-                                'model',
-                                'manufacture_year',
-                                'amenities',            
-                                'status',
-                                'availability',
-                              
-                            ];
+        // const requiredFields = [
+        //     'bus_type',
+        //     'seating_capacity',
+        //     'model',
+        //     'manufacture_year',
+        //     'amenities',
+        //     'status',
+        //     'availability',
+        // ];
 
-                            for (const field of requiredFields) {
-                                if (!req.body[field]) {
-                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                }
-                            }
+        // for (const field of requiredFields) {
+        //     if (!req.body[field]) {
+        //         return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+        //     }
+        // }
 
-                            const existBus = await BusModel.findOne({ _id:id });
-                            if (!existBus) {
-                                return res.status(400).json({ error: 'Bus Not found', success: false });
-                            }
+        const existBus = await BusModel.findOne({ _id: id });
+        if (!existBus) {
+            return res.status(400).json({ error: 'Bus Not found', success: false });
+        }
 
-                            const validStatus = ['active', 'inactive'];
-                            const driverStatus = validStatus.includes(status) ? status : 'active';
+        const validStatus = ['active', 'inactive'];
+        const driverStatus = validStatus.includes(status) ? status : 'active';
 
-                            const validAvailability = ['available', 'unavailable', 'booked'];
-                            const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
-                                 
+        const validAvailability = ['available', 'unavailable', 'booked'];
+        const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
 
-                            existBus.bus_type = bus_type;
-                            existBus.seating_capacity = seating_capacity;    
-                            existBus.Available_seat = availableSeat;   
-                            existBus.model = model;
-                            existBus.manufacture_year = manufacture_year;
-                            existBus.amenities = amenities;       
-                            existBus.status = driverStatus;
-                            existBus.availability = BusAvailability;
-                          
+        existBus.bus_type = bus_type;
+        existBus.seating_capacity = seating_capacity;
+        existBus.model = model;
+        existBus.manufacture_year = manufacture_year;
+        existBus.amenities = amenities;
+        existBus.status = driverStatus;
+        existBus.availability = BusAvailability;
 
-                            if (req.file) {
-                                if (existBus.images) {
-                                    try {
-                                        fs.unlinkSync(existBus.images);
-                                    } catch (error) {
-                                        console.error('Error deleting previous image:', error);
-                                    }
-                                }
-                                existBus.images = req.file.path;
-                            }
+        if (req.file) {
+            if (existBus.images) {
+                try {
+                    fs.unlinkSync(existBus.images);
+                } catch (error) {
+                    console.error('Error deleting previous image:', error);
+                }
+            }
+            existBus.images = req.file.path;
+        }
 
-                            const updatedBus = await existBus.save();
-                            res.status(200).json({ success: true, message: 'Bus Details Edit Successfully' });
-                        } catch (error) {
-                            console.error(error);
-                            res.status(500).json({ success: false, error: 'Error while editing the bus details' });
-                        }
-                    };
+        const updatedBus = await existBus.save();
+        res.status(200).json({ success: true, message: 'Bus Details Edit Successfully' });
+    } catch (error) {
+        console.error('Error while editing the bus details:', error);
+        res.status(500).json({ success: false, error: 'Error while editing the bus details' });
+    }
+};
+
 
   //APi for delete Bus 
                
@@ -1323,7 +1318,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                             
                                               const viewSeats = async (req, res) => {
                                                 try {
-                                                  const tripId = req.params.tripId;
+                                                  const tripId = req.body.tripId
 
                                                   // Find the trip by its ID
                                                   const trip = await TripModel.findById(tripId);

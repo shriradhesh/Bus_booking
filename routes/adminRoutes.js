@@ -90,7 +90,7 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
 // Api for get a Trip for desired source , destination and Date
           router.post('/searchTrips',adminController.searchTrips)
 // Api for view seats in Bus for a Route
-           router.get('/viewSeats/:tripId', adminController.viewSeats)
+           router.post('/viewSeats', adminController.viewSeats)
 // Api for calculate Fare For SelectedSeats in a Bus
 router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateFareForSelectedSeats)
 

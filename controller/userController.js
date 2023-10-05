@@ -81,6 +81,7 @@ const { TokenExpiredError } = require('jsonwebtoken');
             res.status(500).json({ error: 'Error while login the user' , success: false });
         }
     }
+
   // Api for logout user
         const logoutUser = async(req,res)=>{
           try{
@@ -289,6 +290,23 @@ const { TokenExpiredError } = require('jsonwebtoken');
                           }
                         }
 
+            // APi for get user by email 
+
+                        const getUser = async (req, res) => {
+                          try {
+                            const email = req.params.email;
+                            const user = await UserModel.findOne({ email });
+                
+                            if (!user) {
+                              return res.status(404).json({ error: 'User not found' });
+                            }
+                
+                            res.status(200).json({ user });
+                          } catch (err) {
+                            res.status(500).json({ error: 'Error while finding the user' });
+                          }
+                        }
+
 
                                                /*  See Routes */
 //Api for see Routes
@@ -371,4 +389,4 @@ const { TokenExpiredError } = require('jsonwebtoken');
 
           
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassToken , userResetPass,
-                    updateUser , seeRoutes , upcoming_Booking , bookingHistory }
+                    updateUser , getUser ,  seeRoutes , upcoming_Booking , bookingHistory }
