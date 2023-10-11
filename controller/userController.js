@@ -343,11 +343,11 @@ const { TokenExpiredError } = require('jsonwebtoken');
                                     }
                                                     
                               const upcomingBookings = await BookingModel.find({                                        
-                                "departureDate":{
+                                "date":{
                                   $gte: today,
                                 },
                                 "status": "confirmed" 
-                              }).sort({departureDate : 1})                                       
+                              }).sort({date : 1})                                       
                                 res.status(200).json({ success : true , bookings : upcomingBookings})  
                               }
 
@@ -361,30 +361,30 @@ const { TokenExpiredError } = require('jsonwebtoken');
             
         //Api for check  Bookings History
             
-        const bookingHistory = async (req,res)=>{
+                      const bookingHistory = async (req,res)=>{
 
-          try{
-              const  userId  = req.params.userId                                          
-              const today = new Date()                                         
-              const user = await UserModel.findOne({_id:userId})  
-              if (!user) {
-                return res.status(400).json({ success: false, error: 'User not found' });
-                  }
-                                  
-            const bookingHistory = await BookingModel.find({                                        
-              "departureDate":{
-                $lte: today,
-              },             
-            }).sort({departureDate : 1})                                       
-              res.status(200).json({ success : true , bookings : bookingHistory})  
-            }
+                        try{
+                            const  userId  = req.params.userId                                          
+                            const today = new Date()                                         
+                            const user = await UserModel.findOne({_id:userId})  
+                            if (!user) {
+                              return res.status(400).json({ success: false, error: 'User not found' });
+                                }
+                                                
+                          const bookingHistory = await BookingModel.find({                                        
+                            "date":{
+                              $lte: today,
+                            },             
+                          }).sort({date : 1})                                       
+                            res.status(200).json({ success : true , bookings : bookingHistory})  
+                          }
 
-          catch(error)
-          {
-            console.error(error);
-              return res.status(500).json({ success : false , error : ' error occured to find  booking History'})
-          }
-      }
+                        catch(error)
+                        {
+                          console.error(error);
+                            return res.status(500).json({ success : false , error : ' error occured to find  booking History'})
+                        }
+                    }
 
 
           

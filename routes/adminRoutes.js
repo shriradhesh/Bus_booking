@@ -135,7 +135,8 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
           router.get('/export_Trips' , adminController.export_Trips)
 // Api for export transaction
           router.get('/export_Users' , adminController.export_Users)
-
+// APi for get all Users
+          router.get('/allUsers', adminController.allUsers)
 
                                    
                                      

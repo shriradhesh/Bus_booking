@@ -1306,7 +1306,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                       });
                                     }
                                   };
-                                  
+
+            // Api for get all users
+                            
+                                                  
       
                                       
                                       
@@ -2664,8 +2667,21 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                                 res.status(500).json({ error: 'Internal server error' });
                                               }
                                             };
+              // APi for get all users 
+                                      const allUsers = async (req, res) => {
+                                        try {
+                                          const users = await UserModel.find(); 
+                                      
+                                          res.status(200).json({ success : true , message : ' all users : ' , all_users : users }); 
+                                          
+                                        }
+                                        catch(error)
+                                        {
+                                          res.status(500).json({ success : false , error: 'Error while finding the users' });
+                                        }
+                                      }
 
-                                                                                                        
+                                                                           
 
 
                                     
@@ -2685,7 +2701,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
                           calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
-                          export_Users
+                          export_Users , allUsers
 
 
 
