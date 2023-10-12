@@ -101,7 +101,7 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 //Api for Book Tickit
         router.post('/bookTicket/:tripId',adminController.bookTicket)
 // Api for cancle tickit
-        router.post('/cancelTicket/:tripId',adminController.cancelTicket)
+        router.post('/cancelTicket',adminController.cancelTicket)
 // APi for get all tickets of user 
         router.get('/userTickets/:userId', adminController.userTickets)
 // Api for Modify Ticket (departure date)

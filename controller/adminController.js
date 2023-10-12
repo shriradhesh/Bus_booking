@@ -1225,14 +1225,14 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
       // Api to get all the Trip for a particular StartingDate
                                     const allTrips =  async (req, res) => {
                                       try {
-                                        const { startingDate } = req.query;
+                                        // const { startingDate } = req.query;
                                     
-                                        if (!startingDate) {
-                                          return res.status(400).json({ error: 'Starting date is required', success: false });
-                                        }
+                                        // if (!startingDate) {
+                                        //   return res.status(400).json({ error: 'Starting date is required', success: false });
+                                        // }
                                     
                                         // Find trips with the specified startingDate
-                                        const trips = await TripModel.find({ startingDate });
+                                        const trips = await TripModel.find();
                                     
                                         if (trips.length === 0) {
                                           return res.status(404).json({ error: 'No trips found for the specified startingDate', success: false });
@@ -1307,7 +1307,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                     }
                                   };
 
-            // Api for get all users
+           
                             
                                                   
       
@@ -1532,385 +1532,391 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     // api for book tickit               
        
-                                    const bookTicket = async (req, res) => {
-                                      try {
-                                        const { tripId } = req.params;
-                                        const {
-                                          date,
-                                          selectedSeatNumbers,
-                                          status,
-                                          email,
-                                          passengers,
-                                          totalFare_in_Euro,
-                                                                           
-                                          
-                                        } = req.body;
-                                    
-                                        const { source, destination } = req.query;
-                                    
-                                        // Checking for required fields in the request
-                                        const requiredFields = [
-                                          'email',
-                                          'totalFare_in_Euro',
-                                          'selectedSeatNumbers',
-                                          'passengers',
-                                        ];
-                                        for (const field of requiredFields) {
-                                          if (!req.body[field]) {
-                                            return res.status(400).json({
-                                              error: `Missing ${field.replace('_', ' ')} field`,
-                                              success: false,
-                                            });
-                                          }
-                                        }
-                                    
-                                        if (!tripId) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Trip ID is missing or undefined',
-                                          });
-                                        }
-                                          
-                                        // Fetching user details
-                                        const user = await UserModel.findOne({ email });
-                                        if (!user) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'User not found',
-                                          });
-                                        }
-                                        const userId = user._id;
-                                    
-                                        // Fetch trip and check if it exists
-                                        const trip = await TripModel.findById(tripId);
-                                    
-                                        if (!trip) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Trip not found',
-                                          });
-                                        }
-                                    
-                                        const bus_no = trip.bus_no;
-                                    
-                                        if (!bus_no) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'busId not found',
-                                          });
-                                        }
-                                    
-                                        const bus = await BusModel.findOne({ bus_no });
-                                        if (!bus) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Bus Details not found',
-                                          });
-                                        }
-                                    
-                                        const driverId = trip.driverId;
-                                        const Driver = await DriverModel.findOne({ driverId });
-                                    
-                                        if (!Driver) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Driver not found',
-                                          });
-                                        }
-                                    
-                                        if (
-                                          !Array.isArray(selectedSeatNumbers) ||
-                                          selectedSeatNumbers.length !== passengers.length
-                                        ) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Invalid selected seat numbers',
-                                          });
-                                        }
-                                    
-                                        // Check if selected seat is already booked in a Bus
-                                        const bookedSeats = trip.booked_seat || [];
-                                    
-                                        for (const seat of selectedSeatNumbers) {
-                                          if (bookedSeats.includes(seat)) {
-                                            return res.status(400).json({
-                                              success: false,
-                                              error: `Seat ${seat} is already booked`,
-                                            });
-                                          }
-                                        }
-                                    
-                                        // Update Available_seat and bookedSeats arrays in the trip
-                                        if (Array.isArray(trip.Available_seat)) {
-                                          for (const seat of selectedSeatNumbers) {
-                                            const index = trip.Available_seat.indexOf(seat);
-                                            if (index !== -1) {
-                                              trip.Available_seat.splice(index, 1);
-                                              trip.booked_seat.push(seat);
+                                      const bookTicket = async (req, res) => {
+                                        try {
+                                          const { tripId } = req.params;
+                                          const {
+                                            date,
+                                            selectedSeatNumbers,
+                                            status,
+                                            email,
+                                            passengers,
+                                            totalFare_in_Euro,
+                                                                            
+                                            
+                                          } = req.body;
+                                      
+                                          const { source, destination } = req.query;
+                                      
+                                          // Checking for required fields in the request
+                                          const requiredFields = [
+                                            'email',
+                                            'totalFare_in_Euro',
+                                            'selectedSeatNumbers',
+                                            'passengers',
+                                          ];
+                                          for (const field of requiredFields) {
+                                            if (!req.body[field]) {
+                                              return res.status(400).json({
+                                                error: `Missing ${field.replace('_', ' ')} field`,
+                                                success: false,
+                                              });
                                             }
                                           }
-                                        }
-                                    
-                                        // Check if selected seats are already booked on the same date in the booking model
-                                        const existingBookings = await BookingModel.find({
-                                          tripId,
-                                          date,
-                                          selectedSeatNumbers: {
-                                            $in: selectedSeatNumbers,
-                                          },
-                                        });
-                                    
-                                        if (existingBookings.length > 0) {
-                                          // Some selected seats are already booked for the same trip and date
-                                          const bookedSeatNumbers = existingBookings.map(
-                                            (booking) => booking.selectedSeatNumbers
-                                          );
-                                    
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
-                                          });
-                                        }
-                                           // Create a customer in Stripe
-                                          const customer = await stripe.customers.create({
-                                            email: email, 
-                                          });
-                                          // Store the customer ID in your database or application
-                                          const customerId = customer.id;
-                                             
-                                       //  Create a Payment Method for testing purposes
-
-                                        const paymentMethod = await stripe.paymentMethods.create({
-                                          type: 'card',
-                                          card: {
-                                            number: '4242424242424242',
-                                            exp_month: 12,
-                                            exp_year: 2025,
-                                            cvc: '123',
-                                          },
-                                        });
-                                           // Attach the payment method to the customer
-                                            await stripe.paymentMethods.attach(paymentMethod.id, {
-                                              customer: customerId,
+                                      
+                                          if (!tripId) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Trip ID is missing or undefined',
                                             });
-                                            const totalFareInCents = totalFare_in_Euro * 100 
-                                           //Create a Payment Intent
-                                           const paymentIntent = await stripe.paymentIntents.create({
-                                            amount:totalFareInCents,
-                                            currency: 'usd',
-                                            description: 'Bus ticket booking',
-                                            payment_method: paymentMethod.id,
-                                            customer: customerId,
-                                            confirm: true,
-                                            receipt_email : email,
-                                            return_url: 'http://192.168.1.41:3000/',
-                                          });
+                                          }
+                                            
+                                          // Fetching user details
+                                          const user = await UserModel.findOne({ email });
+                                          if (!user) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'User not found',
+                                            });
+                                          }
+                                          const userId = user._id;
+                                      
+                                          // Fetch trip and check if it exists
+                                          const trip = await TripModel.findById(tripId);
+                                       
+                                      
+                                          if (!trip) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Trip not found',
+                                            });
+                                          }
+                                      
+                                          const bus_no = trip.bus_no;
+                                      
+                                          if (!bus_no) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'busId not found',
+                                            });
+                                          }
+                                      
+                                          const bus = await BusModel.findOne({ bus_no });
+                                          if (!bus) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Bus Details not found',
+                                            });
+                                          }
+                                      
+                                          const driverId = trip.driverId;
+                                          const Driver = await DriverModel.findOne({ driverId });
+                                      
+                                          if (!Driver) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Driver not found',
+                                            });
+                                          }
+                                      
+                                          if (
+                                            !Array.isArray(selectedSeatNumbers) ||
+                                            selectedSeatNumbers.length !== passengers.length
+                                          ) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Invalid selected seat numbers',
+                                            });
+                                          }
+                                      
+                                        // Check if selected seats are available in the trip's Available_seat array
+                                      
+                                          for (const seat of selectedSeatNumbers) {
+                                            if (!trip.Available_seat.includes(seat)) {
+                                              return res.status(400).json({
+                                                success: false,
+                                                error: `Seat ${seat} is already booked`,
+                                              });
+                                            }
+                                          }
+                                           
+                                            // Check if selected seat is already booked in a trip
+                                                        const bookedSeats = trip.booked_seat || [];
 
-                                        if (paymentIntent.status !== 'succeeded') {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Payment confirmation failed',
-                                          });
-                                        }
-                                    
-                                        // Check if this booking ID has already been paid
-                                        const bookingId = shortid.generate();
-                                    
-                                        const existingTransaction = await TransactionModel.findOne({ bookingId: bookingId });
-                                        if (existingTransaction) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            error: 'Booking has already been paid',
-                                          });
-                                        }
-                                    
-                                        // Store the payment transaction
-                                        const transaction = new TransactionModel({
-                                          bookingId: bookingId,
-                                          paymentIntentId: paymentIntent.id,
-                                          amount: totalFare_in_Euro,
-                                          currency: 'usd',
-                                          paymentStatus : 'paid',
-                                          status: 'success',
-                                        });
-                                    
-                                        await transaction.save();
-                                    
-                                        // Save the updated trip
-                                        await trip.save();
-                                    
-                                        // Create a new booking
-                                        const booking = new BookingModel({
-                                          tripId,
-                                          date,
-                                          status,
-                                          bookingId,
-                                          userId,
-                                          selectedSeatNumbers,
-                                          passengers: passengers.map((passenger, index) => ({
-                                            ...passenger,
-                                            seatNumber: selectedSeatNumbers[index],
-                                            ageGroup: calculateAgeGroup(passenger.age),
-                                          })),
-                                          totalFare: totalFare_in_Euro,
-                                        });
-                                    
-                                        await booking.save();
-                                    
-                                        // Generate passenger details and email content
-                                        const passengerDetails = passengers
-                                          .map((passenger, index) => {
-                                            const seatNumber = selectedSeatNumbers[index];
-                                            return `
-                                              Passenger Name: ${passenger.name}
-                                              Age: ${passenger.age}
-                                              Gender: ${passenger.gender}
-                                              Seat Number: ${seatNumber}
-                                              -----------------------------------------
-                                            `;
-                                          })
-                                          .join('\n');
-                                    
-                                        const emailContent = `Dear ${user.fullName},
-                                          Your booking for departure on ${date} has been confirmed.
-                                          
-                                          Journey Details:
-                                                    Booking ID: ${bookingId}
-                                                    Trip Number: ${trip.tripNumber}
-                                                    Bus Number : ${trip.bus_no}
-                                                    Driver Name: ${Driver.driverName}
-                                                    Driver Contact: ${Driver.driverContact}
-                                                    Trip Starting Time: ${trip.startingTime}
-                                                    Your Source: ${source}
-                                                    Your Destination: ${destination}
-                                        ..............................................................
-                                                    Passenger Details:
-                                                    ${passengerDetails}
-                                        ..............................................................
-                                          
-                                          Have a safe journey!
-                                          Thank you for choosing our service!
-                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~ @#@#@#@#@ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                                          `;
+                                                        for (const seat of selectedSeatNumbers) {
+                                                          if (bookedSeats.includes(seat)) {
+                                                            return res.status(400).json({
+                                                              success: false,
+                                                              error: `Seat ${seat} is already booked`,
+                                                            });
+                                                          }
+                                                        }
+                                      
+                                          // Update Available_seat and bookedSeats arrays in the trip
+                                          if (Array.isArray(trip.Available_seat)) {
+                                            for (const seat of selectedSeatNumbers) {
+                                              const index = trip.Available_seat.indexOf(seat);
+                                              if (index !== -1) {
+                                                trip.Available_seat.splice(index, 1);
+                                                trip.booked_seat.push(seat);
+                                              }
+                                            }
+                                          }
                                         
-                                        // Generate the QR CODE and send the booking confirmation email
-                                        const qrCodeData = `http://192.168.1.41:3000/${bookingId}`;
-                                        const qrCodeImage = 'ticket-QRCODE.png';
-                                        await qrcode.toFile(qrCodeImage, qrCodeData);
-                                    
-                                        await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
-                                    
-                                        res.status(200).json({
-                                          success: true,
-                                          message: 'Booking successful. Ticket sent to user email.',
-                                        });
-                                      } catch (error) {
-                                        console.error(error);
-                                        return res.status(500).json({
-                                          success: false,
-                                          error: 'An error occurred',
-                                        });
+
+                                          
+                                          // Check if selected seats are already booked on the same date in the booking model
+                                          const existingBookings = await BookingModel.find({
+                                            tripId,
+                                            date,
+                                            status : 'confirmed',
+                                            selectedSeatNumbers: {
+                                              $in: selectedSeatNumbers,
+                                            },
+                                          });
+                                         
+                                          if (existingBookings.length > 0) {
+                                            // Some selected seats are already booked for the same trip and date
+                                            const bookedSeatNumbers = existingBookings.map(
+                                              (booking) => booking.selectedSeatNumbers
+                                            );
+                                      
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
+                                            });
+                                          }
+                                            // Create a customer in Stripe
+                                            const customer = await stripe.customers.create({
+                                              email: email, 
+                                            });
+                                            // Store the customer ID in your database or application
+                                            const customerId = customer.id;
+                                              
+                                        //  Create a Payment Method for testing purposes
+
+                                          const paymentMethod = await stripe.paymentMethods.create({
+                                            type: 'card',
+                                            card: {
+                                              number: '4242424242424242',
+                                              exp_month: 12,
+                                              exp_year: 2025,
+                                              cvc: '123',
+                                            },
+                                          });
+                                            // Attach the payment method to the customer
+                                              await stripe.paymentMethods.attach(paymentMethod.id, {
+                                                customer: customerId,
+                                              });
+                                              const totalFareInCents = totalFare_in_Euro * 100 
+                                            //Create a Payment Intent
+                                            const paymentIntent = await stripe.paymentIntents.create({
+                                              amount:totalFareInCents,
+                                              currency: 'usd',
+                                              description: 'Bus ticket booking',
+                                              payment_method: paymentMethod.id,
+                                              customer: customerId,
+                                              confirm: true,
+                                              receipt_email : email,
+                                              return_url: 'http://192.168.1.41:3000/',
+                                            });
+
+                                          if (paymentIntent.status !== 'succeeded') {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Payment confirmation failed',
+                                            });
+                                          }
+                                      
+                                          // Check if this booking ID has already been paid
+                                          const bookingId = shortid.generate();
+                                      
+                                          const existingTransaction = await TransactionModel.findOne({ bookingId: bookingId });
+                                          if (existingTransaction) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              error: 'Booking has already been paid',
+                                            });
+                                          }
+                                      
+                                          // Store the payment transaction
+                                          const transaction = new TransactionModel({
+                                            bookingId: bookingId,
+                                            paymentIntentId: paymentIntent.id,
+                                            amount: totalFare_in_Euro,
+                                            currency: 'usd',
+                                            paymentStatus : 'paid',
+                                            status: 'success',
+                                          });
+                                      
+                                          await transaction.save();
+                                      
+                                          // Save the updated trip
+                                          await trip.save();
+                                      
+                                          // Create a new booking
+                                          const booking = new BookingModel({
+                                            tripId,
+                                            date,
+                                            status,
+                                            bookingId,
+                                            userId,
+                                            selectedSeatNumbers,
+                                            passengers: passengers.map((passenger, index) => ({
+                                              ...passenger,
+                                              seatNumber: selectedSeatNumbers[index],
+                                              ageGroup: calculateAgeGroup(passenger.age),
+                                            })),
+                                            totalFare: totalFare_in_Euro,
+                                          });
+                                      
+                                          await booking.save();
+                                      
+                                          // Generate passenger details and email content
+                                          const passengerDetails = passengers
+                                            .map((passenger, index) => {
+                                              const seatNumber = selectedSeatNumbers[index];
+                                              return `
+                                                Passenger Name: ${passenger.name}
+                                                Age: ${passenger.age}
+                                                Gender: ${passenger.gender}
+                                                Seat Number: ${seatNumber}
+                                                -----------------------------------------
+                                              `;
+                                            })
+                                            .join('\n');
+                                      
+                                          const emailContent = `Dear ${user.fullName},
+                                            Your booking for departure on ${date} has been confirmed.
+                                            
+                                            Journey Details:
+                                                      Booking ID: ${bookingId}
+                                                      Trip Number: ${trip.tripNumber}
+                                                      Bus Number : ${trip.bus_no}
+                                                      Driver Name: ${Driver.driverName}
+                                                      Driver Contact: ${Driver.driverContact}
+                                                      Trip Starting Time: ${trip.startingTime}
+                                                      Your Source: ${source}
+                                                      Your Destination: ${destination}
+                                          ..............................................................
+                                                      Passenger Details:
+                                                      ${passengerDetails}
+                                          ..............................................................
+                                            
+                                            Have a safe journey!
+                                            Thank you for choosing our service!
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~ @#@#@#@#@ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                                            `;
+                                          
+                                          // Generate the QR CODE and send the booking confirmation email
+                                          const qrCodeData = `http://192.168.1.41:3000/${bookingId}`;
+                                          const qrCodeImage = 'ticket-QRCODE.png';
+                                          await qrcode.toFile(qrCodeImage, qrCodeData);
+                                      
+                                          await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
+                                      
+                                          res.status(200).json({
+                                            success: true,
+                                            message: 'Booking successful. Ticket sent to user email.',
+                                          });
+                                        } catch (error) {
+                                          console.error(error);
+                                          return res.status(500).json({
+                                            success: false,
+                                            error: 'An error occurred',
+                                          });
+                                        }
+                                      };
+                                      
+                                      // Function to calculate age group
+                                      function calculateAgeGroup(age) {
+                                        if (age > 0 && age <= 2) {
+                                          return 'baby';
+                                        } else if (age > 2 && age <= 21) {
+                                          return 'children';
+                                        } else {
+                                          return 'adult';
+                                        }
                                       }
-                                    };
-                                    
-                                    // Function to calculate age group
-                                    function calculateAgeGroup(age) {
-                                      if (age > 0 && age <= 2) {
-                                        return 'baby';
-                                      } else if (age > 2 && age <= 21) {
-                                        return 'children';
-                                      } else {
-                                        return 'adult';
-                                      }
-                                    }
-                                    
+                                                                      
                                                               
                               
                                           
                                   
 // Api for cancle tickit 
                   
-                                  const cancelTicket = async (req, res) => {
-                                    try {
-                                      const { tripId } = req.params;
-                                      const { email, bookingId } = req.body;
+                                            const cancelTicket = async (req, res) => {
+                                              try {                                              
+                                                const { email, bookingId } = req.body;
 
-                                      if (!email) {
-                                        return res.status(400).json({ success: false, error: 'Missing Email' });
-                                      }
-                                      if (!bookingId) {
-                                        return res.status(400).json({ success: false, error: 'Missing bookingId' });
-                                      }
+                                                if (!email) {
+                                                  return res.status(400).json({ success: false, error: 'Missing Email' });
+                                                }
+                                                if (!bookingId) {
+                                                  return res.status(400).json({ success: false, error: 'Missing bookingId' });
+                                                }
 
-                                      const booking = await BookingModel.findOne({ bookingId });
-                                      if (!booking) {
-                                        return res.status(404).json({ success: false, error: 'Booking not found' });
-                                      }
+                                                const booking = await BookingModel.findOne({ bookingId });
+                                                if (!booking) {
+                                                  return res.status(404).json({ success: false, error: 'Booking not found' });
+                                                }
 
-                                      // Check if the booking status allows cancellation
-                                      if (booking.status !== 'confirmed') {
-                                        return res.status(400).json({ success: false, error: 'Booking already cancelled' });
-                                      }
+                                                  // Fetch the user associated with the booking
+                                                  const user = await UserModel.findById(booking.userId)
 
-                                      // Get the trip details
-                                      const trip = await TripModel.findById(tripId);
-                                      if (!trip) {
-                                        return res.status(400).json({ success: false, error: 'Trip not found' });
-                                      }
+                                                  // check if the provided email matches the user email
+                                                  if(user.email !== email)
 
-                                      // Check the cancellation policy
-                                      const currentDate = new Date();
-                                      const journeyDate = new Date(trip.date);
+                                                  {
+                                                    return res.status(400).json({
+                                                      success : false ,
+                                                      error : 'Unauthorized: You are not allowed to cancel this booking with these email'
+                                                    })
+                                                  }
+                                                   
 
-                                      // Calculate the time difference in milliseconds
-                                      const timeDifference = journeyDate - currentDate;
-                                      const hoursDifference = Math.floor(timeDifference / (1000 * 3600));
+                                                // Check if the booking status allows cancellation
+                                                if (booking.status === 'cancelled') {
+                                                  return res.status(400).json({ success: false, error: 'Booking already cancelled' });
+                                                }
 
-                                      if (hoursDifference < 0) {
-                                        // Journey date has already passed, apply the cancellation charge
-                                        const cancellationCharge = 100; // Set cancellation charge as per your policy
+                                                // Get the trip details
+                                                const trip = await TripModel.findById(booking.tripId);
+                                                if (!trip) {
+                                                  return res.status(400).json({ success: false, error: 'Trip not found' });
+                                                }
 
-                                        // Deduct the cancellation charge from the refund amount (if applicable)
-                                        const refundAmount = booking.totalAmount - cancellationCharge;
+                                               
+                                                // Update the available seats and booked seats on the bus
+                                                const { selectedSeatNumbers } = booking;
 
-                                        // Update the booking status, cancellation charge, and refund amount
-                                        booking.status = 'cancelled';
-                                        booking.cancellationCharge = cancellationCharge;
-                                        booking.refundAmount = refundAmount;
-                                        await booking.save();
-                                      } else {
-                                        // Cancellation before the journey date, refund the full ticket amount
-                                        booking.status = 'cancelled';
-                                        await booking.save();
-                                      }
+                                                for (const seat of selectedSeatNumbers) {
+                                                  const index = trip.booked_seat.indexOf(seat);
+                                                  if (index !== -1) {
+                                                    trip.booked_seat.splice(index, 1);
+                                                    trip.Available_seat.push(seat);
+                                                  }
+                                                }
+                                                   // set the booking status to 'cancelled'
+                                                   
+                                                   booking.status = 'cancelled'
+                                                   await booking.save()
+                                                   await trip.save()   
+                                                   
+                                                   // send a cancellation email to user 
+                                                const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
+                                                await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
 
-                                      // Update the available seats and booked seats on the bus
-                                      const { selectedSeatNumbers } = booking;
+                                                res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
+                                              } catch (error) {
+                                                console.error(error);
+                                                return res.status(500).json({ success: false, error: 'An error occurred' });
+                                              }
+                                            };
 
-                                      for (const seat of selectedSeatNumbers) {
-                                        const index = trip.booked_seat.indexOf(seat);
-                                        if (index !== -1) {
-                                          trip.booked_seat.splice(index, 1);
-                                          trip.Available_seat.push(seat);
-                                        }
-                                      }
-                                      await trip.save();
-
-                                      // Send a confirmation email to the user
-                                      const user = await UserModel.findById(booking.userId);
-
-                                      const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
-                                      await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
-
-                                      res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
-                                    } catch (error) {
-                                      console.error(error);
-                                      return res.status(500).json({ success: false, error: 'An error occurred' });
-                                    }
-                                  };
-      
-   
+                                            
                                         
+                                                                              
                         
   // Api for get tickits booked by a user 
 
@@ -1944,45 +1950,50 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
   // APi for change trip Date 
 
-                          const getUpcomingTrip_for_DateChange = async (req, res) => {
-                            try {
-                              const currentDate = new Date();
-                          
-                              // Aggregate trips and group them by routeId
-                              const aggregatedTrips = await TripModel.aggregate([
-                                {
-                                  $match: {
-                                    startingDate: { $gt: currentDate },
-                                  },
-                                },
-                                {
-                                  $group: {
-                                    _id: '$routeNumber', 
-                                    trips: { $push: '$$ROOT' },
-                                    count: { $sum: 1 },
-                                  },
-                                },
-                                {
-                                  $match: {
-                                    count: { $gt: 1 },
-                                  },
-                                },
-                              ]);
-                          
-                              // Extract the trips from the aggregation result
-                              const commonRouteNumberTrips = aggregatedTrips.map((group) => group.trips).flat();
-                          
-                              res.status(200).json({
-                                success: true,
-                                message: 'Select the trips for changing the Date',
-                                trips: commonRouteNumberTrips,
-                              });
-                            } catch (error) {
-                              console.error('Error while fetching trips:', error);
-                              res.status(500).json({ success: false, error: 'There was an error while fetching trips' });
-                            }
-                          };
-  
+                                            const getUpcomingTrip_for_DateChange = async (req, res) => {
+                                              try {
+                                                const currentDate = new Date();
+                                                const sevenDaysFromNow = new Date(currentDate);
+                                                sevenDaysFromNow.setDate(currentDate.getDate() + 7);
+                                            
+                                                // Aggregate trips and group them by routeId
+                                                const aggregatedTrips = await TripModel.aggregate([
+                                                  {
+                                                    $match: {
+                                                      startingDate: {
+                                                        $gte: currentDate,
+                                                        $lte: sevenDaysFromNow,
+                                                      },
+                                                    },
+                                                  },
+                                                  {
+                                                    $group: {
+                                                      _id: '$routeNumber',
+                                                      trips: { $push: '$$ROOT' },
+                                                      count: { $sum: 1 },
+                                                    },
+                                                  },
+                                                  {
+                                                    $match: {
+                                                      count: { $gt: 1 },
+                                                    },
+                                                  },
+                                                ]);
+                                            
+                                                // Extract the trips from the aggregation result
+                                                const commonRouteNumberTrips = aggregatedTrips.map((group) => group.trips).flat();
+                                            
+                                                res.status(200).json({
+                                                  success: true,
+                                                  message: 'Select the trips for changing the Date',
+                                                  trips: commonRouteNumberTrips,
+                                                });
+                                              } catch (error) {
+                                                console.error('Error while fetching trips:', error);
+                                                res.status(500).json({ success: false, error: 'There was an error while fetching trips' });
+                                              }
+                                            };
+                                            
                                             
                                             
                           
