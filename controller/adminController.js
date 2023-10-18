@@ -49,7 +49,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     
                 const adminLogin = async (req, res) => {
                   try {
-                      const { username, password } = req.body;
+                      const { username, password } = req.body
 
                       // Find Admin by username
                       const admin = await Admin.findOne({ username });
@@ -548,246 +548,256 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
      //API for add stop in a bus with bus id 
 
-                            const addStop_in_Route = async (req,res)=>{
+                          const addStop_in_Route = async (req,res)=>{
                                   
-                              const routeId = req.params.routeId
-                            const {stopName , EstimatedTimeTaken, distance} = req.body          
-                              
-                            try{
-
-                              const requiredFields = [                
-                                'stopName', 
-                                'EstimatedTimeTaken',                                                                          
-                                'distance'          
-                        
-                            ];
-
-                            for (const field of requiredFields) {
-                                if (!req.body[field]) {
-                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                }
-                            }
-                                        
-                                  const route = await BusRoute.findOne({ _id:routeId })
+                            const routeId = req.params.routeId
+                          const {stopName , EstimatedTimeTaken, distance} = req.body          
                             
-                                  if(!route)
-                                  {
-                                      return res.status(400).json({ success : false , error : `route not found with the routeId ${routeId}`})
-                                  }
-                                         // Check if the stopName exists in the StopModel
-                                    const existingStop = await stopModel.findOne({ stopName });
+                          try{
 
-                                    if (!existingStop) {
-                                      return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
-                                    }
-                                   //  stops is an array in the BusRoute model
-                                    const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
+                            const requiredFields = [                
+                              'stopName', 
+                              'EstimatedTimeTaken',                                                                          
+                              'distance'          
+                      
+                          ];
 
-                                    if (duplicateStop) {
-                                      return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
-                                    }
-
-                                     // Split the EstimatedTimeTaken string into hours and minutes
-                                    const timeParts = EstimatedTimeTaken.split(',');
-                                    
-                                    if (timeParts.length !== 2) {
-                                      return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
-                                    }
-
-                                    const [hoursPart, minutesPart] = timeParts.map(part => part.trim());
-
-                                    const hoursMatch = hoursPart.match(/(\d+)\s*Hour/i);
-                                    const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
-
-                                    if (!hoursMatch || !minutesMatch) {
-                                      return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
-                                    }
-
-                                    const hours = parseInt(hoursMatch[1]);
-                                    const minutes = parseInt(minutesMatch[1]);
-
-                                    // Calculate the total time in minutes
-                                    const totalMinutes = hours * 60 + minutes;
+                          for (const field of requiredFields) {
+                              if (!req.body[field]) {
+                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                              }
+                          }
                                       
-                                  route.stops.push({
-                                      stopName, 
-                                      EstimatedTimeTaken : `${hours} Hour, ${minutes} Minute`,                               
-                                      distance
-                                  })
-                                  await route.save()
-                                   
+                                const route = await BusRoute.findOne({ _id:routeId })
+                          
+                                if(!route)
+                                {
+                                    return res.status(400).json({ success : false , error : `route not found with the routeId ${routeId}`})
+                                }
+                                       // Check if the stopName exists in the StopModel
+                                  const existingStop = await stopModel.findOne({ stopName });
 
-                                  return res.status(200).json({ success : true , message : `stop added successfully in routeID : ${routeId}`})
-                              }
-                              catch(error)
-                              {
-                                   console.error(error);
-                                  return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
-                              }
+                                  if (!existingStop) {
+                                    return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
+                                  }
+                                 //  stops is an array in the BusRoute model
+                                  const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
+
+                                  if (duplicateStop) {
+                                    return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
+                                  }
+
+                                   // Split the EstimatedTimeTaken string into hours and minutes
+                                  const timeParts = EstimatedTimeTaken.split(',');
+                                  
+                                  if (timeParts.length !== 2) {
+                                    return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                  }
+
+                                  const [hoursPart, minutesPart] = timeParts.map(part => part.trim());
+
+                                  const hoursMatch = hoursPart.match(/(\d+)\s*Hour/i);
+                                  const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
+
+                                  if (!hoursMatch || !minutesMatch) {
+                                    return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                  }
+
+                                  const hours = parseInt(hoursMatch[1]);
+                                  const minutes = parseInt(minutesMatch[1]);
+
+                                  // Calculate the total time in minutes
+                                  const totalMinutes = hours * 60 + minutes;
+                                    
+                                route.stops.push({
+                                    stopName, 
+                                    EstimatedTimeTaken : `${hours} Hour, ${minutes} Minute`,                               
+                                    distance
+                                })
+                                await route.save()
+                                 
+
+                                return res.status(200).json({ success : true , message : `stop added successfully in routeID : ${routeId}`})
                             }
+                            catch(error)
+                            {
+                                 console.error(error);
+                                return res.status(500).json({ success : false , message : ` an error occured while adding the stop` , error : error})
+                            }
+                          }
+                          
+                          
+                          
+                          
+                          
+                            
+                          
 
       // Api for Edit Stop in a Route
                         
-                            const editStop_in_Route = async (req, res) => {
-                              let routeId;
-                              try {
-                                const stopId = req.params.stopId;
-                                routeId = req.params.routeId;
+                      const editStop_in_Route = async (req, res) => {
+                        let routeId;
+                        try {
+                          const stopId = req.params.stopId;
+                          routeId = req.params.routeId;
+                      
+                          const { EstimatedTimeTaken, distance } = req.body;
+                      
+                          // Check for route existence
+                          const existRoute = await BusRoute.findOne({ _id: routeId });
+                          if (!existRoute) {
+                            return res.status(404).json({ success: false, error: "Route not found" });
+                          }
+                      
+                          // Check if the stops array exists within existRoute
+                          if (!existRoute.stops || !Array.isArray(existRoute.stops)) {
+                            return res
+                              .status(404)
+                              .json({ success: false, error: "Stops not found in the route" });
+                          }
+                      
+                          // Check for stopIndex
+                          const existStopIndex = existRoute.stops.findIndex(
+                            (stop) => stop._id.toString() === stopId
+                          );
+                          if (existStopIndex === -1) {
+                            return res.status(404).json({ success: false, error: "Stop not found" });
+                          }
+                      
+                          // Split the EstimatedTimeTaken string into hours and minutes
+                          const timeParts = EstimatedTimeTaken.split(",");
+                          if (timeParts.length !== 2) {
+                            return res.status(400).json({
+                              success: false,
+                              error: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
+                            });
+                          }
+                      
+                          const [hoursPart, minutesPart] = timeParts.map((part) => part.trim());
+                      
+                          const hoursMatch = hoursPart.match(/(\d+)\s*Hour/);
+                          const minutesMatch = minutesPart.match(/(\d+)\s*Minute/);
+                      
+                          if (!hoursMatch || !minutesMatch) {
+                            return res.status(400).json({
+                              success: false,
+                              error: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
+                            });
+                          }
+                      
+                          // Extract hours and minutes from the regex matches
+                          const hours = parseInt(hoursMatch[1]);
+                          const minutes = parseInt(minutesMatch[1]);
+                      
+                          // Update the properties of the stop
+                          existRoute.stops[existStopIndex].EstimatedTimeTaken = `${hours} Hour, ${minutes} Minute`;
+                          existRoute.stops[existStopIndex].distance = distance;
+                      
+                          // Save the updated route back to the database
+                          await existRoute.save();
+                      
+                          res.status(200).json({
+                            success: true,
+                            message: `Stop is edited successfully for routeId: ${routeId}`,
+                          });
+                        } catch (error) {
+                          console.error(error);
+                          res.status(500).json({
+                            success: false,
+                            error: `There is an error to update the stop in routeId: ${routeId}`,
+                          });
+                        }
+                      };
+
                             
-                                const { EstimatedTimeTaken, distance } = req.body;
-                            
-                                // Check for route existence
-                                const existRoute = await BusRoute.findOne({ _id: routeId });
-                                if (!existRoute) {
-                                  return res.status(404).json({ success: false, error: "Route not found" });
-                                }
-                            
-                                // Check if the stops array exists within existRoute
-                                if (!existRoute.stops || !Array.isArray(existRoute.stops)) {
-                                  return res
-                                    .status(404)
-                                    .json({ success: false, error: "Stops not found in the route" });
-                                }
-                            
-                                // Check for stopIndex
-                                const existStopIndex = existRoute.stops.findIndex(
-                                  (stop) => stop._id.toString() === stopId
-                                );
-                                if (existStopIndex === -1) {
-                                  return res.status(404).json({ success: false, error: "Stop not found" });
-                                }
-                            
-                                // Split the EstimatedTimeTaken string into hours and minutes
-                                const timeParts = EstimatedTimeTaken.split(",");
-                                if (timeParts.length !== 2) {
-                                  return res.status(400).json({
-                                    success: false,
-                                    error: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
-                                  });
-                                }
-                            
-                                const [hoursPart, minutesPart] = timeParts.map((part) => part.trim());
-                            
-                                const hoursMatch = hoursPart.match(/(\d+)\s*Hour/);
-                                const minutesMatch = minutesPart.match(/(\d+)\s*Minute/);
-                            
-                                if (!hoursMatch || !minutesMatch) {
-                                  return res.status(400).json({
-                                    success: false,
-                                    error: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
-                                  });
-                                }
-                            
-                                // Extract hours and minutes from the regex matches
-                                const hours = parseInt(hoursMatch[1]);
-                                const minutes = parseInt(minutesMatch[1]);
-                            
-                                // Update the properties of the stop
-                                existRoute.stops[existStopIndex].EstimatedTimeTaken = `${hours} Hour, ${minutes} Minute`;
-                                existRoute.stops[existStopIndex].distance = distance;
-                            
-                                // Save the updated route back to the database
-                                await existRoute.save();
-                            
-                                res.status(200).json({
-                                  success: true,
-                                  message: `Stop is edited successfully for routeId: ${routeId}`,
-                                });
-                              } catch (error) {
-                                console.error(error);
-                                res.status(500).json({
-                                  success: false,
-                                  error: `There is an error to update the stop in routeId: ${routeId}`,
-                                });
-                              }
-                            };
       
                             
                           
 
         
       // Api to add stop before the stop in a route
-                      const addStopBeforeStop = async (req, res) => {
-                        const routeId = req.params.routeId;
-                        const { beforeStopName, stopName, EstimatedTimeTaken , distance } = req.body;
-                    
-                        try {
-                            const requiredFields = [
-                                'beforeStopName',
-                                'stopName',   
-                                'EstimatedTimeTaken',                                                      
-                                'distance'
-                            ];
-                    
-                            for (const field of requiredFields) {
-                                if (!req.body[field]) {
-                                    return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                }
-                            }
-                    
-                            const route = await BusRoute.findOne({ _id: routeId });
-                    
-                            if (!route) {
-                                return res.status(400).json({ success: false, error: `route not found with the route ID ${routeId}` });
-                            }
-                            
-                                 // Check if the stopName exists in the StopModel
-                                 const existingStop = await stopModel.findOne({ stopName });
+                                    const addStopBeforeStop = async (req, res) => {
+                                      const routeId = req.params.routeId;
+                                      const { beforeStopName, stopName, EstimatedTimeTaken , distance } = req.body;
+                                  
+                                      try {
+                                          const requiredFields = [
+                                              'beforeStopName',
+                                              'stopName',   
+                                              'EstimatedTimeTaken',                                                      
+                                              'distance'
+                                          ];
+                                  
+                                          for (const field of requiredFields) {
+                                              if (!req.body[field]) {
+                                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                              }
+                                          }
+                                  
+                                          const route = await BusRoute.findOne({ _id: routeId });
+                                  
+                                          if (!route) {
+                                              return res.status(400).json({ success: false, error: `route not found with the route ID ${routeId}` });
+                                          }
+                                          
+                                              // Check if the stopName exists in the StopModel
+                                              const existingStop = await stopModel.findOne({ stopName });
 
-                               if (!existingStop) {
-                                  return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
-                                  }
-                    
-                            const beforeStopIndex = route.stops.findIndex(stop => stop.stopName === beforeStopName);
-                    
-                            if (beforeStopIndex === -1) {
-                                return res.status(400).json({ success: false, error: `Stop '${beforeStopName}' not found on the route` });
-                            }
-                            //  stops is an array in the BusRoute model
-                            const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
+                                            if (!existingStop) {
+                                                return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
+                                                }
+                                  
+                                          const beforeStopIndex = route.stops.findIndex(stop => stop.stopName === beforeStopName);
+                                  
+                                          if (beforeStopIndex === -1) {
+                                              return res.status(400).json({ success: false, error: `Stop '${beforeStopName}' not found on the route` });
+                                          }
+                                          //  stops is an array in the BusRoute model
+                                          const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
 
-                            if (duplicateStop) {
-                              return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
-                            }
+                                          if (duplicateStop) {
+                                            return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
+                                          }
 
-                             // Split the EstimatedTimeTaken string into hours and minutes
-                            const timeParts = EstimatedTimeTaken.split(',');
-                            
-                            if (timeParts.length !== 2) {
-                              return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
-                            }
+                                          // Split the EstimatedTimeTaken string into hours and minutes
+                                          const timeParts = EstimatedTimeTaken.split(',');
+                                          
+                                          if (timeParts.length !== 2) {
+                                            return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                          }
 
-                            const [hoursPart, minutesPart] = timeParts.map(part => part.trim());
+                                          const [hoursPart, minutesPart] = timeParts.map(part => part.trim());
 
-                            const hoursMatch = hoursPart.match(/(\d+)\s*Hour/i);
-                            const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
+                                          const hoursMatch = hoursPart.match(/(\d+)\s*Hour/i);
+                                          const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
 
-                            if (!hoursMatch || !minutesMatch) {
-                              return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
-                            }
+                                          if (!hoursMatch || !minutesMatch) {
+                                            return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                          }
 
-                            const hours = parseInt(hoursMatch[1]);
-                            const minutes = parseInt(minutesMatch[1]);
+                                          const hours = parseInt(hoursMatch[1]);
+                                          const minutes = parseInt(minutesMatch[1]);
 
-                            // Calculate the total time in minutes
-                            const totalMinutes = hours * 60 + minutes;
-                              
-                    
-                            const newStop = {
-                              stopName, 
-                              EstimatedTimeTaken : `${hours} Hour, ${minutes} Minute`,                               
-                              distance
-                            };
-                    
-                            route.stops.splice(beforeStopIndex, 0, newStop);
-                            await route.save();
-                    
-                            return res.status(200).json({ success: true, message: `Stop '${stopName}' added successfully before '${beforeStopName}' on routeId: ${routeId}` });
-                        } catch (error) {
-                            return res.status(500).json({ success: false, message: 'An error occurred while adding the stop', error });
-                        }
-                    };
+                                          // Calculate the total time in minutes
+                                          const totalMinutes = hours * 60 + minutes;
+                                            
+                                  
+                                          const newStop = {
+                                            stopName, 
+                                            EstimatedTimeTaken : `${hours} Hour, ${minutes} Minute`,                               
+                                            distance
+                                          };
+                                  
+                                          route.stops.splice(beforeStopIndex, 0, newStop);
+                                          await route.save();
+                                  
+                                          return res.status(200).json({ success: true, message: `Stop '${stopName}' added successfully before '${beforeStopName}' on routeId: ${routeId}` });
+                                      } catch (error) {
+                                          return res.status(500).json({ success: false, message: 'An error occurred while adding the stop', error });
+                                      }
+                                  };
 
+                      
     
     // Delete a particular stop by stopId with the help of bus
                 
@@ -952,22 +962,24 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                              availability 
                               
                             } = req.body
-                            const requiredFields = [                
-                              'driverName',
-                              'driverContact',            
-                              'driverLicence_number',             
-                              'status'            
+
+                          //   const requiredFields = [                
+                          //     'driverName',
+                          //     'driverContact',            
+                          //     'driverLicence_number',             
+                          //     'status'            
                               
-                          ];
+                          // ];
                       
-                          for (const field of requiredFields) {
-                              if (!req.body[field]) {
-                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                              }
-                          }           
+                          // for (const field of requiredFields) {
+                          //     if (!req.body[field]) {
+                          //         return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                          //     }
+                          // }           
                                   
                                 
                              // Check for driver existence
+                             
                             const existingDriver = await DriverModel.findOne({ _id:driverId});
                             if (!existingDriver) {
                               return res.status(400).json({ success: false, error: 'Driver not found' });
@@ -1720,7 +1732,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                               customer: customerId,
                                               confirm: true,
                                               receipt_email : email,
-                                              return_url: 'http://192.168.1.41:3000/',
+                                              return_url: 'http://localhost:4000/',
                                             });
 
                                           if (paymentIntent.status !== 'succeeded') {
@@ -1811,7 +1823,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             `;
                                           
                                           // Generate the QR CODE and send the booking confirmation email
-                                          const qrCodeData = `http://192.168.1.41:3000/${bookingId}`;
+                                          const qrCodeData = `http://192.168.1.41:4000/${bookingId}`;
                                           const qrCodeImage = 'ticket-QRCODE.png';
                                           await qrcode.toFile(qrCodeImage, qrCodeData);
                                       
@@ -2318,26 +2330,35 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
                                             /* Manage Transaction */
           // Api for get All transaction
-                                  const All_Transaction =  async (req, res) => {
-                                    try {
-                                      const startDate = new Date(req.query.startDate);
-                                      const endDate = new Date(req.query.endDate);
-                                   
-                                        endDate.setHours(23, 59, 59, 999);
-                                  
-                                      const transactions = await TransactionModel.find({
-                                        createdAt: {
-                                          $gte: startDate,
-                                          $lte: endDate,
-                                        },
-                                      });
-                                  
-                                      res.status(200).json({success : true , message : 'All Transaction', transaction:transactions});
-                                    } catch (error) {
-                                      console.error('Error fetching transactions:', error);
-                                      res.status(500).json({success: false ,  error: 'Internal server error' });
-                                    }
-                                  }
+                        const All_Transaction = async (req, res) => {
+                          try {
+                            let startDate, endDate;
+                        
+                            // Check if startDate and endDate are present in the request query
+                            if (req.query.startDate && req.query.endDate) {
+                              startDate = new Date(req.query.startDate);
+                              endDate = new Date(req.query.endDate);
+                              endDate.setHours(23, 59, 59, 999);
+                            }
+                        
+                            const query = {};
+                        
+                            if (startDate && endDate) {
+                              query.createdAt = {
+                                $gte: startDate,
+                                $lte: endDate,
+                              };
+                            }
+                        
+                            const transactions = await TransactionModel.find(query);
+                        
+                            res.status(200).json({ success: true, message: 'All Transaction', transaction: transactions });
+                          } catch (error) {
+                            console.error('Error fetching transactions:', error);
+                            res.status(500).json({ success: false, error: 'Internal server error' });
+                          }
+                        };
+          
                                                       
                                         /* Import and Export Data  */
 // APi for Import Buses record -

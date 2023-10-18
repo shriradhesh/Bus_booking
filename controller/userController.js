@@ -244,51 +244,47 @@ const { TokenExpiredError } = require('jsonwebtoken');
                                             /* --> User API for Manage Profile <-- */
 
     // update user profile
-                        const updateUser = async(req,res)=>{
-                          try{
-                                  const id = req.params.id;
-                                  const{ fullName , email ,phone_no, age, gender } = req.body
-                                  const user = await UserModel.findById(id)
-
-                                        // check for user exist
-                              if(!user){
-                                return res.status(404).json({ success : false , error : 'User not found'})
-                              }
-                                   user.fullName = fullName
-                                   user.email = email
-
-                                   // validate and update Phone number , age and gender 
-                                   if (phone_no) {
-                                    user.phone_no = phone_no;
-                                    }
-                                         
-                                  if (age) {                                     
-                                    const user_age = (Math.floor(age))                                        
-                                  
-                                    if (typeof user_age !== 'number' || user_age < 0 && age > 150) {
-                                        return res.status(400).json({ success: false, error: 'Invalid age' });
-                                    }                                   
-                                    user.age = age;
-                                }   
-                                if (gender) {
-                                const lowerCaseGender = gender.toLowerCase();                       
-                                    user.gender = lowerCaseGender
-                                }
-                               if(req.file)
-                                  {
-                                    user.profileImage = req.file.filename
-                                  }
-                                  
-                                       
-                              const updateUser = await user.save();                       
-                              return res.status(200).json({ success: true, message: 'User profile updated successfully',user : updateUser });
-                               
-                          }
-                          catch(error){
-                            console.log(error);
-                                res.status(500).json({ success : false , error : ' Error while updating user profile'})
-                          }
-                        }
+    const updateUser = async (req, res) => {
+      try {
+          const id = req.params.id;
+          const { fullName, phone_no, age, gender } = req.body;
+          const user = await UserModel.findById(id);
+  
+          // Check for user existence
+          if (!user) {
+              return res.status(404).json({ success: false, error: 'User not found' });
+          }
+          user.fullName = fullName;
+  
+          // Validate and update Phone number, age, and gender
+          if (phone_no) {
+              user.phone_no = phone_no;
+          }
+  
+          if (age) {
+              const user_age = Math.floor(age);
+  
+              if (typeof user_age !== 'number' || user_age < 0 || user_age > 150) {
+                  return res.status(400).json({ success: false, error: 'Invalid age' });
+              }
+              user.age = age;
+          }
+          if (gender) {
+              const lowerCaseGender = gender.toLowerCase();
+              user.gender = lowerCaseGender;
+          }
+          if (req.file) {
+              user.profileImage = req.file.filename;
+          }
+  
+          const updateUser = await user.save();
+          return res.status(200).json({ success: true, message: 'User profile updated successfully', user: updateUser });
+      } catch (error) {
+          console.log(error);
+          res.status(500).json({ success: false, error: 'Error while updating user profile' });
+      }
+  };
+  
 
             // APi for get user by email 
 

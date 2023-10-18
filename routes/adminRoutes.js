@@ -120,7 +120,7 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 
                                       /*  transaction Manage */
 // Api for get all transaction on Date
-         router.get('/All_Transaction', adminController.All_Transaction)
+         router.post('/All_Transaction', adminController.All_Transaction)
 
                                   /* Import and Export */
 // Api for import Buses data
