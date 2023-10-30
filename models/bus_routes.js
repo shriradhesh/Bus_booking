@@ -25,7 +25,7 @@ const busRouteSchema = new mongoose.Schema({
   ],
   status: {
     type: String,
-    enum: ['active', 'inactive'],
+    enum: ['active', 'inactive', 'Active' , 'Inactive'],
     default: 'active',
   },
 }, { timestamps: true });

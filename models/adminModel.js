@@ -23,6 +23,13 @@ const adminSchema = mongoose.Schema({
       twitterId :{ 
         type: String,
          unique: true },
+
+         login_type :
+         {
+          type : String,
+          enum: ['google', 'facebook' , 'twitter' , 'normal'],
+          default: 'normal',
+         },
 })
 
   

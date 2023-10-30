@@ -31,6 +31,7 @@ const FcmAdmin = require('firebase-admin');
 const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
 const _ = require('lodash')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { validationResult } = require('express-validator');
 
 
 
@@ -72,7 +73,27 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                   }
                 };
 
-
+  // API for google login
+                    const googleLogin = async(req,res)=>{                      
+                        try {
+                          const { email } = req.body;
+                      
+                          // Find Admin by email
+                          const admin = await Admin.findOne({ email });
+                      
+                          if (admin) {
+                            
+                            return res.json({ message: 'Admin Login Successful', success: true, data: admin });
+                          } else {
+                            return res.status(401).json({ message: 'Email not found', success: false });
+                          }
+                        } catch (error) {
+                          console.error(error);
+                          res.status(500).json({ message: 'Internal server error', success: false });
+                        }
+                      };
+                       
+                    
   
                            
 
@@ -212,73 +233,84 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
   // Api for update bus with id
-  const updateBus = async (req, res) => {
-    try {
-        const id = req.params.id;
-        const {
-            bus_type,
-            seating_capacity,
-            model,
-            manufacture_year,
-            amenities,
-            status,
-            availability
-        } = req.body;
-
-        // const requiredFields = [
-        //     'bus_type',
-        //     'seating_capacity',
-        //     'model',
-        //     'manufacture_year',
-        //     'amenities',
-        //     'status',
-        //     'availability',
-        // ];
-
-        // for (const field of requiredFields) {
-        //     if (!req.body[field]) {
-        //         return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-        //     }
-        // }
-
-        const existBus = await BusModel.findOne({ _id: id });
-        if (!existBus) {
-            return res.status(400).json({ error: 'Bus Not found', success: false });
-        }
-
-        const validStatus = ['active', 'inactive'];
-        const driverStatus = validStatus.includes(status) ? status : 'active';
-
-        const validAvailability = ['available', 'unavailable', 'booked'];
-        const BusAvailability = validAvailability.includes(availability) ? availability : 'available';
-
-        existBus.bus_type = bus_type;
-        existBus.seating_capacity = seating_capacity;
-        existBus.model = model;
-        existBus.manufacture_year = manufacture_year;
-        existBus.amenities = amenities;
-        existBus.status = driverStatus;
-        existBus.availability = BusAvailability;
-
-        if (req.file) {
-            if (existBus.images) {
-                try {
-                    fs.unlinkSync(existBus.images);
-                } catch (error) {
-                    console.error('Error deleting previous image:', error);
-                }
-            }
-            existBus.images = req.file.path;
-        }
-
-        const updatedBus = await existBus.save();
-        res.status(200).json({ success: true, message: 'Bus Details Edit Successfully' });
-    } catch (error) {
-        console.error('Error while editing the bus details:', error);
-        res.status(500).json({ success: false, error: 'Error while editing the bus details' });
-    }
-};
-
+                        const updateBus = async (req, res) => {
+                          try {
+                              const id = req.params.id;
+                              const {
+                                  bus_type,
+                                  seating_capacity,
+                                  model,
+                                  manufacture_year,
+                                  amenities,
+                                  status,
+                                  availability
+                              } = req.body;
+                      
+                              const existBus = await BusModel.findOne({ _id: id });
+                              if (!existBus) {
+                                  return res.status(400).json({ error: 'Bus Not found', success: false });
+                              }
+                      
+                              const validStatus = ['active', 'inactive'];
+                              const validAvailability = ['available', 'unavailable', 'booked'];
+                      
+                              if (!validStatus.includes(status)) {
+                                  return res.status(400).json({ message: 'Invalid status value', success: false });
+                              }
+                      
+                              if (!validAvailability.includes(availability)) {
+                                  return res.status(400).json({ message: 'Invalid availability value', success: false });
+                              }
+                      
+                              if (status === 'inactive' && availability !== 'unavailable') {
+                                  return res.status(400).json({ message: 'Bus status can only be set to inactive when availability is unavailable', success: false });
+                              }
+                      
+                              if (availability === 'unavailable' && status !== 'inactive') {
+                                  return res.status(400).json({ message: 'Bus availability can only be set to unavailable when status is inactive', success: false });
+                              }
+                      
+                              existBus.bus_type = bus_type;
+                              existBus.seating_capacity = seating_capacity;
+                              existBus.model = model;
+                              existBus.manufacture_year = manufacture_year;
+                              existBus.amenities = amenities;
+                              existBus.status = status;
+                              existBus.availability = availability;
+                      
+                              // Check if req.files exist and if it contains images
+                              if (req.files && req.files.length > 0) {
+                                  const images = [];
+                                  for (const file of req.files) {
+                                      // Ensure that the file is an image
+                                      if (file.mimetype.startsWith('image/')) {
+                                          if (existBus.images) {
+                                              // If the Bus Images already exist, delete the old file if it exists
+                                              const oldFilePath = `uploads/${existBus.images}`;
+                                              if (fs.existsSync(oldFilePath)) {
+                                                  fs.unlink(oldFilePath, (error) => {
+                                                      if (error) {
+                                                          console.error('Error deleting old file:', error);
+                                                      }
+                                                  });
+                                              }
+                                          }
+                                          // Add the new image filename to the images array
+                                          images.push(file.filename);
+                                      }
+                                  }
+                                  // Update the profileImage with the new one(s) or create a new one if it doesn't exist
+                                  existBus.images = images.length > 0 ? images : undefined;
+                              }
+                      
+                              const updatedBus = await existBus.save();
+                              res.status(200).json({ success: true, message: 'Bus Details Edited Successfully', updatedBus: updatedBus });
+                          } catch (error) {
+                              console.error(error);
+                              res.status(500).json({ success: false, message: 'Error while editing the bus details' });
+                          }
+                      };
+                      
 
   //APi for delete Bus 
                
@@ -952,72 +984,64 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
               };
         
       // Api for edit Driver Details
-                     const editDriver = async(req, res) =>{
-                      try{
-                            const driverId = req.params.driverId
-                            const {
-                              driverName ,
-                              driverContact,
-                              status , 
-                             availability 
-                              
-                            } = req.body
-
-                          //   const requiredFields = [                
-                          //     'driverName',
-                          //     'driverContact',            
-                          //     'driverLicence_number',             
-                          //     'status'            
-                              
-                          // ];
-                      
-                          // for (const field of requiredFields) {
-                          //     if (!req.body[field]) {
-                          //         return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                          //     }
-                          // }           
-                                  
-                                
-                             // Check for driver existence
-                             
-                            const existingDriver = await DriverModel.findOne({ _id:driverId});
-                            if (!existingDriver) {
-                              return res.status(400).json({ success: false, error: 'Driver not found' });
-                            }
-                             // Check for valid driver status
-                        const validStatus = ['active', 'inactive'];
-                        const driverStatus = validStatus.includes(status) ? status : 'active';
-                              // check for valid availability status
-                        const validAvailability = ['available', 'unavailable', 'booked'];
-                        const driverAvailability = validAvailability.includes(availability) ? availability : 'available';
-                
-
-                                    // update the Driver properties
-                              existingDriver.driverName = driverName,
-                              existingDriver.driverContact = driverContact,
-                              existingDriver.status = driverStatus
-                              existingDriver.availability = driverAvailability;
-                              
-                                      //update driver profileImage  
-                                                    
-                       if(req.file)
-                       {
-                         existingDriver.driverProfileImage = req.file.filename
-                      
-                       }  
-
-                              // save the data into database
-                              const updateDriver = await existingDriver.save()
-                              res.status(200).json({ success : true , message : ' Driver details update successfully' , Driver : updateDriver})
-
-                      }catch(error)
-                     
-                      {
-                        console.error(error);
-                          
-                          res.status(500).json({ success : false , error : ' there is an error to update the details of the driver'})
-                      }
-                     } 
+                                    const editDriver = async (req, res) => {
+                                      try {
+                                        const driverId = req.params.driverId;
+                                        const {
+                                          driverName,
+                                          driverContact,
+                                          status,
+                                          availability,
+                                        } = req.body;
+                                    
+                                        // Check for valid status and availability values
+                                        const validStatus = ['active', 'inactive'];
+                                        const validAvailability = ['available', 'unavailable'];
+                                    
+                                        if (!validStatus.includes(status)) {
+                                          return res.status(400).json({ message: 'Invalid status value', success: false });
+                                        }
+                                    
+                                        if (!validAvailability.includes(availability)) {
+                                          return res.status(400).json({ message: 'Invalid availability value', success: false });
+                                        }
+                                    
+                                        if (status === 'inactive' && availability !== 'unavailable') {
+                                          return res.status(400).json({ message: 'Driver status can only be set to inactive when availability is unavailable', success: false });
+                                        }
+                                    
+                                        if (availability === 'unavailable' && status !== 'inactive') {
+                                          return res.status(400).json({ message: 'Driver availability can only be set to unavailable when status is inactive', success: false });
+                                        }
+                                    
+                                        // Check for driver existence
+                                        const existingDriver = await DriverModel.findOne({ _id: driverId });
+                                    
+                                        if (!existingDriver) {
+                                          return res.status(404).json({ success: false, error: 'Driver not found' });
+                                        }
+                                    
+                                        // Update the Driver properties
+                                        existingDriver.driverName = driverName;
+                                        existingDriver.driverContact = driverContact;
+                                        existingDriver.status = status;
+                                        existingDriver.availability = availability;
+                                    
+                                        // Update driver profile image if a file is provided
+                                        if (req.file) {
+                                          existingDriver.driverProfileImage = req.file.filename;
+                                        }
+                                    
+                                        // Save the updated driver data into the database
+                                        const updatedDriver = await existingDriver.save();
+                                    
+                                        res.status(200).json({ success: true, message: 'Driver details updated successfully', Driver: updatedDriver });
+                                      } catch (error) {
+                                        console.error(error);
+                                        res.status(500).json({ success: false, error: 'There was an error updating the driver details' });
+                                      }
+                                    };
+                    
   
         // Api for Delete Driver
                             const deleteDriver = async (req, res) => {
@@ -1390,154 +1414,175 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // APi for calculateFareFor selected seats in Bus for trip
                             
-                                          const calculateFareForSelectedSeats = async (req, res) => {
-                                            try {
-                                              const tripId = req.params.tripId;
-                                              const {selectedSeatNumbers , passengerAges} = req.body; 
-                                              const { sourceStop, destinationStop } = req.query;
-                                                   
-                                              // Find the trip by its ID
-                                              const trip = await TripModel.findById(tripId);
+                const calculateFareForSelectedSeats = async (req, res) => {
+                  try {
+                    const tripId = req.params.tripId;
+                    const {selectedSeatNumbers , passengerAges} = req.body; 
+                    const { sourceStop, destinationStop } = req.query;
+                        
+                      
+                    // Find the trip by its ID
+                    const trip = await TripModel.findById(tripId);
+                            console.log(trip);
+                    if (!trip) {
+                      return res.status(404).json({ success: false, error: 'Trip not found' });
+                    }
+                          
+                    if (
+                      !Array.isArray(selectedSeatNumbers) ||
+                      selectedSeatNumbers.length === 0 ||
+                      selectedSeatNumbers.some(seatNumber => isNaN(seatNumber)) ||
+                      !Array.isArray(passengerAges) ||
+                      passengerAges.length === 0 ||
+                      passengerAges.some(age => isNaN(age))
+                    ) {
+                      return res.status(400).json({
+                        error: 'Invalid or empty selected seat numbers or passenger ages',
+                        success: false,
+                      });
+                    }
 
-                                              if (!trip) {
-                                                return res.status(404).json({ success: false, error: 'Trip not found' });
-                                              }
+                    // Access the available seats from the trip
+                    const availableSeats = trip.Available_seat || [];
+                    const routeNumber = trip.routeNumber;
 
-                                              if (
-                                                !Array.isArray(selectedSeatNumbers) ||
-                                                selectedSeatNumbers.length === 0 ||
-                                                selectedSeatNumbers.some(seatNumber => isNaN(seatNumber)) ||
-                                                !Array.isArray(passengerAges) ||
-                                                passengerAges.length === 0 ||
-                                                passengerAges.some(age => isNaN(age))
-                                              ) {
-                                                return res.status(400).json({
-                                                  error: 'Invalid or empty selected seat numbers or passenger ages',
-                                                  success: false,
-                                                });
-                                              }
+                    // Calculate the distance between source and destination stops
+                    const route = await BusRoute.findOne({ routeNumber });
+                    if (!route) {
+                      return res.status(400).json({
+                        success: false,
+                        error: 'Route not found',
+                      });
+                    }
 
-                                              // Access the available seats from the trip
-                                              const availableSeats = trip.Available_seat || [];
-                                              const routeNumber = trip.routeNumber;
+                    const stops = route.stops || [];
+                    const distance = calculateDistanceBetweenStops(stops, sourceStop, destinationStop);
 
-                                              // Calculate the distance between source and destination stops
-                                              const route = await BusRoute.findOne({ routeNumber });
-                                              if (!route) {
-                                                return res.status(400).json({
-                                                  success: false,
-                                                  error: 'Route not found',
-                                                });
-                                              }
+                    // Calculate fares for each passenger based on age group
+                    const fares = selectedSeatNumbers.map((seatNumber , index) => {
+                      // Check the bus type and set farePerUnitDistance accordingly
+                      let farePerUnitDistance;
+                      // Inside the calculateFareForSelectedSeats function
+                    
+                      const bus_no = trip.bus_no;
+                    
+                      const bus =  BusModel.findOne({
+                            bus_no
+                      })
+                      if(!bus_no)
+                      {
+                        return res.status(400).json({
+                          success : false,
+                          message : 'Bus not found'
 
-                                              const stops = route.stops || [];
-                                              const distance = calculateDistanceBetweenStops(stops, sourceStop, destinationStop);
+                        })
+                      }
 
-                                              // Calculate fares for each passenger based on age group
-                                              const fares = selectedSeatNumbers.map((seatNumber , index) => {
-                                                // Check the bus type and set farePerUnitDistance accordingly
-                                                let farePerUnitDistance;
-                                                const bus_no = trip.bus_no;
+                      let bus_type = trip.bus_type
+                        
+                        
 
-                                                const bus = BusModel.findOne({ bus_no });
-                                                if (!bus) {
-                                                  return {
-                                                    success: false,
-                                                    error: "Bus not found in trip",
-                                                  };
-                                                }
-                                                    const bus_type = trip.bus_type
-                                                switch (bus_type) {
-                                                  case 'Non-AC':
-                                                    farePerUnitDistance = 0.2;
-                                                    break;
-                                                  case 'AC':
-                                                    farePerUnitDistance = 0.24;
-                                                    break;
-                                                  case 'luxury':
-                                                    farePerUnitDistance = 0.3;
-                                                    break;
-                                                  default:
-                                                    farePerUnitDistance = 0.2;
-                                                }
+                      // Within the switch statement
+                      switch (bus_type) {
+                        case 'Non-AC' || 'Non-Ac':
+                          
+                          farePerUnitDistance = 0.2;
+                          break;
+                        case 'AC' || 'Ac':
+                        
+                          farePerUnitDistance = 0.24;
+                          break;
+                        case 'luxury':
+                        
+                          farePerUnitDistance = 0.3;
+                          break;
+                        default:
+                          console.log("Fare type: Default");
+                          farePerUnitDistance = 0.2;
+                      }
 
-                                                // Calculate the age group of the passenger
-                                                const ageGroup = calculateAgeGroup(passengerAges[index]);
+                          
 
-                                                // Calculate the total fare for the passenger
-                                                const totalFare = distance * farePerUnitDistance;
+                      // Calculate the age group of the passenger
+                      const ageGroup = calculateAgeGroup(passengerAges[index]);
 
-                                                // Calculate the seat fare based on age group
-                                                let seatFare;
-                                                switch (ageGroup) {
-                                                  case 'baby':
-                                                    seatFare = 0.0; // Babies travel free
-                                                    break;
-                                                  case 'children':
-                                                    seatFare = totalFare * 0.5; // Half fare for children
-                                                    break;
-                                                  case 'adult':
-                                                    seatFare = totalFare; // Full fare for adults
-                                                    break;
-                                                  default:
-                                                    seatFare = totalFare;
-                                                }
+                      // Calculate the total fare for the passenger
+                      const totalFare = distance * farePerUnitDistance;
 
-                                                return {
-                                                  success: true,
-                                                  message: 'Fare calculated successfully',
-                                                  busType: bus_type,
-                                                  boardingPoint: sourceStop,
-                                                  droppingPoint: destinationStop,
-                                                  seatNumber: seatNumber,
-                                                  Fare_in_Euro: totalFare,
-                                                  passengerAge: passengerAges[index],
-                                                  ageGroup: ageGroup,
-                                                  seatFare: seatFare,
-                                                };
-                                              });
-                                              // Calculate the total fare by summing up the seat fares of all passengers
-                                                  const totalFare = fares.reduce((acc, passenger) => acc + passenger.seatFare, 0);
+                      // Calculate the seat fare based on age group
+                      let seatFare;
+                      switch (ageGroup) {
+                        case 'baby':
+                          seatFare = 0.0; // Babies travel free
+                          break;
+                        case 'children':
+                          seatFare = totalFare * 0.5; // Half fare for children
+                          break;
+                        case 'adult':
+                          seatFare = totalFare; // Full fare for adults
+                          break;
+                        default:
+                          seatFare = totalFare;
+                      }
+
+                      return {
+                        success: true,
+                        message: 'Fare calculated successfully',
+                        busType: bus_type,
+                        boardingPoint: sourceStop,
+                        droppingPoint: destinationStop,
+                        seatNumber: seatNumber,
+                        Fare_in_Euro: totalFare,
+                        passengerAge: passengerAges[index],
+                        ageGroup: ageGroup,
+                        seatFare: seatFare,
+                      };
+                    });
+                    // Calculate the total fare by summing up the seat fares of all passengers
+                        const totalFare = fares.reduce((acc, passenger) => acc + passenger.seatFare, 0);
 
 
-                                              return res.status(200).json({
-                                                success : true,
-                                                message : 'Total fare calculated successfully',
-                                                totalFare_in_Euro : totalFare,
-                                                passengersfare : fares
-                                              });
-                                            } catch (error) {
-                                              console.error(error);
-                                              return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
-                                            }
-                                          };
+                    return res.status(200).json({
+                      success : true,
+                      message : 'Total fare calculated successfully',
+                      totalFare_in_Euro : totalFare,
+                      passengersfare : fares
+                    });
+                  } catch (error) {
+                    console.error(error);
+                    return res.status(500).json({ success: false, error: 'An error occurred while calculating fare' });
+                  }
+                };
 
-                                          // Helper function to calculate distance between stops
-                                          function calculateDistanceBetweenStops(stops, sourceStop, destinationStop) {
-                                            const sourceIndex = stops.findIndex((stop) => stop.stopName === sourceStop);
-                                            const destinationIndex = stops.findIndex((stop) => stop.stopName === destinationStop);
+                // Helper function to calculate distance between stops
+                function calculateDistanceBetweenStops(stops, sourceStop, destinationStop) {
+                  const sourceIndex = stops.findIndex((stop) => stop.stopName === sourceStop);
+                  const destinationIndex = stops.findIndex((stop) => stop.stopName === destinationStop);
 
-                                            if (sourceIndex === -1 || destinationIndex === -1 || sourceIndex >= destinationIndex) {
-                                              return 0;
-                                            }
+                  if (sourceIndex === -1 || destinationIndex === -1 || sourceIndex >= destinationIndex) {
+                    return 0;
+                  }
 
-                                            let distance = 0;
-                                            for (let i = sourceIndex; i < destinationIndex; i++) {
-                                              distance += stops[i + 1].distance - stops[i].distance;
-                                            }
+                  let distance = 0;
+                  for (let i = sourceIndex; i < destinationIndex; i++) {
+                    distance += stops[i + 1].distance - stops[i].distance;
+                  }
 
-                                            return distance;
-                                          }
+                  return distance;
+                }
 
-                                          function calculateAgeGroup(age) {
-                                            if (age > 0 && age <= 2) {
-                                              return 'baby';
-                                            } else if (age > 2 && age <= 21) {
-                                              return 'children';
-                                            } else {
-                                              return 'adult';
-                                            }
-                                          }
+                function calculateAgeGroup(age) {
+                  if (age > 0 && age <= 2) {
+                    return 'baby';
+                  } else if (age > 2 && age <= 21) {
+                    return 'children';
+                  } else {
+                    return 'adult';
+                  }
+                }
+
+
+
 
 
                                              /*  Manage Tickit */
@@ -1556,7 +1601,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             email,
                                             passengers,
                                             totalFare_in_Euro,
-                                                                            
+                                            number,
+                                            exp_month,
+                                            exp_year ,   
+                                            cvc                          
                                             
                                           } = req.body;
                                       
@@ -1712,10 +1760,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                           const paymentMethod = await stripe.paymentMethods.create({
                                             type: 'card',
                                             card: {
-                                              number: '4242424242424242',
-                                              exp_month: 12,
-                                              exp_year: 2025,
-                                              cvc: '123',
+                                              number: number,
+                                              exp_month: exp_month,
+                                              exp_year: exp_year,
+                                              cvc: cvc,
                                             },
                                           });
                                             // Attach the payment method to the customer
@@ -1791,16 +1839,131 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             .map((passenger, index) => {
                                               const seatNumber = selectedSeatNumbers[index];
                                               return `
-                                                Passenger Name: ${passenger.name}
-                                                Age: ${passenger.age}
-                                                Gender: ${passenger.gender}
-                                                Seat Number: ${seatNumber}
-                                                -----------------------------------------
-                                              `;
-                                            })
-                                            .join('\n');
+                                              <tr>
+                                              <td style="border: 2px solid #dadada; border-right: 0; border-left: 0; padding: 10px; font-size: 18px; white-space: nowrap;">
+                                                ${passenger.name}
+                                              </td>
+                                              <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                ${passenger.age}
+                                              </td>
+                                              <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                ${passenger.gender}
+                                              </td>
+                                              <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                ${seatNumber}
+                                              </td>                                              
+                                            </tr>
+                                          `;
+                                        })
+                                        .join('\n');
                                       
-                                          const emailContent = `Dear ${user.fullName},
+                                          const emailContent = `
+                                          <main>
+                                                <div style="width:700px; border:2px solid #ccc; margin:40px auto;">
+                                                  <table style="width: 100%;" cellspacing="0">
+                                                  <thead class="card-header">
+                                                   <tr>
+                                                    <td colspan="4" style="padding: 10px 0px;"><img id="logo" src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" title="InspHired" alt="InspHired" style="width:25%;">
+                                                    </td> 
+                                                    <td colspan="2" style="font-size:25px; font-weight:700; text-align:right; padding: 0px 10px 0px 0px;">Ticket Details</td> 
+                                                   </tr>
+                                                    <tr>
+                                                     <td  colspan="5" style="border:2px solid #dadada; border-bottom: 0; padding: 15px 0px 15px 10px; font-size:18px; border-right:0; border-left: 0;"><strong>Dear </strong>${user.fullName}</td> 
+                                                     <td  colspan="1" style="border:2px solid #dadada; border-bottom: 0; padding: 15px 10px 15px 0px; font-size:18px; border-left: 0; border-right: 0; text-align:right;"></td>
+                                                    </tr>
+                                                    <tr>
+                                                     <td  colspan="5" style="border:2px solid #dadada; border-top: 0; padding:0px 0px 15px 10px; font-size:16px; border-right:0; border-left: 0; font-weight:600;"> Your booking for departure on ${date} has been confirmed.</td>  
+                                                     <td  colspan="1" style="border:2px solid #dadada; border-top: 0; padding: 15px 10px 15px 0px; font-size:18px; border-left: 0; border-right: 0; text-align:right;"></td> 
+                                                    </tr>
+                                                    <!-- <tr>
+                                                     <td colspan="4" style="font-size:20px; font-weight:700; padding:10px 0px 0px 10px;"><strong>Pay To:</strong></td>
+                                                     <td colspan="2" style="font-size:20px; font-weight:700; padding: 10px 10px 0px 0px; text-align:right;"><strong>Invoiced To:</strong></td>
+                                                    </tr>
+                                                   <tr>
+                                                    <td colspan="4" style="padding: 10px;"><address>Koice Inc<br>2705 N. Enterprise St<br>Orange, CA mailto:92865<br>contact@koiceinc.com</address>
+                                                    </td>
+                                                    <td colspan="2" style="text-align:right; padding: 10px;"><address>Smith Rhodes<br>15 Hodges Mews, High Wycombe<br>HP12 3JL<br>United Kingdom</address>
+                                                    </td>    
+                                                   </tr>  --> 
+                                                    
+                                                  </thead>
+                                                    <tbody>
+                                                      <tr>
+                                                        <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px;"><strong>Booking ID</strong></th>
+                                                        <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${bookingId}</td>
+                                                        </tr>
+                                                        <tr>
+                                                         <th style="border-bottom:2px solid #dadada;  text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;"><strong>Trip Number</strong>
+                                                         </th>
+                                                          <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${trip.tripNumber}</td>
+                                                        </tr>  
+                                                        <tr>
+                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;">
+                                                          <strong>Bus Number</strong>
+                                                         </th>
+                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${trip.bus_no}</td>
+                                                        </tr>
+                                                        <tr>
+                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;"><strong>Driver Name</strong>
+                                                         </th> 
+                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${Driver.driverName}</td>
+                                                        </tr>
+                                                        <tr>
+                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;">
+                                                          <strong>Driver Contact</strong></th> 
+                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${Driver.driverContact}</td>
+                                                        </tr>
+                                                        <tr>
+                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; border-right: 0; white-space: nowrap;">
+                                                          <strong>Trip Starting Time</strong></th> 
+                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${trip.startingTime}</td> 
+                                                        </tr>
+                                                        <tr>
+                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; border-right: 0; white-space: nowrap;">
+                                                         <strong>Your Source</strong></th> 
+                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${source}</td>
+                                                        </tr>
+                                                        <tr>
+                                                         <th style="text-align: left; padding:10px; font-size:18px; border-right: 0; white-space: nowrap;">
+                                                          <strong>Your Destination</strong></th> 
+                                                          <td colspan="6" style="border:2px solid #dadada; border-bottom: 0; padding:10px; font-size:18px; border-top:0; border-right: 0;">${destination}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                    <!-- Passenger Details Section -->
+                                                    <thead>
+                                                      <tr>
+                                                        <td style="border: 2px solid #dadada; border-right: 0; border-left: 0; padding: 10px; font-size: 18px; white-space: nowrap;">
+                                                          <strong>Passenger Name</strong>
+                                                        </td>
+                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                          <strong>Age</strong>
+                                                        </td>
+                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                          <strong>Gender</strong>
+                                                        </td>
+                                                        <td colspan="3" style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                          <strong>Seat Number</strong>
+                                                        </td>
+                                                      </tr>
+                                                    </thead>
+                                                
+                                                    <tbody>
+                                                      ${passengerDetails}
+                                                    </tbody>                                                    
+                                                  </table>
+                                                       <!-- Footer -->
+                                          <!--<a href="javascript:window.print()" class="btn btn-light border text-black-50 shadow-none"><i class="fa fa-print"></i> Print</a>  -->
+                                            <!-- <footer class="download-btn-info-area" style="text-align: center; margin:30px;">
+                                              <a href="#" class="download-btn" style="background: #138aab; color: #fff; padding: 10px 20px; font-size: 20px; font-weight: 600; 
+                                              text-decoration: none; border-radius: 5px;"><i class="fa fa-download"></i> Download</a> 
+                                            </footer> -->
+                                          
+                                          <!-- footer -->
+                                              </div>
+                                          
+                                            </main>
+                                            `;
+                                          /* Dear ${user.fullName},
                                             Your booking for departure on ${date} has been confirmed.
                                             
                                             Journey Details:
@@ -1819,9 +1982,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                                             
                                             Have a safe journey!
                                             Thank you for choosing our service!
-                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~ @#@#@#@#@ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                                            `;
-                                          
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~ @#@#@#@#@ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
                                           // Generate the QR CODE and send the booking confirmation email
                                           const qrCodeData = `http://192.168.1.41:4000/${bookingId}`;
                                           const qrCodeImage = 'ticket-QRCODE.png';
@@ -2210,64 +2371,65 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     // API for TrackBus
       
-                              const trackBus = async (req, res) => {
-                                try {
-                                  const { tripId } = req.params;
-                                  const yourStopName = req.body.yourStopName;
-                              
-                                  // Find the trip by Trip Id
-                                  const trip = await TripModel.findById(tripId);
-                              
-                                  if (!trip) {
-                                    return res.status(400).json({ success: false, error: 'Trip not found' });
-                                  }
-                              
-                                  // Find the route in a trip using tripId
-                                  const routeNumber = trip.routeNumber;
-                              
-                                  const route = await BusRoute.findOne({ routeNumber });
-                                  if (!route) {
-                                    return res.status(400).json({ success: false, error: 'Route not found in trip' });
-                                  }
-                              
-                                  // Get the stops for the route
-                                  const stops = route.stops || [];
-                              
-                                  // Find the currentStop
-                                  const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
-                              
-                                  if (currentStopIndex === -1) {
-                                    return res.status(400).json({ success: false, error: 'your stop not found enter valid Stop' });
-                                  }
-                              
-                                  const currentStop = stops[currentStopIndex];
-                                  let previousStop = null;
-                              
-                                  if (currentStopIndex > 0) {
-                                    previousStop = stops[currentStopIndex - 1];
-                                  }
-                              
-                                  res.status(200).json({
-                                    success: true,
-                                    message: 'Bus Tracking Information',
-                                    Bus_Tracking: {
-                                      your_Stop: {
-                                        stopName: currentStop.stopName,
-                                        EstimatedTimeTaken : currentStop.EstimatedTimeTaken,
-                                      },
-                                      previousStop: previousStop
-                                        ? {
-                                            stopName: previousStop.stopName,
-                                            
+                                        const trackBus = async (req, res) => {
+                                          try {
+                                            const { tripId } = req.params;
+                                            const yourStopName = req.body.yourStopName;
+                                        
+                                            // Find the trip by Trip Id
+                                            const trip = await TripModel.findById(tripId);
+                                        
+                                            if (!trip) {
+                                              return res.status(404).json({ success: false, error: 'Trip not found' });
+                                            }
+                                        
+                                            // Find the route in a trip using tripId
+                                            const routeNumber = trip.routeNumber;
+                                        
+                                            const route = await BusRoute.findOne({ routeNumber });
+                                            if (!route) {
+                                              return res.status(404).json({ success: false, error: 'Route not found in trip' });
+                                            }
+                                        
+                                            // Get the stops for the route
+                                            const stops = route.stops || [];
+                                        
+                                            // Find the currentStop
+                                            const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
+                                        
+                                            if (currentStopIndex === -1) {
+                                              return res.status(400).json({ success: false, error: 'Your stop not found. Please enter a valid stop' });
+                                            }
+                                        
+                                            const currentStop = stops[currentStopIndex];
+                                            let previousStop = null;
+                                        
+                                            if (currentStopIndex > 0) {
+                                              previousStop = stops[currentStopIndex - 1];
+                                            }
+                                        
+                                            res.status(200).json({
+                                              success: true,
+                                              message: 'Bus Tracking Information',
+                                              Bus_Tracking: {
+                                                your_Stop: {
+                                                  stopName: currentStop.stopName,
+                                                  EstimatedTimeTaken: currentStop.EstimatedTimeTaken,
+                                                },
+                                                previousStop: previousStop
+                                                  ? {
+                                                      stopName: previousStop.stopName,
+                                                      EstimatedTimeTaken: previousStop.EstimatedTimeTaken, // You can add estimated time for the previous stop if available.
+                                                    }
+                                                  : null,
+                                              },
+                                            });
+                                          } catch (error) {
+                                            console.error(error);
+                                            res.status(500).json({ success: false, error: 'There is an error tracking the bus' });
                                           }
-                                        : null,
-                                    },
-                                  });
-                                } catch (error) {
-                                  console.error(error);
-                                  res.status(500).json({ success: false, error: 'There is an error tracking the BUS' });
-                                }
-                              };
+                                        };
+    
                               
    // send PUSH Notification
                                   
@@ -2739,7 +2901,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     
                 
     module.exports = { 
-                        adminLogin , changePassword, addBus , updateBus ,
+                        adminLogin , googleLogin , changePassword, addBus , updateBus ,
                         deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,addStop_in_Route,
                         editStop_in_Route, addStopBeforeStop, deleteStop_in_Route,  deleteRoute ,
                          searchTrips , createStop ,  addStopBeforeStop, allStops ,

@@ -13,6 +13,8 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
 
 // admin login
         router.post('/adminLogin',adminController.adminLogin)
+// google login
+        router.post('/googleLogin', adminController.googleLogin)
  
 
 //admin changePass
@@ -116,7 +118,7 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
         router.get('/countBookings',adminController.countBookings)
 
 // Api for traclBus
-        router.get('/trackBus/:tripId', adminController.trackBus)
+        router.post('/trackBus/:tripId', adminController.trackBus)
 
                                       /*  transaction Manage */
 // Api for get all transaction on Date

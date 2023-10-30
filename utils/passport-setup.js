@@ -87,7 +87,7 @@ passport.use(
   new FacebookStrategy({
     clientID :'302977945807103',
     clientSecret  : 'cd52c6c56378a9613d0d2033746bc9c4',
-    callbackURL : 'http://localhost:3000/auth/facebook/callback'
+    callbackURL : 'http://localhost:4000/auth/facebook/callback'
 
   },
   async function(accessToken , refreshToken , profile , cb ){
@@ -122,7 +122,7 @@ passport.use(
 const twitterConfig = {
   consumerKey: 'mmTqbKlap3HU0DZddm9F6D9wn',
   consumerSecret: 'o2XkZujeCymir1382obJA4rVSGtQG6BopGYBf3UUm7BYennXFt',
-  callbackURL: 'http://localhost:3000/auth/twitter/callback',
+  callbackURL: 'http://localhost:4000/auth/twitter/callback',
 };
 
 // Configure Twitter Strategy

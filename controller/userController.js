@@ -16,6 +16,7 @@ const upload = require('../uploadImage')
 const shortid = require('shortid')
 const cron = require('node-cron');
 const { TokenExpiredError } = require('jsonwebtoken');
+const fs = require('fs')
                         
                                     /* --> User API <-- */
 
@@ -244,47 +245,66 @@ const { TokenExpiredError } = require('jsonwebtoken');
                                             /* --> User API for Manage Profile <-- */
 
     // update user profile
-    const updateUser = async (req, res) => {
-      try {
-          const id = req.params.id;
-          const { fullName, phone_no, age, gender } = req.body;
-          const user = await UserModel.findById(id);
-  
-          // Check for user existence
-          if (!user) {
-              return res.status(404).json({ success: false, error: 'User not found' });
-          }
-          user.fullName = fullName;
-  
-          // Validate and update Phone number, age, and gender
-          if (phone_no) {
-              user.phone_no = phone_no;
-          }
-  
-          if (age) {
-              const user_age = Math.floor(age);
-  
-              if (typeof user_age !== 'number' || user_age < 0 || user_age > 150) {
-                  return res.status(400).json({ success: false, error: 'Invalid age' });
-              }
-              user.age = age;
-          }
-          if (gender) {
-              const lowerCaseGender = gender.toLowerCase();
-              user.gender = lowerCaseGender;
-          }
-          if (req.file) {
-              user.profileImage = req.file.filename;
-          }
-  
-          const updateUser = await user.save();
-          return res.status(200).json({ success: true, message: 'User profile updated successfully', user: updateUser });
-      } catch (error) {
-          console.log(error);
-          res.status(500).json({ success: false, error: 'Error while updating user profile' });
-      }
-  };
-  
+                                      const updateUser = async (req, res) => {
+                                        try {
+                                            const id = req.params.id;
+                                            const { fullName, phone_no, age, gender } = req.body;
+                                            const user = await UserModel.findById(id);
+                                    
+                                            // Check for user existence
+                                            if (!user) {
+                                                return res.status(404).json({ success: false, error: 'User not found' });
+                                            }
+                                    
+                                            user.fullName = fullName;
+                                    
+                                            // Validate and update Phone number, age, and gender
+                                            if (phone_no) {
+                                                user.phone_no = phone_no;
+                                            }
+                                    
+                                            if (age !== undefined) {
+                                                const user_age = Math.floor(age);
+                                    
+                                                if (typeof user_age !== 'number' || user_age < 0 || user_age > 150) {
+                                                    return res.status(400).json({ success: false, error: 'Invalid age' });
+                                                }
+                                                user.age = user_age;
+                                            }
+                                    
+                                            if (gender) {
+                                                const lowerCaseGender = gender.toLowerCase();
+                                                user.gender = lowerCaseGender;
+                                            }
+                                    
+                                            if (req.file) {
+                                                if (user.profileImage) {
+                                                    // If the user already has a profileImage, delete the old file if it exists
+                                                    const oldFilePath = `path_to_profile_images/${user.profileImage}`;
+                                                    if (fs.existsSync(oldFilePath)) {
+                                                        fs.unlink(oldFilePath, (err) => {
+                                                            if (err) {
+                                                                console.error('Error deleting old file:', err);
+                                                            }
+                                                        });
+                                                    }
+                                                    // Update the profileImage with the new one
+                                                    user.profileImage = req.file.filename;
+                                                } else {
+                                                    // If it doesn't exist, simply set it to the new file
+                                                    user.profileImage = req.file.filename;
+                                                }
+                                            }
+                                    
+                                            const updateUser = await user.save();
+                                            return res.status(200).json({ success: true, message: 'User profile updated successfully', user: updateUser });
+                                        } catch (error) {
+                                            console.log(error);
+                                            res.status(500).json({ success: false, error: 'Error while updating user profile' });
+                                        }
+                                    };
+                                    
+                                          
 
             // APi for get user by email 
 

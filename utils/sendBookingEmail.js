@@ -17,7 +17,7 @@ const sendBookingEmail = async(recipientEmail , subject , text)=>{
                 from : process.env.SMTP_MAIL,
                 to : recipientEmail,
                 subject : subject,
-                text : text,
+                html : text,
                 attachments : [
                     {
                         filename : 'tickit-QRCODE.png',
