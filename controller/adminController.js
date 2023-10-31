@@ -115,7 +115,7 @@ const { validationResult } = require('express-validator');
               
                   for (const field of requiredFields) {
                       if (!req.body[field]) {
-                          return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                          return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                       }
                   }
                                 
@@ -125,7 +125,7 @@ const { validationResult } = require('express-validator');
                       
                       if( newPassword !== confirmPassword )
                       {
-                        return res.status(400).json({ error : 'Password do not match' , success : false})
+                        return res.status(400).json({ message : 'Password do not match' , success : false})
                       }
 
                        // find Admin by Id
@@ -134,7 +134,7 @@ const { validationResult } = require('express-validator');
                         
                        if(!admin){
                  
-                        return res.status(404).json({ error : ' Admin not found' , success : false})
+                        return res.status(404).json({ message : ' Admin not found' , success : false})
                        }
                        else
                        {
@@ -144,7 +144,7 @@ const { validationResult } = require('express-validator');
                          const isOldPasswordValid = await bcrypt.compare(oldPassword , admin.password)
                             if(!isOldPasswordValid)
                             {
-                                return res.status(400).json({ error : 'Old Password incorrect ', success : false})
+                                return res.status(400).json({ message : 'Old Password incorrect ', success : false})
                             }
                       
                             // encrypt the newPassword 
@@ -192,7 +192,7 @@ const { validationResult } = require('express-validator');
 
                       for (const field of requiredFields) {
                           if (!req.body[field]) {
-                              return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                              return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                           }
                       }
                           
@@ -200,7 +200,7 @@ const { validationResult } = require('express-validator');
                         const existBus = await BusModel.findOne({ bus_no });
                     
                         if (existBus) {
-                          return res.status(400).json({ error: 'Bus with the same Number is Already Exist', success: false });
+                          return res.status(400).json({ message: 'Bus with the same Number is Already Exist', success: false });
                         }
                         
                       
@@ -248,7 +248,7 @@ const { validationResult } = require('express-validator');
                       
                               const existBus = await BusModel.findOne({ _id: id });
                               if (!existBus) {
-                                  return res.status(400).json({ error: 'Bus Not found', success: false });
+                                  return res.status(400).json({ message: 'Bus Not found', success: false });
                               }
                       
                               const validStatus = ['active', 'inactive'];
@@ -320,25 +320,25 @@ const { validationResult } = require('express-validator');
                         const bus = await BusModel.findById(busId);
 
                         if (!bus) {
-                            return res.status(404).json({ success: false, error: 'Bus not found' });
+                            return res.status(404).json({ success: false, message: 'Bus not found' });
                         }
 
                         if (bus.status === 'inactive' && bus.availability === 'unavailable') {
                             // Check if the bus is booked on other routes
                             const routesWithBus = await BusRoute.find({ busId: busId });
                             if (routesWithBus.length > 0) {
-                                return res.status(400).json({ success: false, error: 'Bus is booked on other routes' });
+                                return res.status(400).json({ success: false, message: 'Bus is booked on other routes' });
                             }
 
                             // If not booked on other routes, delete the bus
                             await BusModel.deleteOne({ _id: busId });
                             res.status(200).json({ success: true, message: 'Bus deleted successfully' });
                         } else {
-                            res.status(400).json({ success: false, error: 'Bus cannot be deleted , its currently status : active & Avaialabilty : available ' });
+                            res.status(400).json({ success: false, message: 'Bus cannot be deleted , its currently status : active & Avaialabilty : available ' });
                         }
                     } catch (error) {
                         console.error(error);
-                        res.status(500).json({ error: 'Error while deleting the Bus' });
+                        res.status(500).json({success : false , message: 'Error while deleting the Bus' });
                     }
                 };
 
@@ -354,13 +354,13 @@ const { validationResult } = require('express-validator');
                     } else if (status === 'inactive') {
                       buses = await BusModel.find({ status: 'inactive', availability: 'unavailable' });
                     } else {
-                      return res.status(400).json({ success: false, error: 'Invalid status value' });
+                      return res.status(400).json({ success: false, message: 'Invalid status value' });
                     }
                       
                     res.status(200).json({ success: true, message: 'All Buses', Bus_Detail: buses });
                   } catch (error) {
                     console.error(error);
-                    res.status(500).json({ success: false, error: 'There is an error to find Buses' });
+                    res.status(500).json({ success: false, message: 'There is an error to find Buses' });
                   }
                 }
             
@@ -372,12 +372,12 @@ const { validationResult } = require('express-validator');
                     const bus = await BusModel.findOne({ bus_no });
 
                     if (!bus) {
-                      return res.status(404).json({success : false ,  error: 'BUS not found' });
+                      return res.status(404).json({success : false ,  message: 'BUS not found' });
                     }
 
                     res.status(200).json({ success : true , message : " BUS found" , Bus_Detail : bus });
                   } catch (err) {
-                    res.status(500).json({ success : false , error: 'Error while finding the BUS' });
+                    res.status(500).json({ success : false , message: 'Error while finding the BUS' });
                   }
                 }
                   
@@ -400,7 +400,7 @@ const { validationResult } = require('express-validator');
                     
                         for (const field of requiredFields) {
                             if (!req.body[field]) {
-                                return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                             }
                         } 
                         
@@ -408,7 +408,7 @@ const { validationResult } = require('express-validator');
                         const existStop = await stopModel.findOne({ stopName });
                                   
                         if (existStop) {
-                          return res.status(400).json({ error: ' StopName already exist ', success: false });
+                          return res.status(400).json({ message: ' StopName already exist ', success: false });
                         }
 
                         const newStop = new stopModel({
@@ -439,7 +439,7 @@ const { validationResult } = require('express-validator');
                             res.status(200).json({ success: true, message: 'All Stops', stop_details : stops });
                           } catch (error) {
                             
-                            res.status(500).json({ success: false, error: 'There is an error to find all Stops ' });
+                            res.status(500).json({ success: false, message: 'There is an error to find all Stops ' });
                           }
                         }
                             
@@ -461,7 +461,7 @@ const { validationResult } = require('express-validator');
                             res.status(200).json({ success: true, message: 'Stop deleted successfully' });
                           } catch (error) {
                             console.error(error);
-                            res.status(500).json({ success: false, error: 'Error while deleting the Stop' });
+                            res.status(500).json({ success: false, message: 'Error while deleting the Stop' });
                           }
                         };
             
@@ -489,7 +489,7 @@ const { validationResult } = require('express-validator');
                           
                               for (const field of requiredFields) {
                                   if (!req.body[field]) {
-                                      return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                      return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                                   }
                               }
                                 
@@ -497,7 +497,7 @@ const { validationResult } = require('express-validator');
                           const existRoute = await BusRoute.findOne({ routeNumber })
                               if(existRoute)
                               {
-                            return res.status(400).json({ success : false ,  error : `route already exit with the route number : ${routeNumber} `})
+                            return res.status(400).json({ success : false ,  message : `route already exit with the route number : ${routeNumber} `})
                             }
                               
                         const newRoute = new BusRoute({
@@ -518,7 +518,7 @@ const { validationResult } = require('express-validator');
                           }
                           catch (error) {
                                     console.error(error);
-                          return res.status(500).json({ success: false, error: 'An error occurred while add route' });
+                          return res.status(500).json({ success: false, message: 'An error occurred while add route' });
                         }
                       }
 
@@ -538,7 +538,7 @@ const { validationResult } = require('express-validator');
 
                         res.status(200).json({success: true , message: 'All Routes', Route_Detail : Routes });
                         } catch (error) {
-                        res.status(500).json({success : false, error: 'There is an error to find Routes' + error.message});
+                        res.status(500).json({success : false, message: 'There is an error to find Routes' + error.message});
                         }
                     }
 
@@ -560,7 +560,7 @@ const { validationResult } = require('express-validator');
                                     // Check for route existence
                                     const existRoute = await BusRoute.findOne({ _id: routeId });
                                     if (!existRoute) {
-                                        return res.status(404).json({ success: false, error: `Route not found` });
+                                        return res.status(404).json({ success: false, message: `Route not found` });
                                     }
                                     
                                     // Update the properties of the existing route
@@ -574,7 +574,7 @@ const { validationResult } = require('express-validator');
                                     res.status(200).json({ success: true, message: 'Route Details Edited Successfully', route: updatedRoute });
                                 } catch (error) {
                                     console.error(error);
-                                    res.status(500).json({ success: false, error: 'Error while editing the route details' });
+                                    res.status(500).json({ success: false, message: 'Error while editing the route details' });
                                 }
                               };
 
@@ -596,7 +596,7 @@ const { validationResult } = require('express-validator');
 
                           for (const field of requiredFields) {
                               if (!req.body[field]) {
-                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                  return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                               }
                           }
                                       
@@ -604,26 +604,26 @@ const { validationResult } = require('express-validator');
                           
                                 if(!route)
                                 {
-                                    return res.status(400).json({ success : false , error : `route not found with the routeId ${routeId}`})
+                                    return res.status(400).json({ success : false , message : `route not found with the routeId ${routeId}`})
                                 }
                                        // Check if the stopName exists in the StopModel
                                   const existingStop = await stopModel.findOne({ stopName });
 
                                   if (!existingStop) {
-                                    return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
+                                    return res.status(400).json({ success: false, message: `Stop '${stopName}' does not exist in stops Database` });
                                   }
                                  //  stops is an array in the BusRoute model
                                   const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
 
                                   if (duplicateStop) {
-                                    return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
+                                    return res.status(400).json({ success: false, message: `Stop '${stopName}' already exists in a route` });
                                   }
 
                                    // Split the EstimatedTimeTaken string into hours and minutes
                                   const timeParts = EstimatedTimeTaken.split(',');
                                   
                                   if (timeParts.length !== 2) {
-                                    return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                    return res.status(400).json({ success: false, message: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
                                   }
 
                                   const [hoursPart, minutesPart] = timeParts.map(part => part.trim());
@@ -632,7 +632,7 @@ const { validationResult } = require('express-validator');
                                   const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
 
                                   if (!hoursMatch || !minutesMatch) {
-                                    return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                    return res.status(400).json({ success: false, message: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
                                   }
 
                                   const hours = parseInt(hoursMatch[1]);
@@ -678,14 +678,14 @@ const { validationResult } = require('express-validator');
                           // Check for route existence
                           const existRoute = await BusRoute.findOne({ _id: routeId });
                           if (!existRoute) {
-                            return res.status(404).json({ success: false, error: "Route not found" });
+                            return res.status(404).json({ success: false, message: "Route not found" });
                           }
                       
                           // Check if the stops array exists within existRoute
                           if (!existRoute.stops || !Array.isArray(existRoute.stops)) {
                             return res
-                              .status(404)
-                              .json({ success: false, error: "Stops not found in the route" });
+                              .status(400)
+                              .json({ success: false, message: "Stops not found in the route" });
                           }
                       
                           // Check for stopIndex
@@ -693,7 +693,7 @@ const { validationResult } = require('express-validator');
                             (stop) => stop._id.toString() === stopId
                           );
                           if (existStopIndex === -1) {
-                            return res.status(404).json({ success: false, error: "Stop not found" });
+                            return res.status(404).json({ success: false, message: "Stop not found" });
                           }
                       
                           // Split the EstimatedTimeTaken string into hours and minutes
@@ -701,7 +701,7 @@ const { validationResult } = require('express-validator');
                           if (timeParts.length !== 2) {
                             return res.status(400).json({
                               success: false,
-                              error: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
+                              message: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
                             });
                           }
                       
@@ -713,7 +713,7 @@ const { validationResult } = require('express-validator');
                           if (!hoursMatch || !minutesMatch) {
                             return res.status(400).json({
                               success: false,
-                              error: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
+                              message: "Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.",
                             });
                           }
                       
@@ -736,17 +736,11 @@ const { validationResult } = require('express-validator');
                           console.error(error);
                           res.status(500).json({
                             success: false,
-                            error: `There is an error to update the stop in routeId: ${routeId}`,
+                            message: `There is an error to update the stop in routeId: ${routeId}`,
                           });
                         }
                       };
 
-                            
-      
-                            
-                          
-
-        
       // Api to add stop before the stop in a route
                                     const addStopBeforeStop = async (req, res) => {
                                       const routeId = req.params.routeId;
@@ -762,40 +756,40 @@ const { validationResult } = require('express-validator');
                                   
                                           for (const field of requiredFields) {
                                               if (!req.body[field]) {
-                                                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                                  return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                                               }
                                           }
                                   
                                           const route = await BusRoute.findOne({ _id: routeId });
                                   
                                           if (!route) {
-                                              return res.status(400).json({ success: false, error: `route not found with the route ID ${routeId}` });
+                                              return res.status(400).json({ success: false, message: `route not found with the route ID ${routeId}` });
                                           }
                                           
                                               // Check if the stopName exists in the StopModel
                                               const existingStop = await stopModel.findOne({ stopName });
 
                                             if (!existingStop) {
-                                                return res.status(400).json({ success: false, error: `Stop '${stopName}' does not exist in stops Database` });
+                                                return res.status(400).json({ success: false, message: `Stop '${stopName}' does not exist in stops Database` });
                                                 }
                                   
                                           const beforeStopIndex = route.stops.findIndex(stop => stop.stopName === beforeStopName);
                                   
                                           if (beforeStopIndex === -1) {
-                                              return res.status(400).json({ success: false, error: `Stop '${beforeStopName}' not found on the route` });
+                                              return res.status(400).json({ success: false, message : `Stop '${beforeStopName}' not found on the route` });
                                           }
                                           //  stops is an array in the BusRoute model
                                           const duplicateStop = route.stops.find((stop) => stop.stopName === stopName);
 
                                           if (duplicateStop) {
-                                            return res.status(400).json({ success: false, error: `Stop '${stopName}' already exists in a route` });
+                                            return res.status(400).json({ success: false, message: `Stop '${stopName}' already exists in a route` });
                                           }
 
                                           // Split the EstimatedTimeTaken string into hours and minutes
                                           const timeParts = EstimatedTimeTaken.split(',');
                                           
                                           if (timeParts.length !== 2) {
-                                            return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                            return res.status(400).json({ success: false, message: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
                                           }
 
                                           const [hoursPart, minutesPart] = timeParts.map(part => part.trim());
@@ -804,7 +798,7 @@ const { validationResult } = require('express-validator');
                                           const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
 
                                           if (!hoursMatch || !minutesMatch) {
-                                            return res.status(400).json({ success: false, error: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
+                                            return res.status(400).json({ success: false, message: `Invalid EstimatedTimeTaken format. Use 'X Hour, X Minute' format.` });
                                           }
 
                                           const hours = parseInt(hoursMatch[1]);
@@ -842,14 +836,14 @@ const { validationResult } = require('express-validator');
                                                           
                               if(!existRoute)
                               {
-                                return res.status(404).json({ success : false , error : " Route not found"})
+                                return res.status(404).json({ success : false , message : " Route not found"})
                               }
                               
                               // check for stop
                               const existStopIndex = existRoute.stops.findIndex(stop => stop._id.toString() === stopId)
                                 if(existStopIndex === -1)
                                 {
-                                  return res.status(404).json({ success : false , error : " Stop not found"})
+                                  return res.status(404).json({ success : false , message : " Stop not found"})
                                   }  
                                   // remove the stop from the stop array
                                   
@@ -865,7 +859,7 @@ const { validationResult } = require('express-validator');
                           }
                         catch(error)
                         {
-                              res.status(500).json({ success : false , error :  ` there is an error to delete the stop `})
+                              res.status(500).json({ success : false , message :  ` there is an error to delete the stop `})
                         }
                         }         
 
@@ -880,7 +874,7 @@ const { validationResult } = require('express-validator');
                             // Check for route existence
                             const existingRoute = await BusRoute.findOne({ _id: routeId });
                             if (!existingRoute) {
-                              return res.status(404).json({ success: false, error: `Route not found` });
+                              return res.status(404).json({ success: false, message: `Route not found` });
                             }
                         
                             // Delete the route from the database
@@ -889,7 +883,7 @@ const { validationResult } = require('express-validator');
                             res.status(200).json({ success: true, message: 'Route deleted successfully' });
                           } catch (error) {
                             console.error(error);
-                            res.status(500).json({ success: false, error: 'Error while deleting the route' });
+                            res.status(500).json({ success: false, message : 'Error while deleting the route' });
                           }
                         };
     
@@ -903,85 +897,77 @@ const { validationResult } = require('express-validator');
                  // check for Admin exist
                  const admin = await Admin.findById(AdminId)
                  if(!admin){
-                  return res.status(404).json({ success : false , error : 'Admin not found'})
-                 }
-                
+                  return res.status(404).json({ success : false , message : 'Admin not found'})
+                 }               
                       
                        if(req.file)
                   {
-                    admin.profileImage = req.file.filename
-                 
-                  }  
-                 
+                    admin.profileImage = req.file.filename                 
+                  }                   
                       await admin.save()
                       return res.status(200).json({ success: true, message: 'Admin profile change successfully' });
                 }
                 catch(error)
-                {
-                  
-                  res.status(500).json({ success : false , error : ' Error while changing Admin profile'})
+                {                  
+                  res.status(500).json({ success : false , message : ' Error while changing Admin profile'})
                 }
               }
 
                                                     /*   Driver Manage  */
 
   //Api for add New Driver
-              const addDriver = async (req, res) => {
-                try {
-                  const { driverId ,driverName, driverContact, driverLicence_number, status , driverProfileImage } = req.body;
+                                const addDriver = async (req, res) => {
+                                  try {
+                                    const { driverId ,driverName, driverContact, driverLicence_number, status , driverProfileImage } = req.body;
 
-                  const requiredFields = [
-                    'driverId',                
-              'driverName',
-              'driverContact',            
-              'driverLicence_number',             
-              'status' 
+                                    const requiredFields = [
+                                      'driverId',                
+                                      'driverName',
+                                      'driverContact',            
+                                      'driverLicence_number',             
+                                      'status'                                         
+                                
+                            ];
                         
-              
-          ];
-      
-          for (const field of requiredFields) {
-              if (!req.body[field]) {
-                  return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-              }
-          }               
-              
-                  // Check for driver existence
-                  const existingDriver = await DriverModel.findOne({ driverId });
-                  if (existingDriver) {
-                    return res.status(400).json({ success: false, error:'driver already exist' });
-                  }
-                  
-              
-                  // Check for valid driver status
-                  const validStatus = ['active', 'inactive'];
-                  const driverStatus = validStatus.includes(status) ? status : 'active';
+                            for (const field of requiredFields) {
+                                if (!req.body[field]) {
+                                    return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                }
+                            }                                              
+                                    // Check for driver existence
+                                    const existingDriver = await DriverModel.findOne({ driverId });
+                                    if (existingDriver) {
+                                      return res.status(400).json({ success: false, message :'driver already exist' });
+                                    }                                   
+                                
+                                    // Check for valid driver status
+                                    const validStatus = ['active', 'inactive'];
+                                    const driverStatus = validStatus.includes(status) ? status : 'active';
 
-                 
-                  const newDriver = new DriverModel({
-                    driverId,
-                    driverName,
-                    driverContact,
-                    driverLicence_number,
-                    status: driverStatus
-                    
-                  });  
+                                  
+                                    const newDriver = new DriverModel({
+                                      driverId,
+                                      driverName,
+                                      driverContact,
+                                      driverLicence_number,
+                                      status: driverStatus
+                                      
+                                    });  
 
-                        
-                        // set Driver availability  and profile Images
-                  newDriver.availability = 'available'; 
-                  if (req.file) {
-                    newDriver.driverProfileImage = req.file.filename;
-                  }
-              
-              
-                  const savedDriver = await newDriver.save();
-                  res.status(200).json({ success: true, message: ' New Driver added successfully', driver: savedDriver });
-                } catch (error) {
-                  console.error(error);
-                  res.status(500).json({ success: false, error: 'Error adding driver details' });
-                }
-              };
+                                          
+                                          // set Driver availability  and profile Images
+                                    newDriver.availability = 'available'; 
+                                    if (req.file) {
+                                      newDriver.driverProfileImage = req.file.filename;
+                                    }             
+                                
+                                    const savedDriver = await newDriver.save();
+                                    res.status(200).json({ success: true, message: ' New Driver added successfully', driver: savedDriver });
+                                  } catch (error) {
+                                    console.error(error);
+                                    res.status(500).json({ success: false, message: 'Error adding driver details' });
+                                  }
+                                };
         
       // Api for edit Driver Details
                                     const editDriver = async (req, res) => {
@@ -1018,7 +1004,7 @@ const { validationResult } = require('express-validator');
                                         const existingDriver = await DriverModel.findOne({ _id: driverId });
                                     
                                         if (!existingDriver) {
-                                          return res.status(404).json({ success: false, error: 'Driver not found' });
+                                          return res.status(404).json({ success: false, message: 'Driver not found' });
                                         }
                                     
                                         // Update the Driver properties
@@ -1052,18 +1038,18 @@ const { validationResult } = require('express-validator');
                                 if (!driver) {
                                   return res.status(404).json({ success: false, error: 'driver not found' });
                                 }
-                            // Check if driver status is inactive and availability is unavailable
-                            if (driver.status === 'inactive' && driver.availability === 'unavailable') {
-                              await driver.deleteOne();
-                              res.status(200).json({ success: true, message: 'Driver deleted successfully' });
-                            } else {
-                              res.status(400).json({ success: false, error: 'Driver booked with other bus and route ' });
-                            }
-                            }
-                            catch (error) {                    
-                                res.status(500).json({ error: 'Error while deleting the Driver' });
-                              }
-                            };
+                                // Check if driver status is inactive and availability is unavailable
+                                if (driver.status === 'inactive' && driver.availability === 'unavailable') {
+                                  await driver.deleteOne();
+                                  res.status(200).json({ success: true, message: 'Driver deleted successfully' });
+                                } else {
+                                  res.status(400).json({ success: false, message: 'Driver booked with other bus and route ' });
+                                }
+                                }
+                                catch (error) {                    
+                                    res.status(500).json({success : false , message: 'Error while deleting the Driver' });
+                                  }
+                                };
 
       // Api for get all driver
                             const allDrivers = async (req, res) => {
@@ -1076,13 +1062,13 @@ const { validationResult } = require('express-validator');
                                 } else if (status === 'inactive') {
                                   buses = await DriverModel.find({ status: 'inactive', availability: 'unavailable' });
                                 } else {
-                                  return res.status(400).json({ success: false, error: 'Invalid status value' });
+                                  return res.status(400).json({ success: false, message : 'Invalid status value' });
                                 }
                                   
                                 res.status(200).json({ success: true, message: 'All Drivers', Driver_Details: Drivers });
                               } catch (error) {
                                 
-                                res.status(500).json({ success: false, error: 'There is an error to find Drivers' });
+                                res.status(500).json({ success: false, message : 'There is an error to find Drivers' });
                               }
                             }
                
@@ -1093,12 +1079,12 @@ const { validationResult } = require('express-validator');
                                   const driver = await DriverModel.findById(driverId);
 
                                   if (!driver) {
-                                    return res.status(404).json({success : false ,  error: 'Driver not found' });
+                                    return res.status(404).json({success : false ,  message: 'Driver not found' });
                                   }
 
                                   res.status(200).json({ success : true , message : " driver found" , Driver_Details : driver });
                                 } catch (err) {
-                                  res.status(500).json({ success : false , error: 'Error while finding the driver' });
+                                  res.status(500).json({ success : false , message: 'Error while finding the driver' });
                                 }
                               }
 
@@ -1132,11 +1118,11 @@ const { validationResult } = require('express-validator');
                         ]
                         for(const field of requiredFields){
                           if(!req.body[field]){
-                            return res.status(400).json({ error : `missing ${field.replace('_',' ')} field`, success : false})
+                            return res.status(400).json({ message : `missing ${field.replace('_',' ')} field`, success : false})
                           }
                         }
                        
-                           // Check if a trip with the same busId and startingDate already exists
+                           // Check if a trip with the same bus number and startingDate already exists
                                 const existingbus = await TripModel.findOne({
                                   bus_no,
                                   startingDate,
@@ -1146,7 +1132,7 @@ const { validationResult } = require('express-validator');
                                   return res
                                     .status(400)
                                     .json({
-                                      error: 'A trip with the same Bus and starting date already exists',
+                                      message: 'A trip with the same Bus and starting date already exists',
                                       success: false,
                                     });
                                 }
@@ -1162,7 +1148,7 @@ const { validationResult } = require('express-validator');
                                   return res
                                     .status(400)
                                     .json({
-                                      error: 'A trip with the same Driver and starting date already exists',
+                                      message: 'A trip with the same Driver and starting date already exists',
                                       success: false,
                                     });
                                 }
@@ -1174,7 +1160,7 @@ const { validationResult } = require('express-validator');
                                       if(existingTripNumber)
                                       {
                                         return res.status(400).json({
-                                                    error : ' trip number already exist',
+                                                    message : ' trip number already exist',
                                                     success : false
                                         })
                                       }
@@ -1183,21 +1169,21 @@ const { validationResult } = require('express-validator');
                         const bus = await BusModel.findOne({ bus_no });
                     
                         if (!bus) {
-                          return res.status(400).json({ error: 'Bus not found ', success: false });
+                          return res.status(400).json({ message : 'Bus not found ', success: false });
                         }
                            
                         const { bus_type , amenities , images } = bus
                         // Check for Route number
-                        const route = await BusRoute.findOne({routeNumber });
+                        const route = await BusRoute.findOne({ routeNumber });
                     
                         if (!route) {
-                          return res.status(400).json({ error: 'Route not found', success: false });
+                          return res.status(400).json({ message: 'Route not found', success: false });
                         }
                           // Check for Driver existence
                           const driver = await DriverModel.findOne({ driverId })
 
                           if (!driver) {
-                            return res.status(400).json({ error: 'Driver with the specified ID does not exist', success: false });
+                            return res.status(400).json({ message : 'Driver with the specified ID not exist', success: false });
                           }  
                               
                               // Create an array for available seats
@@ -1230,7 +1216,7 @@ const { validationResult } = require('express-validator');
                       catch(error)
                       {
                            console.error(error);
-                            res.status(500).json({success : false , error : ' there is an error while creating the trip'})
+                            res.status(500).json({success : false , message : ' there is an error while creating the trip'})
                       }
                     } 
 
@@ -1271,13 +1257,13 @@ const { validationResult } = require('express-validator');
                                         const trips = await TripModel.find();
                                     
                                         if (trips.length === 0) {
-                                          return res.status(404).json({ error: 'No trips found for the specified startingDate', success: false });
+                                          return res.status(404).json({ message: 'No trips found for the specified startingDate', success: false });
                                         }
                                     
                                         res.status(200).json({ success: true, trips });
                                       } catch (error) {
                                         console.error(error);
-                                        res.status(500).json({ success: false, error: 'There was an error while fetching trips' });
+                                        res.status(500).json({ success: false, message: 'There was an error while fetching trips' });
                                       }
                                     };
                                      
@@ -1295,7 +1281,7 @@ const { validationResult } = require('express-validator');
                                       if (!trips || trips.length === 0) {
                                         return res.status(400).json({
                                           success: false,
-                                          error: 'No matching trips found for the selected date'
+                                          message: 'No matching trips found for the selected date'
                                         });
                                       }
                                   
@@ -1326,7 +1312,7 @@ const { validationResult } = require('express-validator');
                                       if (matchingTrips.length === 0) {
                                         return res.status(400).json({
                                           success: false,
-                                          error: 'No matching trips found for the selected stops'
+                                          message: 'No matching trips found for the selected stops'
                                         });
                                       }
                                   
@@ -1338,20 +1324,11 @@ const { validationResult } = require('express-validator');
                                     } catch (error) {
                                       res.status(500).json({
                                         success: false,
-                                        error: 'Error while fetching the data'
+                                        message: 'Error while fetching the data'
                                       });
                                     }
                                   };
 
-           
-                            
-                                                  
-      
-                                      
-                                      
-    
-
-      
                  
  // API for View seats in Bus for a trip
                             
@@ -1423,9 +1400,9 @@ const { validationResult } = require('express-validator');
                       
                     // Find the trip by its ID
                     const trip = await TripModel.findById(tripId);
-                            console.log(trip);
+                          
                     if (!trip) {
-                      return res.status(404).json({ success: false, error: 'Trip not found' });
+                      return res.status(404).json({ success: false, message: 'Trip not found' });
                     }
                           
                     if (
@@ -1437,7 +1414,7 @@ const { validationResult } = require('express-validator');
                       passengerAges.some(age => isNaN(age))
                     ) {
                       return res.status(400).json({
-                        error: 'Invalid or empty selected seat numbers or passenger ages',
+                        message: 'Invalid or empty selected seat numbers or passenger ages',
                         success: false,
                       });
                     }
@@ -1629,7 +1606,7 @@ const { validationResult } = require('express-validator');
                                           if (!tripId) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Trip ID is missing or undefined',
+                                              message: 'Trip ID is missing or undefined',
                                             });
                                           }
                                             
@@ -1638,7 +1615,7 @@ const { validationResult } = require('express-validator');
                                           if (!user) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'User not found',
+                                              message: 'User not found',
                                             });
                                           }
                                           const userId = user._id;
@@ -1650,7 +1627,7 @@ const { validationResult } = require('express-validator');
                                           if (!trip) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Trip not found',
+                                              message : 'Trip not found',
                                             });
                                           }
                                       
@@ -1659,7 +1636,7 @@ const { validationResult } = require('express-validator');
                                           if (!bus_no) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'busId not found',
+                                              message : 'busId not found',
                                             });
                                           }
                                       
@@ -1667,7 +1644,7 @@ const { validationResult } = require('express-validator');
                                           if (!bus) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Bus Details not found',
+                                              message : 'Bus Details not found',
                                             });
                                           }
                                       
@@ -1677,7 +1654,7 @@ const { validationResult } = require('express-validator');
                                           if (!Driver) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Driver not found',
+                                              message: 'Driver not found',
                                             });
                                           }
                                       
@@ -1687,7 +1664,7 @@ const { validationResult } = require('express-validator');
                                           ) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Invalid selected seat numbers',
+                                              message : 'Invalid selected seat numbers',
                                             });
                                           }
                                       
@@ -1697,7 +1674,7 @@ const { validationResult } = require('express-validator');
                                             if (!trip.Available_seat.includes(seat)) {
                                               return res.status(400).json({
                                                 success: false,
-                                                error: `Seat ${seat} is already booked`,
+                                                message: `Seat ${seat} is already booked`,
                                               });
                                             }
                                           }
@@ -1709,7 +1686,7 @@ const { validationResult } = require('express-validator');
                                                           if (bookedSeats.includes(seat)) {
                                                             return res.status(400).json({
                                                               success: false,
-                                                              error: `Seat ${seat} is already booked`,
+                                                              message: `Seat ${seat} is already booked`,
                                                             });
                                                           }
                                                         }
@@ -1723,8 +1700,7 @@ const { validationResult } = require('express-validator');
                                                 trip.booked_seat.push(seat);
                                               }
                                             }
-                                          }
-                                        
+                                          }                                      
 
                                           
                                           // Check if selected seats are already booked on the same date in the booking model
@@ -1745,7 +1721,7 @@ const { validationResult } = require('express-validator');
                                       
                                             return res.status(400).json({
                                               success: false,
-                                              error: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
+                                              message: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
                                             });
                                           }
                                             // Create a customer in Stripe
@@ -1786,7 +1762,7 @@ const { validationResult } = require('express-validator');
                                           if (paymentIntent.status !== 'succeeded') {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Payment confirmation failed',
+                                              message: 'Payment confirmation failed',
                                             });
                                           }
                                       
@@ -1797,7 +1773,7 @@ const { validationResult } = require('express-validator');
                                           if (existingTransaction) {
                                             return res.status(400).json({
                                               success: false,
-                                              error: 'Booking has already been paid',
+                                              message: 'Booking has already been paid',
                                             });
                                           }
                                       
@@ -1998,7 +1974,7 @@ const { validationResult } = require('express-validator');
                                           console.error(error);
                                           return res.status(500).json({
                                             success: false,
-                                            error: 'An error occurred',
+                                            message: 'An error occurred',
                                           });
                                         }
                                       };
@@ -2025,15 +2001,15 @@ const { validationResult } = require('express-validator');
                                                 const { email, bookingId } = req.body;
 
                                                 if (!email) {
-                                                  return res.status(400).json({ success: false, error: 'Missing Email' });
+                                                  return res.status(400).json({ success: false, message: 'Missing Email' });
                                                 }
                                                 if (!bookingId) {
-                                                  return res.status(400).json({ success: false, error: 'Missing bookingId' });
+                                                  return res.status(400).json({ success: false, message: 'Missing bookingId' });
                                                 }
 
                                                 const booking = await BookingModel.findOne({ bookingId });
                                                 if (!booking) {
-                                                  return res.status(404).json({ success: false, error: 'Booking not found' });
+                                                  return res.status(404).json({ success: false, message: 'Booking not found' });
                                                 }
 
                                                   // Fetch the user associated with the booking
@@ -2045,20 +2021,20 @@ const { validationResult } = require('express-validator');
                                                   {
                                                     return res.status(400).json({
                                                       success : false ,
-                                                      error : 'Unauthorized: You are not allowed to cancel this booking with these email'
+                                                      message : 'Unauthorized: You are not allowed to cancel this booking with these email'
                                                     })
                                                   }
                                                    
 
                                                 // Check if the booking status allows cancellation
                                                 if (booking.status === 'cancelled') {
-                                                  return res.status(400).json({ success: false, error: 'Booking already cancelled' });
+                                                  return res.status(400).json({ success: false, message : 'Booking already cancelled' });
                                                 }
 
                                                 // Get the trip details
                                                 const trip = await TripModel.findById(booking.tripId);
                                                 if (!trip) {
-                                                  return res.status(400).json({ success: false, error: 'Trip not found' });
+                                                  return res.status(400).json({ success: false, message : 'Trip not found' });
                                                 }
 
                                                
@@ -2085,12 +2061,9 @@ const { validationResult } = require('express-validator');
                                                 res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
                                               } catch (error) {
                                                 console.error(error);
-                                                return res.status(500).json({ success: false, error: 'An error occurred' });
+                                                return res.status(500).json({ success: false, message : 'An error occurred' });
                                               }
                                             };
-
-                                            
-                                        
                                                                               
                         
   // Api for get tickits booked by a user 
@@ -2106,19 +2079,19 @@ const { validationResult } = require('express-validator');
                                           {
                                             tickets = await BookingModel.find({ userId , status : 'confirmed'})
                                           }
-                                          else if(status === 'panding' || status == 'cancelled')
+                                          else if(status === 'panding' || status === 'cancelled')
                                           {
                                             tickets = await BookingModel.find({ userId , status : {$in: ['pending', 'cancelled']}})
                                           }
                                           else
                                           {
-                                            return res.status(400).json({ success : false , error : 'Invalid Status Value' })
+                                            return res.status(400).json({ success : false , message : 'Invalid Status Value' })
                                           }
 
-                                          res.status(200).json({ success : true , message : " user Tickets" , tickets})
+                                          res.status(200).json({ success : true , message : "user Tickets" , tickets})
                                         }catch(error)
                                         {
-                                          res.status(500).json({ success: false, error: 'Error finding tickets' });
+                                          res.status(500).json({ success: false, message: 'Error finding tickets' });
 
                                         }
                                       }
@@ -2165,7 +2138,7 @@ const { validationResult } = require('express-validator');
                                                 });
                                               } catch (error) {
                                                 console.error('Error while fetching trips:', error);
-                                                res.status(500).json({ success: false, error: 'There was an error while fetching trips' });
+                                                res.status(500).json({ success: false, message : 'There was an error while fetching trips' });
                                               }
                                             };
                                             
@@ -2190,12 +2163,12 @@ const { validationResult } = require('express-validator');
                                       const booking = await BookingModel.findOne({ bookingId });
                                   
                                       if (!booking) {
-                                        return res.status(404).json({ success: false, error: 'Booking not found' });
+                                        return res.status(404).json({ success: false, message : 'Booking not found' });
                                       }
                                   
                                       // Check if the trip has already been updated
                                       if (booking.tripUpdated) {
-                                        return res.status(400).json({ success: false, error: 'Trip already updated once' });
+                                        return res.status(400).json({ success: false, message : 'Trip already updated once' });
                                       }
                                   
                                       const oldTripId = booking.tripId;
@@ -2205,25 +2178,25 @@ const { validationResult } = require('express-validator');
                                   
                                       if (!oldTrip) {
                                         console.error(`Old Trip not found for ID: ${oldTripId}`);
-                                        return res.status(404).json({ success: false, error: 'Old Trip not found' });
+                                        return res.status(404).json({ success: false, message : 'Old Trip not found' });
                                       }
                                   
                                       const newTrip = await TripModel.findById(newTripId);
                                   
                                       if (!newTrip) {
                                         console.error(`New Trip not found for ID: ${newTripId}`);
-                                        return res.status(404).json({ success: false, error: 'New trip not found' });
+                                        return res.status(404).json({ success: false, message : 'New trip not found' });
                                       }
                                   
                                       if (!Array.isArray(booking.selectedSeatNumbers) || booking.selectedSeatNumbers.length !== booking.passengers.length) {
-                                        return res.status(400).json({ success: false, error: 'Invalid selected seat number' });
+                                        return res.status(400).json({ success: false, message : 'Invalid selected seat number' });
                                       }
                                   
                                       // Check if oldTrip and oldTrip.booked_seat are defined and are arrays
                                       if (!oldTrip || !Array.isArray(oldTrip.booked_seat)) {
                                         return res.status(400).json({
-                                          success: false,
-                                          error: 'Invalid old trip data',
+                                          success : false,
+                                          message : 'Invalid old trip data',
                                         });
                                       }
                                   
@@ -2280,7 +2253,7 @@ const { validationResult } = require('express-validator');
                                       if (newTrip.Available_seat.length === 0) {
                                         return res.status(400).json({
                                           success: false,
-                                          error: 'No available seats in the new trip. Please select another trip.',
+                                          message: 'No available seats in the new trip. Please select another trip.',
                                         });
                                       }
                                   
@@ -2303,16 +2276,11 @@ const { validationResult } = require('express-validator');
                                       console.error(error);
                                       return res.status(500).json({
                                         success: false,
-                                        error: 'There is an error',
+                                        message : 'There is an error',
                                       });
                                     }
                                   };
                                   
-                                                                                        
-                                                            
-                          
-      
-                                
                  
                                                       /* Booking Manage */
 //Api for get all Bookings
@@ -2342,31 +2310,34 @@ const { validationResult } = require('express-validator');
 // Api for GET Bookings for a particular date and status
 
                       
-                        const countBookings = async (req, res) => {                          
-                            try {
-                              const { status , date} = req.query
-                          
-                              if (!date) {
-                                return res.status(400).json({ success: false, error: ' date is required' });
-                              }
-                          
-                              let bookings;
-                              const dateQuery = new Date(date);
-                              if (status === 'confirmed') {
-                                bookings = await BookingModel.find({ status: 'confirmed',  date : dateQuery });
-                              } else if (status === 'pending' || status === 'cancelled') {
-                                bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] },  date : dateQuery });
-                              } else {
-                                return res.status(400).json({ success: false, error: 'Invalid status value' });
-                              }
-                          
-                              const count = bookings.length;
-                          
-                              res.status(200).json({ success: true, message: `Count of ${status} bookings for date ${date}`, count , Bookings : bookings});
-                            } catch (error) {
-                              res.status(500).json({ success: false, error: 'An error occurred while retrieving bookings' });
-                            }
-                          }
+                                              const countBookings = async (req, res) => {                          
+                                                try {
+                                                  const { status, startDate, endDate } = req.query;
+
+                                                  if (!startDate || !endDate) {
+                                                    return res.status(400).json({ success: false, message : 'Both start and end dates are required' });
+                                                  }
+
+                                                  let query = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
+
+                                                  if (status === 'confirmed') {
+                                                    query.status = 'confirmed';
+                                                  } else if (status === 'pending' || status === 'cancelled') {
+                                                    query.status = { $in: ['pending', 'cancelled'] };
+                                                  } else {
+                                                    return res.status(400).json({ success: false, message : 'Invalid status value' });
+                                                  }
+
+                                                  const bookings = await BookingModel.find(query);
+
+                                                  const count = bookings.length;
+
+                                                  res.status(200).json({ success: true, message: `Count of ${status} bookings for date range ${startDate} to ${endDate}`, count, Bookings: bookings });
+                                                } catch (error) {
+                                                  res.status(500).json({ success: false, message : 'An error occurred while retrieving bookings' });
+                                                }
+                                              }
+
                             
 
     // API for TrackBus
@@ -2380,7 +2351,7 @@ const { validationResult } = require('express-validator');
                                             const trip = await TripModel.findById(tripId);
                                         
                                             if (!trip) {
-                                              return res.status(404).json({ success: false, error: 'Trip not found' });
+                                              return res.status(404).json({ success: false, message : 'Trip not found' });
                                             }
                                         
                                             // Find the route in a trip using tripId
@@ -2388,7 +2359,7 @@ const { validationResult } = require('express-validator');
                                         
                                             const route = await BusRoute.findOne({ routeNumber });
                                             if (!route) {
-                                              return res.status(404).json({ success: false, error: 'Route not found in trip' });
+                                              return res.status(404).json({ success: false, message : 'Route not found in trip' });
                                             }
                                         
                                             // Get the stops for the route
@@ -2398,7 +2369,7 @@ const { validationResult } = require('express-validator');
                                             const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
                                         
                                             if (currentStopIndex === -1) {
-                                              return res.status(400).json({ success: false, error: 'Your stop not found. Please enter a valid stop' });
+                                              return res.status(400).json({ success: false, message : 'Your stop not found. Please enter a valid stop' });
                                             }
                                         
                                             const currentStop = stops[currentStopIndex];
@@ -2418,15 +2389,14 @@ const { validationResult } = require('express-validator');
                                                 },
                                                 previousStop: previousStop
                                                   ? {
-                                                      stopName: previousStop.stopName,
-                                                      EstimatedTimeTaken: previousStop.EstimatedTimeTaken, // You can add estimated time for the previous stop if available.
+                                                      stopName: previousStop.stopName,                                                      
                                                     }
                                                   : null,
                                               },
                                             });
                                           } catch (error) {
                                             console.error(error);
-                                            res.status(500).json({ success: false, error: 'There is an error tracking the bus' });
+                                            res.status(500).json({ success: false, message : 'There is an error tracking the bus' });
                                           }
                                         };
     
@@ -2517,7 +2487,7 @@ const { validationResult } = require('express-validator');
                             res.status(200).json({ success: true, message: 'All Transaction', transaction: transactions });
                           } catch (error) {
                             console.error('Error fetching transactions:', error);
-                            res.status(500).json({ success: false, error: 'Internal server error' });
+                            res.status(500).json({ success: false, message : 'Internal server error' });
                           }
                         };
           

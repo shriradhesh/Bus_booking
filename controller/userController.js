@@ -34,7 +34,7 @@ const fs = require('fs')
                const existUser = await UserModel.findOne({ email })
                if(existUser)
                {
-                  return res.status(400).json({ error : ' Email Already Exist', success : false})
+                  return res.status(400).json({ message : 'Email Already Exist', success : false})
                }
                         // password hased
                const hashedPassword = await bcrypt.hash(password , 10)
@@ -55,7 +55,7 @@ const fs = require('fs')
                catch(error)
                {
                          console.error(error);
-                        res.status(500).json({ error : 'Error while creating User' , success : false})
+                        res.status(500).json({ message : 'Error while creating User' , success : false})
                }
             }
 
@@ -68,18 +68,18 @@ const fs = require('fs')
 
         const user = await UserModel.findOne({ email })
         if (!user) {
-          return res.status(401).json({ error: 'Invalid email' , success : false });
+          return res.status(401).json({ message : 'Invalid email' , success : false });
         }
         
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-          return res.status(401).json({ error: 'Invalid password' , success: false});
+          return res.status(401).json({ message : 'Invalid password' , success: false});
         }
 
             res.status(200).json({ message: 'Login Successfully', user: user , success : true });
         } catch (error) {
           console.error(error);
-            res.status(500).json({ error: 'Error while login the user' , success: false });
+            res.status(500).json({ message : 'Error while login the user' , success: false });
         }
     }
 
@@ -89,14 +89,14 @@ const fs = require('fs')
             req.session.destroy(error =>{
               if(error)
               {
-                return res.status(500).json({ success : false ,  error :" Error while Logout the user"})
+                return res.status(500).json({ success : false ,  message :" Error while Logout the user"})
               }
               res.status(200).json({  success: true , message: ' user Logged out successfully' });
             });
           }
           catch(error)
           {
-            res.status(500).json({ error: 'Error while logging out', success: false });
+            res.status(500).json({ message : 'Error while logging out', success: false });
           }
           
         }
@@ -112,7 +112,7 @@ const fs = require('fs')
             
             if( newPassword !== confirmPassword )
             {
-              return res.status(400).json({ error : 'Password do not match' , success : false})
+              return res.status(400).json({ message : 'Password do not match' , success : false})
             }
 
              // find Admin by Id
@@ -121,7 +121,7 @@ const fs = require('fs')
               
              if(!user){
        
-              return res.status(404).json({ error : ' user not found' , success : false})
+              return res.status(404).json({ message : ' user not found' , success : false})
              }
              else
              {
@@ -131,7 +131,7 @@ const fs = require('fs')
                const isOldPasswordValid = await bcrypt.compare(oldPassword , user.password)
                   if(!isOldPasswordValid)
                   {
-                      return res.status(400).json({ error : 'Old Password incorrect ', success : false})
+                      return res.status(400).json({ message : 'Old Password incorrect ', success : false})
                   }
             
                   // encrypt the newPassword 
@@ -161,7 +161,10 @@ const fs = require('fs')
                   const { email } = req.body;
 
                   if (!email || !isValidEmail(email)) {
-                    return res.status(400).send("Valid email is required");
+                    return res.status(400).json({
+                                  success : false,
+                                  message : "Valid email is required"
+                    })
                    }
 
                    const user = await UserModel.findOne({ email })
@@ -249,11 +252,11 @@ const fs = require('fs')
                                         try {
                                             const id = req.params.id;
                                             const { fullName, phone_no, age, gender } = req.body;
-                                            const user = await UserModel.findById(id);
+                                            const user = await UserModel.findOne({ _id:id });
                                     
                                             // Check for user existence
                                             if (!user) {
-                                                return res.status(404).json({ success: false, error: 'User not found' });
+                                                return res.status(404).json({ success: false, message: 'User not found' });
                                             }
                                     
                                             user.fullName = fullName;
@@ -267,7 +270,7 @@ const fs = require('fs')
                                                 const user_age = Math.floor(age);
                                     
                                                 if (typeof user_age !== 'number' || user_age < 0 || user_age > 150) {
-                                                    return res.status(400).json({ success: false, error: 'Invalid age' });
+                                                    return res.status(400).json({ success: false, message: 'Invalid age' });
                                                 }
                                                 user.age = user_age;
                                             }
@@ -300,7 +303,7 @@ const fs = require('fs')
                                             return res.status(200).json({ success: true, message: 'User profile updated successfully', user: updateUser });
                                         } catch (error) {
                                             console.log(error);
-                                            res.status(500).json({ success: false, error: 'Error while updating user profile' });
+                                            res.status(500).json({ success: false, message: 'Error while updating user profile' });
                                         }
                                     };
                                     
@@ -314,12 +317,12 @@ const fs = require('fs')
                             const user = await UserModel.findOne({ email });
                 
                             if (!user) {
-                              return res.status(404).json({ error: 'User not found' });
+                              return res.status(404).json({ success : false , message : 'User not found' });
                             }
                 
-                            res.status(200).json({ user });
+                            res.status(200).json({ success : true , message : ' user details ' , user_Details : user });
                           } catch (err) {
-                            res.status(500).json({ error: 'Error while finding the user' });
+                            res.status(500).json({ success : false , message : 'Error while finding the user' });
                           }
                         }
 
@@ -340,7 +343,7 @@ const fs = require('fs')
 
                     res.status(200).json({success: true , message: 'All Routes', Route_Detail : Routes });
                     } catch (error) {
-                    res.status(500).json({success : false, error: 'There is an error to find Routes' + error.message});
+                    res.status(500).json({success : false, message: 'There is an error to find Routes' + error.message});
                     }
                   }
 
@@ -355,7 +358,7 @@ const fs = require('fs')
                                 const today = new Date()                                         
                                 const user = await UserModel.findOne({_id:userId})  
                                 if (!user) {
-                                  return res.status(400).json({ success: false, error: 'User not found' });
+                                  return res.status(400).json({ success: false, message: 'User not found' });
                                     }
                                                     
                               const upcomingBookings = await BookingModel.find({                                        
@@ -370,7 +373,7 @@ const fs = require('fs')
                             catch(error)
                             {
                               console.error(error);
-                                return res.status(500).json({ success : false , error : ' error occured to find upcoming booking'})
+                                return res.status(500).json({ success : false , message : ' error occured to find upcoming booking'})
                             }
                         }
 
@@ -398,7 +401,7 @@ const fs = require('fs')
                         catch(error)
                         {
                           console.error(error);
-                            return res.status(500).json({ success : false , error : ' error occured to find  booking History'})
+                            return res.status(500).json({ success : false , message : ' error occured to find  booking History'})
                         }
                     }
 
