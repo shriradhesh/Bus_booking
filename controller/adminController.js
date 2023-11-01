@@ -1103,8 +1103,7 @@ const { validationResult } = require('express-validator');
                           startingDate,
                           endDate,  
                           startingTime,                        
-                          status
-                         
+                          status                         
                         } = req.body
 
                         const requiredFields = [
@@ -1113,9 +1112,10 @@ const { validationResult } = require('express-validator');
                           'routeNumber',
                           'startingDate',
                           'endDate' ,
-                          'startingTime'                    
+                          'startingTime'                   
 
                         ]
+                        
                         for(const field of requiredFields){
                           if(!req.body[field]){
                             return res.status(400).json({ message : `missing ${field.replace('_',' ')} field`, success : false})
@@ -1244,6 +1244,8 @@ const { validationResult } = require('express-validator');
                                                 console.error('Error while updating trip status :', error);
                                                  }
                                      })
+
+
       // Api to get all the Trip for a particular StartingDate
                                     const allTrips =  async (req, res) => {
                                       try {
@@ -1304,8 +1306,8 @@ const { validationResult } = require('express-validator');
                                           const stops = sourceIndex + 1 < destinationIndex ? route.stops.slice(sourceIndex + 1, destinationIndex) : [];
         
                                           matchingTrips.push({
-                                            trip ,
-                                            stops} );
+                                            trip 
+                                            } );
                                         }
                                       }
                                   
@@ -2098,52 +2100,76 @@ const { validationResult } = require('express-validator');
 
   // APi for change trip Date 
 
-                                            const getUpcomingTrip_for_DateChange = async (req, res) => {
-                                              try {
-                                                const currentDate = new Date();
-                                                const sevenDaysFromNow = new Date(currentDate);
-                                                sevenDaysFromNow.setDate(currentDate.getDate() + 7);
+                                  const getUpcomingTrip_for_DateChange = async (req, res) => {                                    
+                                     try {
+                                      const sourceStop = req.query.sourceStop
+                                      const destinationStop = req.query.destinationStop
+                                     
+                                      // Calculate the date range for the next 7 days
+                                        const today = new Date();
+                                       
+                                        const nextWeek = new Date(today);
+                                        nextWeek.setDate(today.getDate() + 7);
+
+                                        // Find trips that fall within the calculated date range
+                                        const trips = await TripModel.find({
+                                          startingDate: { $gte: today, $lte: nextWeek }
+                                        });
                                             
-                                                // Aggregate trips and group them by routeId
-                                                const aggregatedTrips = await TripModel.aggregate([
-                                                  {
-                                                    $match: {
-                                                      startingDate: {
-                                                        $gte: currentDate,
-                                                        $lte: sevenDaysFromNow,
-                                                      },
-                                                    },
-                                                  },
-                                                  {
-                                                    $group: {
-                                                      _id: '$routeNumber',
-                                                      trips: { $push: '$$ROOT' },
-                                                      count: { $sum: 1 },
-                                                    },
-                                                  },
-                                                  {
-                                                    $match: {
-                                                      count: { $gt: 1 },
-                                                    },
-                                                  },
-                                                ]);
-                                            
-                                                // Extract the trips from the aggregation result
-                                                const commonRouteNumberTrips = aggregatedTrips.map((group) => group.trips).flat();
-                                            
-                                                res.status(200).json({
-                                                  success: true,
-                                                  message: 'Select the trips for changing the Date',
-                                                  trips: commonRouteNumberTrips,
-                                                });
-                                              } catch (error) {
-                                                console.error('Error while fetching trips:', error);
-                                                res.status(500).json({ success: false, message : 'There was an error while fetching trips' });
-                                              }
-                                            };
-                                            
-                                            
-                                            
+                                        if (!trips || trips.length === 0) {
+                                          return res.status(400).json({
+                                            success: false,
+                                            message: 'No upcoming trips found '
+                                          });
+                                        }
+
+                                        // Filter trips to include only those with matching source and destination stops
+                                        const matchingTrips = [];
+
+                                        for (const trip of trips) {
+                                          const routeNumber = trip.routeNumber;
+                                          // Find the route with the same routeNumber
+                                          const route = await BusRoute.findOne({ routeNumber });
+
+                                          if (!route) {
+                                            continue; 
+                                          }
+
+                                          const sourceIndex = route.stops.findIndex((stop) => stop.stopName === sourceStop);
+                                          const destinationIndex = route.stops.findIndex((stop) => stop.stopName === destinationStop);
+
+                                          if (sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex) {
+                                            const stops = sourceIndex + 1 < destinationIndex ? route.stops.slice(sourceIndex + 1, destinationIndex) : [];
+
+                                            matchingTrips.push({
+                                              trip
+                                            });
+                                          }
+                                        }
+
+                                        if (matchingTrips.length === 0) {
+                                          return res.status(400).json({
+                                            success: false,
+                                            message: 'No matching trips found for the route'
+                                          });
+                                        }
+                                        res.status(200).json({
+                                          success: true,
+                                          message: 'upcoming trips for the same route ',
+                                          trips: matchingTrips
+                                        });
+
+                                      } 
+                                      catch (error) {
+                                        res.status(500).json({
+                                          success: false,
+                                          message: 'Error while fetching the data'
+                                        });
+                                      }
+                                    };                                                                    
+                                    
+                                                               
+                                           
                           
       // change Trip
 

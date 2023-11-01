@@ -2,6 +2,7 @@
 const mongoose = require('mongoose')
 // mongodb://127.0.0.1:27017/book_tickit
 mongoose.connect('mongodb+srv://mobappssolutions181:root123@cluster0.ro8e4sn.mongodb.net/test', {
+// mongoose.connect('mongodb://127.0.0.1:27017/book_tickit', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });

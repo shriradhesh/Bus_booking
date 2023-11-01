@@ -107,7 +107,7 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 // APi for get all tickets of user 
         router.get('/userTickets/:userId', adminController.userTickets)
 // Api for Modify Ticket (departure date)
-        router.get('/getUpcomingTrip_for_DateChange', adminController.getUpcomingTrip_for_DateChange)
+        router.post('/getUpcomingTrip_for_DateChange', adminController.getUpcomingTrip_for_DateChange)
 // Api for change Trip 
         router.post('/changeTrip', adminController.changeTrip)
                                  

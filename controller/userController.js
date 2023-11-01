@@ -361,7 +361,8 @@ const fs = require('fs')
                                   return res.status(400).json({ success: false, message: 'User not found' });
                                     }
                                                     
-                              const upcomingBookings = await BookingModel.find({                                        
+                              const upcomingBookings = await BookingModel.find({    
+                                userId: userId,                                    
                                 "date":{
                                   $gte: today,
                                 },
@@ -380,31 +381,31 @@ const fs = require('fs')
             
         //Api for check  Bookings History
             
-                      const bookingHistory = async (req,res)=>{
-
-                        try{
-                            const  userId  = req.params.userId                                          
-                            const today = new Date()                                         
-                            const user = await UserModel.findOne({_id:userId})  
-                            if (!user) {
-                              return res.status(400).json({ success: false, error: 'User not found' });
-                                }
-                                                
-                          const bookingHistory = await BookingModel.find({                                        
-                            "date":{
-                              $lte: today,
-                            },             
-                          }).sort({date : 1})                                       
-                            res.status(200).json({ success : true , bookings : bookingHistory})  
-                          }
-
-                        catch(error)
-                        {
-                          console.error(error);
-                            return res.status(500).json({ success : false , message : ' error occured to find  booking History'})
-                        }
-                    }
-
+        const bookingHistory = async (req, res) => {
+          try {
+            const userId = req.params.userId;
+            const user = await UserModel.findOne({ _id: userId });
+        
+            if (!user) {
+              return res.status(400).json({ success: false, error: 'User not found' });
+            }
+        
+            const today = new Date();
+        
+            const bookingHistory = await BookingModel.find({
+              userId: userId, 
+              date: {
+                $lte: today,
+              },
+            }).sort({ date: 1 });
+        
+            res.status(200).json({ success: true, bookings: bookingHistory });
+          } catch (error) {
+            console.error(error);
+            return res.status(500).json({ success: false, message: 'Error occurred while finding booking history' });
+          }
+        }
+        
 
           
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassToken , userResetPass,
