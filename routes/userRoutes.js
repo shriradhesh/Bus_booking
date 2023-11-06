@@ -37,6 +37,8 @@ router.post('/userChangePass', userController.userChangePass)
 
  // get user by Email
 router.get('/getUser/:email', userController.getUser) 
+ // delete User 
+      router.delete('/deleteUser/:userId',userController.deleteUser)
 
                        
                                   /*      see Routes      */
@@ -51,6 +53,9 @@ router.get('/upcoming_Booking/:userId',userController.upcoming_Booking)
 
 // Api for get Booking History
 router.post('/bookingHistory/:userId',userController.bookingHistory)
+
+
+router.post('/contactUs', userController.contactUs)
 
 
 

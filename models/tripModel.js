@@ -47,6 +47,20 @@ const tripSchema = new mongoose.Schema({
     min : 0,      
   },],
 
+  stops: [
+    {
+      stopName: {
+        type: String,
+      },
+      EstimatedTimeTaken: {
+        type: String, 
+      },
+      distance: {
+        type: Number,
+      },
+    },
+  ],
+  
   booked_seat : [{
     type : Number,       
   }],

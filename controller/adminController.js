@@ -1058,9 +1058,9 @@ const { validationResult } = require('express-validator');
                             
                                 let Drivers;
                                 if (status === 'active') {
-                                  Drivers = await DriverModel.find({ status: 'active', availability: { $in: ['available', 'booked'] } });
+                                  Drivers = await DriverModel.find({ status: 'active', availability: { $in: ['available', 'booked', 'unavailable'] } });
                                 } else if (status === 'inactive') {
-                                  buses = await DriverModel.find({ status: 'inactive', availability: 'unavailable' });
+                                  Drivers = await DriverModel.find({ status: 'inactive', availability: 'unavailable' });
                                 } else {
                                   return res.status(400).json({ success: false, message : 'Invalid status value' });
                                 }
@@ -1185,7 +1185,7 @@ const { validationResult } = require('express-validator');
                           if (!driver) {
                             return res.status(400).json({ message : 'Driver with the specified ID not exist', success: false });
                           }  
-                              
+                              const stops = route.stops
                               // Create an array for available seats
                           const busCapacity = bus.seating_capacity;
                           const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
@@ -1207,6 +1207,7 @@ const { validationResult } = require('express-validator');
                               bus_type,
                               amenities,
                               images,
+                              stops
                             })
 
                             const savedTrip = await newTrip.save()
@@ -1296,18 +1297,20 @@ const { validationResult } = require('express-validator');
                                         const route = await BusRoute.findOne({ routeNumber });
                                   
                                         if (!route) {
-                                          continue; 
+                                          continue;
                                         }
                                   
                                         const sourceIndex = route.stops.findIndex((stop) => stop.stopName === sourceStop);
                                         const destinationIndex = route.stops.findIndex((stop) => stop.stopName === destinationStop);
                                   
                                         if (sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex) {
-                                          const stops = sourceIndex + 1 < destinationIndex ? route.stops.slice(sourceIndex + 1, destinationIndex) : [];
-        
+                                          const stops = route.stops.map((stop) => stop.stopName);                                 
+                                         
+                                  
                                           matchingTrips.push({
-                                            trip 
-                                            } );
+                                            trip: trip                                          
+                                            
+                                          });
                                         }
                                       }
                                   
@@ -1330,7 +1333,7 @@ const { validationResult } = require('express-validator');
                                       });
                                     }
                                   };
-
+                                  
                  
  // API for View seats in Bus for a trip
                             
@@ -1377,7 +1380,7 @@ const { validationResult } = require('express-validator');
 
                                     res.status(200).json({
                                       success: true,
-                                      message: 'Seat information in a Trip for the Bus',
+                                      message: 'Seat information of a Bus in a Trip',
                                       tripNumber: tripNumber,
                                       Seat_Info: seats,
                                     });
@@ -1386,10 +1389,6 @@ const { validationResult } = require('express-validator');
                                     res.status(500).json({ success: false, error: 'Error while fetching seat information' });
                                   }
                                 };
-
-
-
-
 
 // APi for calculateFareFor selected seats in Bus for trip
                             
@@ -1574,7 +1573,7 @@ const { validationResult } = require('express-validator');
                                         try {
                                           const { tripId } = req.params;
                                           const {
-                                            date,
+                                            journey_date,
                                             selectedSeatNumbers,
                                             status,
                                             email,
@@ -1586,9 +1585,10 @@ const { validationResult } = require('express-validator');
                                             cvc                          
                                             
                                           } = req.body;
-                                      
+                                               
                                           const { source, destination } = req.query;
-                                      
+                                          const date = new Date(journey_date)
+                                        
                                           // Checking for required fields in the request
                                           const requiredFields = [
                                             'email',
@@ -1808,6 +1808,9 @@ const { validationResult } = require('express-validator');
                                               ageGroup: calculateAgeGroup(passenger.age),
                                             })),
                                             totalFare: totalFare_in_Euro,
+                                            source,
+                                            destination
+
                                           });
                                       
                                           await booking.save();
@@ -2038,8 +2041,47 @@ const { validationResult } = require('express-validator');
                                                 if (!trip) {
                                                   return res.status(400).json({ success: false, message : 'Trip not found' });
                                                 }
+                                                    // calculate the refund amount and cancellation type based on the cancellation policy
 
-                                               
+                                                    const cancellationDate = new Date(booking.date)
+                                                    const currentDate = new Date()
+                                                    let cancellationType = ''
+
+                                                    const dayBeforeTrip = Math.ceil((cancellationDate - currentDate) / (1000 * 60 * 60 * 24))
+
+                                                    if(dayBeforeTrip >= 5)
+                                                    {
+                                                      cancellationType = 'flexible'
+                                                    }
+                                                    else if(dayBeforeTrip >= 3)
+                                                    {
+                                                      cancellationType = 'moderate'
+                                                    }
+                                                    else
+                                                    {
+                                                      cancellationType = 'strict'
+                                                    }
+
+                                                    let refundAmount = 0;
+
+                                                    if(cancellationType === 'flexible')
+                                                    {
+                                                      refundAmount = booking.totalFare
+                                                    }
+                                                    else if(cancellationType === 'moderate')
+                                                    {
+                                                      refundAmount = booking.totalFare * 0.5
+                                                    }
+                                                   
+
+                                                       if(refundAmount === 0)
+                                                       {
+                                                            return res.status(400).json({
+                                                              success : false ,
+                                                              message : 'no refund provided for these cancellation type'
+                                                            })
+                                                       }
+                                                       
                                                 // Update the available seats and booked seats on the bus
                                                 const { selectedSeatNumbers } = booking;
 
@@ -2053,14 +2095,46 @@ const { validationResult } = require('express-validator');
                                                    // set the booking status to 'cancelled'
                                                    
                                                    booking.status = 'cancelled'
+
+                                                      // find transaction associated with the booking 
+                                                      const transaction = await TransactionModel.findOne({
+                                                        bookingId : booking.bookingId
+                                                      })
+                                                         
+                                                        if(transaction)
+                                                        {
+                                                            // check if the transaction has a paymentIntentId
+                                                            const paymentIntentId = transaction.paymentIntentId
+                                                            if(paymentIntentId)
+                                                            {
+                                                              const refund = await stripe.refunds.create({
+                                                                payment_intent : paymentIntentId,
+                                                                amount : Math.floor(refundAmount * 100)
+                                                              })
+
+                                                                 if(refund.status === 'succeeded')
+                                                                 {
+                                                                  transaction.status = 'success'
+                                                                  await transaction.save()
+                                                                 }
+                                                                 else
+                                                                 {
+                                                                  return res.status(400).json({
+                                                                    success : false,
+                                                                    message : 'refund Failed'
+                                                                  })
+                                                                 }
+                                                            }
+                                                        }
                                                    await booking.save()
                                                    await trip.save()   
                                                    
                                                    // send a cancellation email to user 
-                                                const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\nThank you for using our service.`;
-                                                await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
+                                                const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
+                                                Refund Amount : $${refundAmount}\n\n your amout will refund with in 5 to 10 working days \n \n Thank you for using our service.`;
+                                                await sendCancelEmail(user.email, `Ticket Cancellation Confirmation\n\n your amout ${refundAmount} will refund with in 5 to 10 working days`, emailContent);
 
-                                                res.status(200).json({ success: true, message: 'Ticket cancellation successful. Confirmation sent to user email.' });
+                                                res.status(200).json({ success: true, message: 'Ticket cancellation and refund successful. Confirmation sent to user email.' });
                                               } catch (error) {
                                                 console.error(error);
                                                 return res.status(500).json({ success: false, message : 'An error occurred' });
@@ -2203,14 +2277,14 @@ const { validationResult } = require('express-validator');
                                       const oldTrip = await TripModel.findById(oldTripId);
                                   
                                       if (!oldTrip) {
-                                        console.error(`Old Trip not found for ID: ${oldTripId}`);
+                                       
                                         return res.status(404).json({ success: false, message : 'Old Trip not found' });
                                       }
                                   
                                       const newTrip = await TripModel.findById(newTripId);
                                   
                                       if (!newTrip) {
-                                        console.error(`New Trip not found for ID: ${newTripId}`);
+                                       
                                         return res.status(404).json({ success: false, message : 'New trip not found' });
                                       }
                                   

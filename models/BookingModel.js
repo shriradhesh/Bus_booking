@@ -45,6 +45,13 @@ const bookingSchema = new mongoose.Schema({
     bookingId: {
         type: String,
     },
+    source: {
+        type: String,
+    },
+    destination: {
+        type: String,
+    },
+
 
     passengers: [
         {

@@ -3,6 +3,7 @@ const tokenModel = require("../models/tokenModel")
 const BusRoute = require('../models/bus_routes')
 const BusModel = require('../models/busModel')
 const  BookingModel = require('../models/BookingModel')
+const contactModel = require('../models/contactUs')
 const sendEmails = require('../utils/sendEmails')
 const bcrypt = require('bcrypt')
 const session = require('express-session')
@@ -16,6 +17,7 @@ const upload = require('../uploadImage')
 const shortid = require('shortid')
 const cron = require('node-cron');
 const { TokenExpiredError } = require('jsonwebtoken');
+const mongoose = require('mongoose')
 const fs = require('fs')
                         
                                     /* --> User API <-- */
@@ -251,6 +253,9 @@ const fs = require('fs')
                                       const updateUser = async (req, res) => {
                                         try {
                                             const id = req.params.id;
+                                            if (!mongoose.Types.ObjectId.isValid(id)) {
+                                              return res.status(400).json({ success: false, message: 'Invalid user ID' });
+                                            }
                                             const { fullName, phone_no, age, gender } = req.body;
                                             const user = await UserModel.findOne({ _id:id });
                                     
@@ -326,6 +331,26 @@ const fs = require('fs')
                           }
                         }
 
+// API for delete User
+                          const deleteUser =  async (req, res) => {
+                            try {
+                              const userId = req.params.userId;
+
+                              // Check if the user exists
+                              const user = await UserModel.findById(userId);
+                              if (!user) {
+                                return res.status(404).json({ message: 'User not found', success: false });
+                              }
+
+                              // Delete the user
+                              await UserModel.findByIdAndRemove(userId);
+
+                              res.status(200).json({ message: 'User deleted successfully', success: true });
+                            } catch (error) {
+                              console.error(error);
+                              res.status(500).json({ message: 'Error while deleting user', success: false });
+                            }
+                          }
 
                                                /*  See Routes */
 //Api for see Routes
@@ -405,8 +430,38 @@ const fs = require('fs')
             return res.status(500).json({ success: false, message: 'Error occurred while finding booking history' });
           }
         }
+
+    // contact us 
+    const contactUs =  async (req,res)=>{
+      try{
+      const { fullName, email , companyName , message} = req.body;
+
+         if(!fullName || !email || !companyName || !message ){
+         return res.status(400).json({ error : 'Missing required Field ', success : false})
+         }              
+     
+               
+      
+      var newMessage = new contactModel({
+        fullName : fullName,
+         email : email,
+         companyName : companyName,
+         message: message,
+         
+      })
+            
+               // save Data into Database
+      const data = await newMessage.save()
+      res.status(200).json({ message : ' message Created Successfully' , success : true, Data : data})
+      }
+      catch(error)
+      {
+                console.error(error);
+               res.status(500).json({ message : 'Error while creating message' , success : false})
+      }
+   }         
         
 
           
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassToken , userResetPass,
-                    updateUser , getUser ,  seeRoutes , upcoming_Booking , bookingHistory }
+                    updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs}
