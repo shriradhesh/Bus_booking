@@ -658,12 +658,7 @@ const { validationResult } = require('express-validator');
                             }
                           }
                           
-                          
-                          
-                          
-                          
-                            
-                          
+                     
 
       // Api for Edit Stop in a Route
                         
@@ -2000,147 +1995,140 @@ const { validationResult } = require('express-validator');
                                           
                                   
 // Api for cancle tickit 
-                  
-                                            const cancelTicket = async (req, res) => {
-                                              try {                                              
-                                                const { email, bookingId } = req.body;
+                                    const cancelTicket = async (req, res) => {
+                                      try {
+                                        const { email, bookingId } = req.body;
 
-                                                if (!email) {
-                                                  return res.status(400).json({ success: false, message: 'Missing Email' });
-                                                }
-                                                if (!bookingId) {
-                                                  return res.status(400).json({ success: false, message: 'Missing bookingId' });
-                                                }
+                                        if (!email) {
+                                          return res.status(400).json({ success: false, message: 'Missing Email' });
+                                        }
+                                        if (!bookingId) {
+                                          return res.status(400).json({ success: false, message: 'Missing bookingId' });
+                                        }
 
-                                                const booking = await BookingModel.findOne({ bookingId });
-                                                if (!booking) {
-                                                  return res.status(404).json({ success: false, message: 'Booking not found' });
-                                                }
+                                        const booking = await BookingModel.findOne({ bookingId });
+                                        if (!booking) {
+                                          return res.status(404).json({ success: false, message: 'Booking not found' });
+                                        }
 
-                                                  // Fetch the user associated with the booking
-                                                  const user = await UserModel.findById(booking.userId)
+                                        // Fetch the user associated with the booking
+                                        const user = await UserModel.findById(booking.userId);
 
-                                                  // check if the provided email matches the user email
-                                                  if(user.email !== email)
+                                        // check if the provided email matches the user email
+                                        if (user.email !== email) {
+                                          return res.status(400).json({
+                                            success: false,
+                                            message: 'Unauthorized: You are not allowed to cancel this booking with these email',
+                                          });
+                                        }
 
-                                                  {
-                                                    return res.status(400).json({
-                                                      success : false ,
-                                                      message : 'Unauthorized: You are not allowed to cancel this booking with these email'
-                                                    })
-                                                  }
-                                                   
+                                        // Check if the booking status allows cancellation
+                                        if (booking.status === 'cancelled') {
+                                          return res.status(400).json({ success: false, message: 'Booking already cancelled' });
+                                        }
 
-                                                // Check if the booking status allows cancellation
-                                                if (booking.status === 'cancelled') {
-                                                  return res.status(400).json({ success: false, message : 'Booking already cancelled' });
-                                                }
+                                        // Get the trip details
+                                        const trip = await TripModel.findById(booking.tripId);
+                                        if (!trip) {
+                                          return res.status(400).json({ success: false, message: 'Trip not found' });
+                                        }
 
-                                                // Get the trip details
-                                                const trip = await TripModel.findById(booking.tripId);
-                                                if (!trip) {
-                                                  return res.status(400).json({ success: false, message : 'Trip not found' });
-                                                }
-                                                    // calculate the refund amount and cancellation type based on the cancellation policy
+                                        // calculate the refund amount and cancellation type based on the cancellation policy
+                                        const cancellationDate = new Date(booking.date);
+                                        const currentDate = new Date();
+                                        let cancellationType = '';
 
-                                                    const cancellationDate = new Date(booking.date)
-                                                    const currentDate = new Date()
-                                                    let cancellationType = ''
+                                        const dayBeforeTrip = Math.ceil((cancellationDate - currentDate) / (1000 * 60 * 60 * 24));
 
-                                                    const dayBeforeTrip = Math.ceil((cancellationDate - currentDate) / (1000 * 60 * 60 * 24))
+                                        if (dayBeforeTrip >= 5) {
+                                          cancellationType = 'flexible';
+                                        } else if (dayBeforeTrip >= 3) {
+                                          cancellationType = 'moderate';
+                                        } else {
+                                          cancellationType = 'strict';
+                                        }
 
-                                                    if(dayBeforeTrip >= 5)
-                                                    {
-                                                      cancellationType = 'flexible'
-                                                    }
-                                                    else if(dayBeforeTrip >= 3)
-                                                    {
-                                                      cancellationType = 'moderate'
-                                                    }
-                                                    else
-                                                    {
-                                                      cancellationType = 'strict'
-                                                    }
+                                        let refundAmount = 0;
 
-                                                    let refundAmount = 0;
+                                        if (cancellationType === 'flexible') {
+                                          refundAmount = booking.totalFare;
+                                        } else if (cancellationType === 'moderate') {
+                                          refundAmount = booking.totalFare * 0.5;
+                                        }
 
-                                                    if(cancellationType === 'flexible')
-                                                    {
-                                                      refundAmount = booking.totalFare
-                                                    }
-                                                    else if(cancellationType === 'moderate')
-                                                    {
-                                                      refundAmount = booking.totalFare * 0.5
-                                                    }
-                                                   
+                                        if (refundAmount === 0) {
+                                          return res.status(400).json({
+                                            success: false,
+                                            message: 'No refund provided for these cancellation types',
+                                          });
+                                        }
 
-                                                       if(refundAmount === 0)
-                                                       {
-                                                            return res.status(400).json({
-                                                              success : false ,
-                                                              message : 'no refund provided for these cancellation type'
-                                                            })
-                                                       }
-                                                       
-                                                // Update the available seats and booked seats on the bus
-                                                const { selectedSeatNumbers } = booking;
+                                        // Update the available seats and booked seats on the bus
+                                        const { selectedSeatNumbers } = booking;
 
-                                                for (const seat of selectedSeatNumbers) {
-                                                  const index = trip.booked_seat.indexOf(seat);
-                                                  if (index !== -1) {
-                                                    trip.booked_seat.splice(index, 1);
-                                                    trip.Available_seat.push(seat);
-                                                  }
-                                                }
-                                                   // set the booking status to 'cancelled'
-                                                   
-                                                   booking.status = 'cancelled'
+                                        for (const seat of selectedSeatNumbers) {
+                                          const index = trip.booked_seat.indexOf(seat);
+                                          if (index !== -1) {
+                                            trip.booked_seat.splice(index, 1);
+                                            trip.Available_seat.push(seat);
+                                          }
+                                        }
 
-                                                      // find transaction associated with the booking 
-                                                      const transaction = await TransactionModel.findOne({
-                                                        bookingId : booking.bookingId
-                                                      })
-                                                         
-                                                        if(transaction)
-                                                        {
-                                                            // check if the transaction has a paymentIntentId
-                                                            const paymentIntentId = transaction.paymentIntentId
-                                                            if(paymentIntentId)
-                                                            {
-                                                              const refund = await stripe.refunds.create({
-                                                                payment_intent : paymentIntentId,
-                                                                amount : Math.floor(refundAmount * 100)
-                                                              })
+                                        // Set the booking status to 'cancelled'
+                                        booking.status = 'cancelled';
 
-                                                                 if(refund.status === 'succeeded')
-                                                                 {
-                                                                  transaction.status = 'success'
-                                                                  await transaction.save()
-                                                                 }
-                                                                 else
-                                                                 {
-                                                                  return res.status(400).json({
-                                                                    success : false,
-                                                                    message : 'refund Failed'
-                                                                  })
-                                                                 }
-                                                            }
-                                                        }
-                                                   await booking.save()
-                                                   await trip.save()   
-                                                   
-                                                   // send a cancellation email to user 
-                                                const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
-                                                Refund Amount : $${refundAmount}\n\n your amout will refund with in 5 to 10 working days \n \n Thank you for using our service.`;
-                                                await sendCancelEmail(user.email, `Ticket Cancellation Confirmation\n\n your amout ${refundAmount} will refund with in 5 to 10 working days`, emailContent);
+                                        // Find the transaction associated with the booking
+                                        const transaction = await TransactionModel.findOne({
+                                          bookingId: booking.bookingId,
+                                        });
 
-                                                res.status(200).json({ success: true, message: 'Ticket cancellation and refund successful. Confirmation sent to user email.' });
-                                              } catch (error) {
-                                                console.error(error);
-                                                return res.status(500).json({ success: false, message : 'An error occurred' });
-                                              }
-                                            };
-                                                                              
+                                        if (transaction) {
+                                          // Check if the transaction has a paymentIntentId
+                                          const paymentIntentId = transaction.paymentIntentId;
+
+                                          if (paymentIntentId) {
+                                            // Calculate random refund processing days between 5 to 10 working days
+                                            const refundProcessingDays = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
+                                            const refundProcessingDate = new Date();
+                                            refundProcessingDate.setDate(refundProcessingDate.getDate() + refundProcessingDays);
+
+                                            const refund = await stripe.refunds.create({
+                                              payment_intent: paymentIntentId,
+                                              amount: Math.floor(refundAmount * 100),
+                                            });
+
+                                            if (refund.status === 'succeeded') {
+                                              transaction.status = 'cancelled';
+                                              transaction.amount = refundAmount;
+                                              transaction.refundProcessingDate = refundProcessingDate; // Save the refund processing date
+                                              await transaction.save();
+                                            } else {
+                                              return res.status(400).json({
+                                                success: false,
+                                                message: 'Refund failed',
+                                              });
+                                            }
+                                          }
+                                        }
+
+                                        await booking.save();
+                                        await trip.save();
+
+                                        // Send a cancellation email to the user
+                                        const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
+                                                              Refund Amount: $${refundAmount}\n\nYour amount will refund within 5 to 10 working days.\n\nThank you for using our service.`;
+                                        await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
+
+                                        res.status(200).json({
+                                          success: true,
+                                          message: 'Ticket cancellation and refund successful. Confirmation sent to user email.',
+                                        });
+                                      } catch (error) {
+                                        console.error(error);
+                                        return res.status(500).json({ success: false, message: 'An error occurred' });
+                                      }
+                                    };
+                      
                         
   // Api for get tickits booked by a user 
 
@@ -2562,34 +2550,44 @@ const { validationResult } = require('express-validator');
 
                                             /* Manage Transaction */
           // Api for get All transaction
-                        const All_Transaction = async (req, res) => {
-                          try {
-                            let startDate, endDate;
-                        
-                            // Check if startDate and endDate are present in the request query
-                            if (req.query.startDate && req.query.endDate) {
-                              startDate = new Date(req.query.startDate);
-                              endDate = new Date(req.query.endDate);
-                              endDate.setHours(23, 59, 59, 999);
-                            }
-                        
-                            const query = {};
-                        
-                            if (startDate && endDate) {
-                              query.createdAt = {
-                                $gte: startDate,
-                                $lte: endDate,
-                              };
-                            }
-                        
-                            const transactions = await TransactionModel.find(query);
-                        
-                            res.status(200).json({ success: true, message: 'All Transaction', transaction: transactions });
-                          } catch (error) {
-                            console.error('Error fetching transactions:', error);
-                            res.status(500).json({ success: false, message : 'Internal server error' });
-                          }
-                        };
+          const All_Transaction = async (req, res) => {
+            try {
+              let startDate, endDate;
+              let status;
+          
+              // Check if startDate and endDate are present in the request query
+              if (req.query.startDate && req.query.endDate) {
+                startDate = new Date(req.query.startDate);
+                endDate = new Date(req.query.endDate);
+                endDate.setHours(23, 59, 59, 999);
+              }
+          
+              // Check if the status parameter is provided in the query
+              if (req.query.status) {
+                status = req.query.status.toLowerCase(); 
+              }
+          
+              const query = {};
+          
+              if (startDate && endDate) {
+                query.createdAt = {
+                  $gte: startDate,
+                  $lte: endDate,
+                };
+              }
+          
+              if (status) {
+                query.status = status;
+              }
+          
+              const transactions = await TransactionModel.find(query);
+          
+              res.status(200).json({ success: true, message: 'All Transactions', transactions: transactions });
+            } catch (error) {
+              console.error('Error fetching transactions:', error);
+              res.status(500).json({ success: false, message: 'Internal server error' });
+            }
+          };
           
                                                       
                                         /* Import and Export Data  */
@@ -2598,7 +2596,7 @@ const { validationResult } = require('express-validator');
                               try {
                                   const workbook = new ExcelJs.Workbook()
                                   await workbook.xlsx.readFile(req.file.path);
-
+                                  
                                   const worksheet = workbook.getWorksheet(1)
                                   const busesData = []
 
@@ -2960,6 +2958,40 @@ const { validationResult } = require('express-validator');
                                         }
                                       }
 
+
+             // API for get user bookings
+             const user_bookings = async (req, res) => {
+              try {
+                const userId = req.params.userId;
+                const today = new Date();
+                const user = await UserModel.findOne({ _id: userId });
+                
+                if (!user) {
+                  return res.status(400).json({ success: false, message: 'User not found' });
+                }
+            
+                const { status } = req.query; 
+            
+                const query = {
+                  userId: userId,
+                  date: {
+                    $gte: today,
+                  },
+                };
+            
+                if (status) {
+                  query.status = status;
+                }
+            
+                const bookings = await BookingModel.find(query).sort({ date: 1 });
+            
+                res.status(200).json({ success: true, bookings: bookings });
+              } catch (error) {
+                console.error(error);
+                return res.status(500).json({ success: false, message: 'Error occurred while fetching bookings' });
+              }
+            }
+            
                                                                            
 
 
@@ -2980,7 +3012,7 @@ const { validationResult } = require('express-validator');
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
                           calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
-                          export_Users , allUsers
+                          export_Users , allUsers , user_bookings
 
 
 

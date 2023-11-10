@@ -54,8 +54,12 @@ router.get('/upcoming_Booking/:userId',userController.upcoming_Booking)
 // Api for get Booking History
 router.post('/bookingHistory/:userId',userController.bookingHistory)
 
-
+// Api for feedback
 router.post('/contactUs', userController.contactUs)
+
+//API for get all feedback
+router.get('/allFeedback', userController.allFeedback)
+
 
 
 

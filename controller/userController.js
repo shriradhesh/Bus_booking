@@ -461,7 +461,27 @@ const fs = require('fs')
       }
    }         
         
+// get all feedbacks detials
+                   const allFeedback = async (req , res)=>{
+                    try {
+                           const feedbacks = await contactModel.find({})
+
+                           res.status(200).json({
+                                        success : true ,
+                                        message : 'all feedbacks',
+                                        feedbacks : feedbacks
+                           })
+                            
+                    } catch (error) {
+                      return res.status(500).json({
+                                        success : false,
+                                        message : 'there is an server error'
+                      })
+                    }
+                   }
 
           
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassToken , userResetPass,
-                    updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs}
+                    updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs ,
+                    allFeedback
+                  }
