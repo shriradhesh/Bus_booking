@@ -169,148 +169,149 @@ const { validationResult } = require('express-validator');
         
 // APi for add new bus
                   const addBus = async (req, res) => {
-                      try {
+                    try {
                         const {
-                          bus_type,
-                          seating_capacity,        
-                          bus_no,
-                          model,
-                          manufacture_year,
-                          amenities,       
-                          status, 
-                        } = req.body;                     
-
+                            bus_type,
+                            seating_capacity,
+                            bus_no,
+                            model,
+                            manufacture_year,
+                            amenities,
+                            status,
+                        } = req.body;
+                
                         const requiredFields = [
-                          'bus_type',
-                          'seating_capacity',       
-                          'bus_no',            
-                          'model',
-                          'manufacture_year',
-                          'amenities',        
-                          'status',                          
-                      ];
-
-                      for (const field of requiredFields) {
-                          if (!req.body[field]) {
-                              return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
-                          }
-                      }
-                          
+                            'bus_type',
+                            'seating_capacity',
+                            'bus_no',
+                            'model',
+                            'manufacture_year',
+                            'amenities',
+                            'status',
+                        ];
+                
+                        for (const field of requiredFields) {
+                            if (!req.body[field]) {
+                                return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
+                            }
+                        }
+                
                         // Check for bus number
                         const existBus = await BusModel.findOne({ bus_no });
-                    
+                
                         if (existBus) {
-                          return res.status(400).json({ message: 'Bus with the same Number is Already Exist', success: false });
+                            return res.status(400).json({ message: 'Bus with the same Number is Already Exist', success: false });
                         }
-                        
-                      
-
-                        const imagePath = req.files.map((file) => file.path);  
-                          // check Bus status
+                
+                       // Process and store multiple image files
+                          const imagePaths = [];
+                          if (req.files && req.files.length > 0) {
+                            req.files.forEach(file => {
+                              imagePaths.push(file.filename);
+                            });
+                          }
+                
+                        // Check Bus status
                         const validStatuses = ['active', 'inactive'];
                         const busStatus = validStatuses.includes(status) ? status : 'active';
-                            
+                
                         const newBus = new BusModel({
-                          bus_type: bus_type,
-                          seating_capacity: seating_capacity,                          
-                          bus_no: bus_no,
-                          model: model,
-                          manufacture_year: manufacture_year,
-                          amenities: amenities,
-                          images: imagePath,      
-                          status: busStatus, 
+                            bus_type: bus_type,
+                            seating_capacity: seating_capacity,
+                            bus_no: bus_no,
+                            model: model,
+                            manufacture_year: manufacture_year,
+                            amenities: amenities,
+                            images: imagePaths,
+                            status: busStatus,
                         });
-                    
+                
                         const savedBus = await newBus.save();
                         res.status(200).json({ success: true, message: 'Bus Added successfully', Bus: savedBus });
-                      } catch (error) {
+                    } catch (error) {
                         console.error('Error while adding the Bus', error);
                         res.status(500).json({ success: false, message: 'Error while adding the Bus', error: error });
-                      }
-                    };
-  
-
+                    }
+                };
+                
 
 
   // Api for update bus with id
-                        const updateBus = async (req, res) => {
-                          try {
-                              const id = req.params.id;
-                              const {
-                                  bus_type,
-                                  seating_capacity,
-                                  model,
-                                  manufacture_year,
-                                  amenities,
-                                  status,
-                                  availability
-                              } = req.body;
-                      
-                              const existBus = await BusModel.findOne({ _id: id });
-                              if (!existBus) {
-                                  return res.status(400).json({ message: 'Bus Not found', success: false });
-                              }
-                      
-                              const validStatus = ['active', 'inactive'];
-                              const validAvailability = ['available', 'unavailable', 'booked'];
-                      
-                              if (!validStatus.includes(status)) {
-                                  return res.status(400).json({ message: 'Invalid status value', success: false });
-                              }
-                      
-                              if (!validAvailability.includes(availability)) {
-                                  return res.status(400).json({ message: 'Invalid availability value', success: false });
-                              }
-                      
-                              if (status === 'inactive' && availability !== 'unavailable') {
-                                  return res.status(400).json({ message: 'Bus status can only be set to inactive when availability is unavailable', success: false });
-                              }
-                      
-                              if (availability === 'unavailable' && status !== 'inactive') {
-                                  return res.status(400).json({ message: 'Bus availability can only be set to unavailable when status is inactive', success: false });
-                              }
-                      
-                              existBus.bus_type = bus_type;
-                              existBus.seating_capacity = seating_capacity;
-                              existBus.model = model;
-                              existBus.manufacture_year = manufacture_year;
-                              existBus.amenities = amenities;
-                              existBus.status = status;
-                              existBus.availability = availability;
-                      
-                              // Check if req.files exist and if it contains images
-                              if (req.files && req.files.length > 0) {
-                                  const images = [];
-                                  for (const file of req.files) {
-                                      // Ensure that the file is an image
-                                      if (file.mimetype.startsWith('image/')) {
-                                          if (existBus.images) {
-                                              // If the Bus Images already exist, delete the old file if it exists
-                                              const oldFilePath = `uploads/${existBus.images}`;
-                                              if (fs.existsSync(oldFilePath)) {
-                                                  fs.unlink(oldFilePath, (error) => {
-                                                      if (error) {
-                                                          console.error('Error deleting old file:', error);
-                                                      }
-                                                  });
+                                const updateBus = async (req, res) => {
+                                  try {
+                                      const id = req.params.id;
+                                      const {
+                                          bus_type,
+                                          seating_capacity,
+                                          model,
+                                          manufacture_year,
+                                          amenities,
+                                          status,
+                                          availability
+                                      } = req.body;
+                              
+                                      const existBus = await BusModel.findOne({ _id: id });
+                              
+                                      if (!existBus) {
+                                          return res.status(404).json({ message: 'Bus Not found', success: false });
+                                      }
+                              
+                                      const validStatuses = ['active', 'inactive'];
+                                      const validAvailabilities = ['available', 'unavailable', 'booked'];
+                              
+                                      if (!validStatuses.includes(status) || !validAvailabilities.includes(availability)) {
+                                          return res.status(400).json({ message: 'Invalid status or availability value', success: false });
+                                      }
+                              
+                                      if ((status === 'inactive' && availability !== 'unavailable') ||
+                                          (availability === 'unavailable' && status !== 'inactive')) {
+                                          return res.status(400).json({
+                                              message: 'Invalid combination of status and availability',
+                                              success: false
+                                          });
+                                      }
+                              
+                                      existBus.bus_type = bus_type;
+                                      existBus.seating_capacity = seating_capacity;
+                                      existBus.model = model;
+                                      existBus.manufacture_year = manufacture_year;
+                                      existBus.amenities = amenities;
+                                      existBus.status = status;
+                                      existBus.availability = availability;
+                              
+                                      // Check if req.files exist and if it contains images
+                                      if (req.files && req.files.length > 0) {
+                                          const images = [];
+                              
+                                          for (const file of req.files) {
+                                              // Ensure that the file is an image
+                                              if (file.mimetype.startsWith('image/')) {
+                                                  // If the Bus Images already exist, delete the old file if it exists
+                                                  if (existBus.images && existBus.images.length > 0) {
+                                                      existBus.images.forEach(oldFileName => {
+                                                          const oldFilePath = `uploads/${oldFileName}`;
+                                                          if (fs.existsSync(oldFilePath)) {
+                                                              fs.unlinkSync(oldFilePath);
+                                                          }
+                                                      });
+                                                  }
+                                                  // Add the new image filename to the images array
+                                                  images.push(file.filename);
                                               }
                                           }
-                                          // Add the new image filename to the images array
-                                          images.push(file.filename);
+                              
+                                          // Update the images with the new one(s) or create a new one if it doesn't exist
+                                          existBus.images = images.length > 0 ? images : undefined;
                                       }
+                              
+                                      const updatedBus = await existBus.save();
+                                      res.status(200).json({ success: true, message: 'Bus Details Edited Successfully', updatedBus });
+                                  } catch (error) {
+                                      console.error('Error while editing the bus details', error);
+                                      res.status(500).json({ success: false, message: 'Error while editing the bus details', error });
                                   }
-                                  // Update the profileImage with the new one(s) or create a new one if it doesn't exist
-                                  existBus.images = images.length > 0 ? images : undefined;
-                              }
-                      
-                              const updatedBus = await existBus.save();
-                              res.status(200).json({ success: true, message: 'Bus Details Edited Successfully', updatedBus: updatedBus });
-                          } catch (error) {
-                              console.error(error);
-                              res.status(500).json({ success: false, message: 'Error while editing the bus details' });
-                          }
-                      };
-                      
+                              };
+                              
 
   //APi for delete Bus 
                
@@ -2959,39 +2960,7 @@ const { validationResult } = require('express-validator');
                                       }
 
 
-             // API for get user bookings
-             const user_bookings = async (req, res) => {
-              try {
-                const userId = req.params.userId;
-                const today = new Date();
-                const user = await UserModel.findOne({ _id: userId });
-                
-                if (!user) {
-                  return res.status(400).json({ success: false, message: 'User not found' });
-                }
-            
-                const { status } = req.query; 
-            
-                const query = {
-                  userId: userId,
-                  date: {
-                    $gte: today,
-                  },
-                };
-            
-                if (status) {
-                  query.status = status;
-                }
-            
-                const bookings = await BookingModel.find(query).sort({ date: 1 });
-            
-                res.status(200).json({ success: true, bookings: bookings });
-              } catch (error) {
-                console.error(error);
-                return res.status(500).json({ success: false, message: 'Error occurred while fetching bookings' });
-              }
-            }
-            
+           
                                                                            
 
 
@@ -3012,7 +2981,7 @@ const { validationResult } = require('express-validator');
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
                           calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
-                          export_Users , allUsers , user_bookings
+                          export_Users , allUsers 
 
 
 

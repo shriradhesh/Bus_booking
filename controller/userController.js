@@ -19,47 +19,69 @@ const cron = require('node-cron');
 const { TokenExpiredError } = require('jsonwebtoken');
 const mongoose = require('mongoose')
 const fs = require('fs')
+const sendUserRegisterEmail = require('../utils/userRegisterEmail')
                         
                                     /* --> User API <-- */
 
 
 // API for user Register 
 
-            const userRegister =  async (req,res)=>{
-               try{
-               const { fullName, email , password , phone_no , age , gender} = req.body;
-
-                  if(!fullName || !email || !password || !phone_no || !age || !gender){
-                  return res.status(400).json({ error : 'Missing required Field ', success : false})
+            const userRegister = async (req, res) => {
+              try {
+                  const { fullName, email, password, phone_no, age, gender } = req.body;
+          
+                  if (!fullName || !email || !password || !phone_no || !age || !gender) {
+                      return res.status(400).json({ error: 'Missing required Field ', success: false });
                   }
-                              // check for email exist 
-               const existUser = await UserModel.findOne({ email })
-               if(existUser)
-               {
-                  return res.status(400).json({ message : 'Email Already Exist', success : false})
-               }
-                        // password hased
-               const hashedPassword = await bcrypt.hash(password , 10)
-               
-               var newUser = new UserModel({
-                  fullName : fullName,
-                  email : email,
-                  password : hashedPassword,
-                  phone_no: phone_no,
-                  age: age,
-                  gender: gender
-               })
-                     
-                        // save Data into Database
-               const data = await newUser.save()
-               res.status(200).json({ message : ' User Created Successfully' , success : true, Data : data})
-               }
-               catch(error)
-               {
-                         console.error(error);
-                        res.status(500).json({ message : 'Error while creating User' , success : false})
-               }
-            }
+          
+                  // Check for existing user
+                  const existUser = await UserModel.findOne({ email });
+                  if (existUser) {
+                      return res.status(400).json({ message: 'Email Already Exists', success: false });
+                  }
+          
+                  // Validate email
+                  if (!isValidEmail(email)) {
+                      return res.status(400).json({
+                          success: false,
+                          message: 'Valid email is required',
+                      });
+                  }
+          
+                  // Hash password
+                  const hashedPassword = await bcrypt.hash(password, 10);
+          
+                  // Create new user
+                  const newUser = new UserModel({
+                      fullName: fullName,
+                      email: email,
+                      password: hashedPassword,
+                      phone_no: phone_no,
+                      age: age,
+                      gender: gender,
+                      isNew: true, 
+                  });
+          
+                  // Save data into the database
+                  const data = await newUser.save();
+          
+                  // Send registration email
+                  const link = `\nClick the link or button below to login. \n ${process.env.User_loginUrl}`;
+                  await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.`, link);
+          
+                  res.status(200).json({ message: `user created successfully , \n successfull email send to registered email`, success: true, Data: data });
+              } catch (error) {
+                  console.error(error);
+                  res.status(500).json({ message: 'Error while creating User', success: false });
+              }
+          
+              function isValidEmail(email) {
+                  // Email validation
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  return emailRegex.test(email);
+              }
+          };
+          
 
 
    // API for Login 
@@ -184,8 +206,9 @@ const fs = require('fs')
                         }).save()
                        }
 
-                       const link = `${process.env.BASE_URL}/password-reset/${user._id}/${token.token}`
-                       await sendEmails(user.email, "Password reset", link)
+                       const link = `${process.env.BASE_URL} \n\n 
+                                        token = ${token}`
+                       await sendEmails(user.email, "Password reset" , link )
 
                        res.status(200).json({success : true ,messsage  : "password reset link sent to your email account" , token : token})
                       
@@ -440,8 +463,6 @@ const fs = require('fs')
          return res.status(400).json({ error : 'Missing required Field ', success : false})
          }              
      
-               
-      
       var newMessage = new contactModel({
         fullName : fullName,
          email : email,
