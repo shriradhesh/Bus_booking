@@ -1,5 +1,5 @@
 const UserModel = require('../models/userModel');
-const tokenModel = require("../models/tokenModel")
+const otpModel = require("../models/otpModel")
 const BusRoute = require('../models/bus_routes')
 const BusModel = require('../models/busModel')
 const  BookingModel = require('../models/BookingModel')
@@ -26,61 +26,62 @@ const sendUserRegisterEmail = require('../utils/userRegisterEmail')
 
 // API for user Register 
 
-            const userRegister = async (req, res) => {
-              try {
-                  const { fullName, email, password, phone_no, age, gender } = req.body;
-          
-                  if (!fullName || !email || !password || !phone_no || !age || !gender) {
-                      return res.status(400).json({ error: 'Missing required Field ', success: false });
-                  }
-          
-                  // Check for existing user
-                  const existUser = await UserModel.findOne({ email });
-                  if (existUser) {
-                      return res.status(400).json({ message: 'Email Already Exists', success: false });
-                  }
-          
-                  // Validate email
-                  if (!isValidEmail(email)) {
-                      return res.status(400).json({
-                          success: false,
-                          message: 'Valid email is required',
-                      });
-                  }
-          
-                  // Hash password
-                  const hashedPassword = await bcrypt.hash(password, 10);
-          
-                  // Create new user
-                  const newUser = new UserModel({
-                      fullName: fullName,
-                      email: email,
-                      password: hashedPassword,
-                      phone_no: phone_no,
-                      age: age,
-                      gender: gender,
-                      isNew: true, 
-                  });
-          
-                  // Save data into the database
-                  const data = await newUser.save();
-          
-                  // Send registration email
-                  const link = `\nClick the link or button below to login. \n ${process.env.User_loginUrl}`;
-                  await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.`, link);
-          
-                  res.status(200).json({ message: `user created successfully , \n successfull email send to registered email`, success: true, Data: data });
-              } catch (error) {
-                  console.error(error);
-                  res.status(500).json({ message: 'Error while creating User', success: false });
-              }
-          
-              function isValidEmail(email) {
-                  // Email validation
-                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                  return emailRegex.test(email);
-              }
-          };
+const userRegister = async (req, res) => {
+  try {
+      const { fullName, email, password, phone_no, age, gender } = req.body;
+
+      if (!fullName || !email || !password || !phone_no || !age || !gender) {
+          return res.status(400).json({ error: 'Missing required Field ', success: false });
+      }
+
+      // Check for existing user
+      const existUser = await UserModel.findOne({ email });
+      if (existUser) {
+          return res.status(400).json({ message: 'Email Already Exists', success: false });
+      }
+
+      // Validate email
+      if (!isValidEmail(email)) {
+          return res.status(400).json({
+              success: false,
+              message: 'Valid email is required',
+          });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create new user
+      const newUser = new UserModel({
+          fullName: fullName,
+          email: email,
+          password: hashedPassword,
+          phone_no: phone_no,
+          age: age,
+          gender: gender,
+          isNew: true, 
+      });
+
+      // Save data into the database
+      const data = await newUser.save();
+
+      // Send registration email
+      const link = `\nClick the link or button below to login. \n ${process.env.User_loginUrl}`;
+      await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.`, link);
+
+      res.status(200).json({ message: `user created successfully , \n successfull email send to registered email`, success: true, Data: data });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error while creating User', success: false });
+  }
+
+  function isValidEmail(email) {
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+  }
+};
+             
           
 
 
@@ -92,18 +93,18 @@ const sendUserRegisterEmail = require('../utils/userRegisterEmail')
 
         const user = await UserModel.findOne({ email })
         if (!user) {
-          return res.status(401).json({ message : 'Invalid email' , success : false });
+          return res.status(401).json({ EmailMessage : 'Invalid email' , success : false });
         }
         
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-          return res.status(401).json({ message : 'Invalid password' , success: false});
+          return res.status(401).json({ passwordMessage : 'Invalid password' , success: false});
         }
 
-            res.status(200).json({ message: 'Login Successfully', user: user , success : true });
+            res.status(200).json({successMessage: 'Login Successfully', user: user , success : true });
         } catch (error) {
           console.error(error);
-            res.status(500).json({ message : 'Error while login the user' , success: false });
+            res.status(500).json({ errorMessage : 'Error while login the user' , success: false });
         }
     }
 
@@ -177,99 +178,97 @@ const sendUserRegisterEmail = require('../utils/userRegisterEmail')
   }
   
 
-    // APi for Token generate and email send to user for  forget password  
+    // APi for otp generate and email send to user for  forget password  
        
-              const forgetPassToken = async(req,res)=>{
-               
-                try{
-                  const { email } = req.body;
-
-                  if (!email || !isValidEmail(email)) {
-                    return res.status(400).json({
-                                  success : false,
-                                  message : "Valid email is required"
-                    })
-                   }
-
-                   const user = await UserModel.findOne({ email })
-
-                   if(!user)
-                   {
-                    return res.status(404).json({ success: false, message : ' User with given email not found'})
-                   }
-                     
-                       let token = await tokenModel.findOne({ userId : user._id })
-                       if(!token){
-                        token = await new tokenModel ({
-                          userId : user._id,
-                          token : crypto.randomBytes(32).toString("hex")
-                        }).save()
-                       }
-
-                       const link = `${process.env.BASE_URL} \n\n 
-                                        token = ${token}`
-                       await sendEmails(user.email, "Password reset" , link )
-
-                       res.status(200).json({success : true ,messsage  : "password reset link sent to your email account" , token : token})
-                      
-              }
-              catch(error)
-              {
-
-                res.status(500).json({success : false , message : "An error occured" , error : error})
-              }
-              function isValidEmail(email) {
-                // email validation
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return emailRegex.test(email);
-            }
-            }
-
+    const forgetPassOTP = async (req, res) => {
+      try {
+          const { email } = req.body;
+  
+          if (!email || !isValidEmail(email)) {
+              return res.status(400).json({
+                  success: false,
+                  message: "Valid email is required"
+              });
+          }
+  
+          const user = await UserModel.findOne({ email });
+  
+          if (!user) {
+              return res.status(404).json({ success: false, message: ' User with given email not found' });
+          }
+  
+          const otp = generateOTP();
+  
+          // Save the OTP in the otpModel
+          const otpData = {
+              userId: user._id,
+              otp: otp
+          };
+          await otpModel.create(otpData);
+  
+          const link = `Your OTP for password reset: ${otp}`;
+          await sendEmails(user.email, "Password reset", link);
+  
+          res.status(200).json({ success: true, message: "An OTP has been sent to your email", email: user.email });
+      } catch (error) {
+          console.error('error', error);
+          res.status(500).json({ success: false, message: "An error occurred", error: error });
+      }
+  
+      function isValidEmail(email) {
+          // email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          return emailRegex.test(email);
+      }
+  
+      function generateOTP() {
+          const otp = Math.floor(1000 + Math.random() * 9000).toString();
+          return otp.slice(0, 4);
+      }
+  };
+  
   // APi for Token verify and reset password for forget password 
                 
-          const userResetPass =async(req,res) =>{
-            try{
-                  const {password} = req.body;
-                  const userId = req.params.userId;
-                  const tokenValue = req.params.token
-              
-                     
-                  if(!password)
-                  {
-                    return res.status(400).json({ success : false , error : 'Password is required '})
-                  }
+  const userResetPass = async (req, res) => {
+    try {
+        const { password, otp } = req.body;
 
-                  const user = await UserModel.findById(userId)
-                  if(!user){
-                    return res.status(400).json({success : false,  error : 'Invalid Link or expired '})
-                  }
+        if (!password) {
+            return res.status(400).json({ success: false, message: 'Password is required' });
+        }
 
-                      const userToken = await tokenModel.findOne({
-                        userId : user._id,
-                        token : tokenValue
-                      })
+        // Find the user based on the provided OTP
+        const userOtp = await otpModel.findOne({ otp });
 
-                      if(!userToken){
-                        return res.status(400).json({ success : false , error : 'Invalid link or expire'})
-                      }
-                            const hashedPassword = await bcrypt.hash(password,10)
-                            user.password = hashedPassword
-                            await user.save()
-                            await userToken.deleteOne({
-                              userId : user._id,
-                              token : tokenValue
-                            })
-                            res.status(200).json({success : true ,  message : " password reset successfully"})
-                        }   
-                        
-                        catch(error)
-                        {
-                           console.error("error " , error);
-                          res.status(500).json({ success :false , error : ' an error occured '})
-                        }
-                            
-                      }           
-                                  
+        if (!userOtp) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP or expired' });
+        }
+
+        const user = await UserModel.findById(userOtp.userId);
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP or expired' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword;
+        await user.save();
+
+        // Delete the used OTP
+        await userOtp.deleteOne({ otp });
+
+        res.status(200).json({ success: true, message: 'Password reset successfully' });
+    } catch (error) {
+        console.error('error', error);
+        res.status(500).json({ success: false, message: 'An error occurred', error: error });
+    }
+};
+
+
+
+
+
+      
                                             /* --> User API for Manage Profile <-- */
 
     // update user profile
@@ -502,7 +501,7 @@ const sendUserRegisterEmail = require('../utils/userRegisterEmail')
                    }
 
           
-module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassToken , userResetPass,
+module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassOTP , userResetPass,
                     updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs ,
                     allFeedback
                   }

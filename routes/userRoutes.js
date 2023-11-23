@@ -24,11 +24,11 @@ router.post('/userChangePass', userController.userChangePass)
  // forget password Api -- 
                           //password reset link sent to user email account and token generate 
 
- router.post('/forgetPassToken', userController.forgetPassToken)
+ router.post('/forgetPassOTP', userController.forgetPassOTP)
 
                         // reset password and token verify
 
-  router.post('/resetPassword/:userId/:token', userController.userResetPass)
+  router.post('/resetPassword', userController.userResetPass)
 
                           /*  Manage profile */
 
