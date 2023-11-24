@@ -206,10 +206,14 @@ const userRegister = async (req, res) => {
           };
           await otpModel.create(otpData);
   
-          const link = `Your OTP for password reset: ${otp}`;
+          const link = `Your OTP for password reset: ${otp} `;
           await sendEmails(user.email, "Password reset", link);
   
-          res.status(200).json({ success: true, message: "An OTP has been sent to your email", email: user.email });
+          res.status(200).json({ success: true, 
+                                   message: "An OTP has been sent to your email",
+                                   email: user.email , 
+                                   
+                                   });
       } catch (error) {
           console.error('error', error);
           res.status(500).json({ success: false, message: "An error occurred", error: error });
@@ -226,28 +230,48 @@ const userRegister = async (req, res) => {
           return otp.slice(0, 4);
       }
   };
-  
-  // APi for Token verify and reset password for forget password 
+  // APi for verify OTP
+                     const verifyOTP = async(req,res)=>{
+                      try {
+                        const { otp } = req.body
+                        if(!otp)
+                        {
+                          return res.status(400).json({ success : false , message : ' otp is required' })
+                        }
+
+                        const userOTP = await otpModel.findOne ({ otp })
+                        if(!userOTP)
+                        {
+                          return res.status(400).json({ success : false , message : ' Invalid OTP or expired' })
+                        }
+
+                        res.status(200).json({ success : true , message : 'otp verified successfully' , userId : userOTP.userId})
+                      } catch (error) {
+                        return res.status(500).json({
+                                    success : false ,
+                                    message : ' there is an server error'
+                        })
+                      }
+                     }
+
+  // APi for otp verify and reset password for forget password 
                 
   const userResetPass = async (req, res) => {
     try {
-        const { password, otp } = req.body;
-
+        const { password  } = req.body;
+         const userId = req.params.userId
         if (!password) {
-            return res.status(400).json({ success: false, message: 'Password is required' });
+            return res.status(400).json({ success: false, message: 'Password are required' });
         }
-
-        // Find the user based on the provided OTP
-        const userOtp = await otpModel.findOne({ otp });
-
-        if (!userOtp) {
-            return res.status(400).json({ success: false, message: 'Invalid OTP or expired' });
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'userId is required' });
         }
-
-        const user = await UserModel.findById(userOtp.userId);
+        
+    
+        const user = await UserModel.findById(userId);
 
         if (!user) {
-            return res.status(400).json({ success: false, message: 'Invalid OTP or expired' });
+            return res.status(400).json({ success: false, message: 'Invalid userId' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -255,7 +279,7 @@ const userRegister = async (req, res) => {
         await user.save();
 
         // Delete the used OTP
-        await userOtp.deleteOne({ otp });
+        await otpModel.deleteOne({ userId });
 
         res.status(200).json({ success: true, message: 'Password reset successfully' });
     } catch (error) {
@@ -263,6 +287,7 @@ const userRegister = async (req, res) => {
         res.status(500).json({ success: false, message: 'An error occurred', error: error });
     }
 };
+
 
 
 
@@ -501,7 +526,7 @@ const userRegister = async (req, res) => {
                    }
 
           
-module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassOTP , userResetPass,
+module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassOTP ,verifyOTP , userResetPass,
                     updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs ,
                     allFeedback
                   }
