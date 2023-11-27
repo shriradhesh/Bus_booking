@@ -10,6 +10,7 @@ const sendCancelEmail =require("../utils/sendCancelEmail")
 const sendBookingEmail =require("../utils/sendBookingEmail")
 const NotificationDetail = require('../models/notificationDetails')
 const TransactionModel = require('../models/transactionModel')
+const userController = require('./userController')
 const upload = require('../uploadImage')
 const BusRoute = require('../models/bus_routes')
 const DriverModel = require('../models/driverModel')
@@ -27,21 +28,16 @@ const TripModel = require('../models/tripModel')
 const cron = require('node-cron');
 const axios = require('axios');
 const ExcelJs = require('exceljs')
-const FcmAdmin = require('firebase-admin');
 const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
 const _ = require('lodash')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { validationResult } = require('express-validator');
-
+const { sendPushNotification } = require('../utils/notificationService')
 
 
 
     
- // Initialize Firebase Admin SDK with credentials
  
- FcmAdmin.initializeApp({
-   credential : FcmAdmin.credential.cert(serviceAccount)
- })
 
 
                       /* -->  ADMIN Api'S   <--    */
@@ -1617,7 +1613,12 @@ const { validationResult } = require('express-validator');
                                             });
                                           }
                                           const userId = user._id;
-                                      
+                                            
+                                            // Notification details
+                                            const title = 'upcoming Trip'
+                                            const body = 'Your trip is coming soon'
+                                              const tokens = user.fcmTokens
+
                                           // Fetch trip and check if it exists
                                           const trip = await TripModel.findById(tripId);
                                        
@@ -1940,33 +1941,14 @@ const { validationResult } = require('express-validator');
                                           
                                             </main>
                                             `;
-                                          /* Dear ${user.fullName},
-                                            Your booking for departure on ${date} has been confirmed.
-                                            
-                                            Journey Details:
-                                                      Booking ID: ${bookingId}
-                                                      Trip Number: ${trip.tripNumber}
-                                                      Bus Number : ${trip.bus_no}
-                                                      Driver Name: ${Driver.driverName}
-                                                      Driver Contact: ${Driver.driverContact}
-                                                      Trip Starting Time: ${trip.startingTime}
-                                                      Your Source: ${source}
-                                                      Your Destination: ${destination}
-                                          ..............................................................
-                                                      Passenger Details:
-                                                      ${passengerDetails}
-                                          ..............................................................
-                                            
-                                            Have a safe journey!
-                                            Thank you for choosing our service!
-                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~ @#@#@#@#@ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+                                          
                                           // Generate the QR CODE and send the booking confirmation email
                                           const qrCodeData = `http://192.168.1.41:4000/${bookingId}`;
                                           const qrCodeImage = 'ticket-QRCODE.png';
                                           await qrcode.toFile(qrCodeImage, qrCodeData);
                                       
                                           await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
-                                      
+                                          await sendPushNotification(tokens , title , body)
                                           res.status(200).json({
                                             success: true,
                                             message: 'Booking successful. Ticket sent to user email.',
@@ -2492,62 +2474,7 @@ const { validationResult } = require('express-validator');
                               
    // send PUSH Notification
                                   
-                                const sendUpcomingNotifications = async () => {
-                                  try {
-                                    const currentTime = new Date();
-                                    const threeHoursLater = new Date(currentTime.getTime()  + 3 * 60 * 60 * 1000 )                                                                      
-                                  
-                                    const upcomingBookings = await BookingModel.find({
-                                      'tripId.startingDate': {
-                                        $gte: currentTime,
-                                        $lte: threeHoursLater,
-                                      },
-                                    });                                    
-
-                                    if (upcomingBookings.length === 0) {
-                                      console.log('No upcoming bookings found');
-                                      return;
-                                    }
-                                
-                                    const registrationTokens = upcomingBookings.map((booking) => booking.userId);
-                                
-                                    const message = {
-                                      notification: {
-                                        title: 'Upcoming Journey Reminder',
-                                        body: 'You have an upcoming journey.',
-                                      },
-                                      tokens: registrationTokens,
-                                    };
-                                
-                                    // Send notifications to users with upcoming journeys
-                                    const response = await FcmAdmin.messaging().sendMulticast(message);
-                                
-                                    // Save the responses in the database
-                                    const chunkSize = 100;
-                                    const chunkedResponse = _.chunk(response.responses, chunkSize);
-                                
-                                    for (let index = 0; index < chunkedResponse.length; index++) {
-                                      const chunk = chunkedResponse[index];
-                                      const docsToInsertInBulk = chunk.map((resp, idx) => ({
-                                        userId: registrationTokens[index * chunkSize + idx],
-                                        status: resp.success,
-                                        messageId: resp.success ? resp.messageId : undefined,
-                                      }));
-                                
-                                      await NotificationDetail.insertMany(docsToInsertInBulk);
-                                    }
-                                
-                                    console.log('Notifications sent successfully');
-                                  } catch (error) {
-                                    console.error('Error sending notifications:', error);
-                                  }
-                                };
-                                
-                                // Schedule the job to run every hour
-                                cron.schedule('0 * * * *', () => {
-                                  sendUpcomingNotifications();
-                                });
-                                                                
+                                               
 
                                             /* Manage Transaction */
           // Api for get All transaction
@@ -2979,7 +2906,7 @@ const { validationResult } = require('express-validator');
                          deleteStop , changeProfile , addDriver ,editDriver,
                          deleteDriver , allDrivers ,getDriver , createTrip, allTrips , bookTicket, cancelTicket,
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
-                          calculateFareForSelectedSeats , trackBus  , sendUpcomingNotifications , All_Transaction,
+                          calculateFareForSelectedSeats , trackBus   , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
                           export_Users , allUsers 
 

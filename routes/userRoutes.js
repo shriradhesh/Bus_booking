@@ -63,6 +63,9 @@ router.post('/contactUs', userController.contactUs)
 //API for get all feedback
 router.get('/allFeedback', userController.allFeedback)
 
+// Subscribe to push notification
+
+router.post('/subscribe', userController.subscribeToPushNotifications)
 
 
 

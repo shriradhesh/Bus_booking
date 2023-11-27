@@ -20,7 +20,7 @@ const { TokenExpiredError } = require('jsonwebtoken');
 const mongoose = require('mongoose')
 const fs = require('fs')
 const sendUserRegisterEmail = require('../utils/userRegisterEmail')
-                        
+const { sendPushNotification } = require('../utils/notificationService')                      
                                     /* --> User API <-- */
 
 
@@ -80,11 +80,8 @@ const userRegister = async (req, res) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(email);
   }
-};
-             
-          
-
-
+};         
+    
    // API for Login 
                
    const loginUser =async (req, res) => {
@@ -107,7 +104,6 @@ const userRegister = async (req, res) => {
             res.status(500).json({ errorMessage : 'Error while login the user' , success: false });
         }
     }
-
   // Api for logout user
         const logoutUser = async(req,res)=>{
           try{
@@ -176,9 +172,7 @@ const userRegister = async (req, res) => {
           res.status(500).json({ message : 'Internal server error ', success : false})
       }
   }
-  
-
-    // APi for otp generate and email send to user for  forget password  
+      // APi for otp generate and email send to user for  forget password  
        
     const forgetPassOTP = async (req, res) => {
       try {
@@ -238,13 +232,11 @@ const userRegister = async (req, res) => {
                         {
                           return res.status(400).json({ success : false , message : ' otp is required' })
                         }
-
                         const userOTP = await otpModel.findOne ({ otp })
                         if(!userOTP)
                         {
                           return res.status(400).json({ success : false , message : ' Invalid OTP or expired' })
                         }
-
                         res.status(200).json({ success : true , message : 'otp verified successfully' , userId : userOTP.userId})
                       } catch (error) {
                         return res.status(500).json({
@@ -256,44 +248,37 @@ const userRegister = async (req, res) => {
 
   // APi for otp verify and reset password for forget password 
                 
-  const userResetPass = async (req, res) => {
-    try {
-        const { password  } = req.body;
-         const userId = req.params.userId
-        if (!password) {
-            return res.status(400).json({ success: false, message: 'Password are required' });
-        }
-        if (!userId) {
-            return res.status(400).json({ success: false, message: 'userId is required' });
-        }
-        
-    
-        const user = await UserModel.findById(userId);
+                  const userResetPass = async (req, res) => {
+                    try {
+                        const { password  } = req.body;
+                        const userId = req.params.userId
+                        if (!password) {
+                            return res.status(400).json({ success: false, message: 'Password is required' });
+                        }
+                        if (!userId) {
+                            return res.status(400).json({ success: false, message: 'userId is required' });
+                        }                       
+                    
+                        const user = await UserModel.findById(userId);
 
-        if (!user) {
-            return res.status(400).json({ success: false, message: 'Invalid userId' });
-        }
+                        if (!user) {
+                            return res.status(400).json({ success: false, message: 'Invalid userId' });
+                        }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        user.password = hashedPassword;
-        await user.save();
+                        const hashedPassword = await bcrypt.hash(password, 10);
+                        user.password = hashedPassword;
+                        await user.save();
 
-        // Delete the used OTP
-        await otpModel.deleteOne({ userId });
+                        // Delete the used OTP
+                        await otpModel.deleteOne({ userId });
 
-        res.status(200).json({ success: true, message: 'Password reset successfully' });
-    } catch (error) {
-        console.error('error', error);
-        res.status(500).json({ success: false, message: 'An error occurred', error: error });
-    }
-};
+                        res.status(200).json({ success: true, message: 'Password reset successfully' });
+                    } catch (error) {
+                        console.error('error', error);
+                        res.status(500).json({ success: false, message: 'An error occurred', error: error });
+                    }
+                };
 
-
-
-
-
-
-      
                                             /* --> User API for Manage Profile <-- */
 
     // update user profile
@@ -358,8 +343,7 @@ const userRegister = async (req, res) => {
                                             res.status(500).json({ success: false, message: 'Error while updating user profile' });
                                         }
                                     };
-                                    
-                                          
+                                                                             
 
             // APi for get user by email 
 
@@ -422,7 +406,7 @@ const userRegister = async (req, res) => {
                                                        /* My Bookings */
     
    //Api for check upcoming bookings
-            
+         
                         const upcoming_Booking = async (req,res)=>{
 
                             try{
@@ -525,8 +509,35 @@ const userRegister = async (req, res) => {
                     }
                    }
 
-          
+    // push notification 
+      
+          const subscribeToPushNotifications = async (req,res)=>{
+            try {
+                   const { token , userId } = req.body
+
+                   // check for user
+                   const user = await UserModel.findById(userId)
+                   if(!user)
+                   {
+                    return res.status(400).json({ success : false , message : 'user not found'})
+                   }
+
+                   // ADD fcm token to the user's tokens 
+                   if(!user.fcmTokens.includes(token))
+                   {
+                    user.fcmTokens.push(token)
+                    await user.save()
+                   }
+                   res.status(200).json({ success : true , message : 'subscription successfully' })
+
+            } catch (error) {
+              res.status(500).json({ 
+                                   success : false ,
+                                   errorMessage : ' Internal server Error '
+              })
+            }
+          }
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassOTP ,verifyOTP , userResetPass,
                     updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs ,
-                    allFeedback
+                    allFeedback , subscribeToPushNotifications
                   }

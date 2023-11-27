@@ -24,10 +24,7 @@ const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const cookieSession = require('cookie-session')
 require('./utils/passport-setup')
 
-// Schedule the job to run every hour
-cron.schedule('0 * * * *', () => {
-  sendUpcomingNotifications();
-});
+
 
 passport.serializeUser((user, done) => {
   done(null, user._id); 
@@ -115,7 +112,7 @@ app.use('/api', userRoutes );
 app.use('/api', adminRoute);
 app.use('/auth' , socialRoutes);
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://192.168.1.51:3000/api/'); 
+  res.header('Access-Control-Allow-Origin', 'http://13.51.77.134/'); 
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   next();
