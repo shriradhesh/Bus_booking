@@ -139,6 +139,8 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
           router.get('/export_Users' , adminController.export_Users)
 // APi for get all Users
           router.get('/allUsers', adminController.allUsers)
+// API for get notifcation of the user
+         router.get('/getNotification/:userId', adminController.getNotification)
 
                                    
                                      

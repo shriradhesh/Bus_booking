@@ -20,7 +20,8 @@ const { TokenExpiredError } = require('jsonwebtoken');
 const mongoose = require('mongoose')
 const fs = require('fs')
 const sendUserRegisterEmail = require('../utils/userRegisterEmail')
-const { sendPushNotification } = require('../utils/notificationService')                      
+const NotificationDetail = require('../models/notificationDetails')
+                    
                                     /* --> User API <-- */
 
 
@@ -64,7 +65,16 @@ const userRegister = async (req, res) => {
 
       // Save data into the database
       const data = await newUser.save();
-
+     // Create and save a notification for the new user
+    const newNotification = new NotificationDetail({
+      userId: data._id,
+      message: 'Welcome! user registered successfully.',
+      date: new Date(),
+      status: 'confirmed', 
+    });
+    await newNotification.save()
+    // Emit a notification to the WebSocket server
+    
       // Send registration email
       const link = `\nClick the link or button below to login. \n ${process.env.User_loginUrl}`;
       await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.`, link);

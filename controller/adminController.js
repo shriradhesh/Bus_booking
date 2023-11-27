@@ -1787,6 +1787,16 @@ const { sendPushNotification } = require('../utils/notificationService')
                                           });
                                       
                                           await transaction.save();
+                                          const newNotification = new NotificationDetail({
+                                            userId  ,
+                                            message: `congratulation ..!! , new booking has been made with bookingId : ${bookingId} `,
+                                            date: date,
+                                            status: 'confirmed', 
+                                            bookingId: bookingId,
+                                            tripId
+
+                                          });
+                                          await newNotification.save()
                                       
                                           // Save the updated trip
                                           await trip.save();
@@ -2093,6 +2103,16 @@ const { sendPushNotification } = require('../utils/notificationService')
                                             }
                                           }
                                         }
+                                        const newNotification = new NotificationDetail({
+                                          userId : booking.userId ,
+                                          message: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
+                                          date: new Date(),
+                                          status: 'cancelled', 
+                                          bookingId: bookingId,
+                                          tripId : booking.tripId
+
+                                        });
+                                        await newNotification.save()
 
                                         await booking.save();
                                         await trip.save();
@@ -2887,6 +2907,51 @@ const { sendPushNotification } = require('../utils/notificationService')
                                       }
 
 
+
+     // API for get notification of particular user
+     
+                               const getNotification = async (req , res )=>{
+                                try {
+                                         const userId = req.params.userId
+                                         // check for user
+                                      const user = await UserModel.findById(
+                                             userId
+                                      )
+                                      if(!user)
+                                      {
+                                        return res.status(400).json({ 
+                                          success : false ,
+                                          message : 'user not found'
+                                        })
+                                      }
+
+                                      // check for notification
+                                  const notification = await NotificationDetail.find({
+                                                 userId
+                                  })
+                                  if(notification.length === 0)
+                                  {
+                                    return res.status(200).json({
+                                                  success : true ,
+                                                  message :  `there is no notification for the user yet`
+                                    })
+                                  }
+                                  else
+                                  {
+                                    const notifications = notification.sort((a ,b)=>  b.createdAt - a.createdAt)
+                                    return res.status(200).json({
+                                                   success : true ,
+                                                   message : 'user notifications',
+                                                  notification_details : notifications
+                                    })
+                                  }
+                                } catch (error) {
+                                  return res.status(500).json({
+                                                      success : false ,
+                                                      message : 'server error'
+                                  })
+                                }
+                               }
            
                                                                            
 
@@ -2908,7 +2973,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
                           calculateFareForSelectedSeats , trackBus   , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
-                          export_Users , allUsers 
+                          export_Users , allUsers , getNotification
 
 
 
