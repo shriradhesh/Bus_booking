@@ -3034,10 +3034,9 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                 const sendNotification_to_tripUsers = async (req ,res)=>{
                                  
                                     try {
-                                      const { title, message } = req.body;
-                                      const tripId = req.params.tripId;
-                                  
-                                      const requiredFields = ['title', 'message'];
+                                      const { title, message , tripId } = req.body;
+                                     
+                                      const requiredFields = ['title', 'message' ,'tripId'];
                                   
                                       for (const field of requiredFields) {
                                         if (!req.body[field]) {
@@ -3122,7 +3121,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                         const formattedTrips = tripsWithNumbers.map(({ tripId, tripNumber }) => {
                                           return { tripNumber, tripId };
                                         }); 
-                                        
+
                                         return res.status(200).json({
                                           success: true,
                                           message: 'All trips in Booking with corresponding tripNumbers',
@@ -3182,7 +3181,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                         ${title} 
                                         ---------
                                         ${message}
-                                        *****************************************************************
+                                        ****************************************************************
                                       `;
                                 
                                       // Send email notification to the user
@@ -3205,10 +3204,81 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                     });
                                   }
                                 };
+
                                 
-                                                              
-                                                                                  
-                
+                            // API for send notification to users about trips 
+                            const sendNotifications = async (req, res) => {
+                              try {
+                                const adminChoice = req.body.adminChoice;
+                            
+                                let notificationFunction;
+                            
+                                if (adminChoice === 1) {
+                                  notificationFunction = sendNotification_to_tripUsers;
+                                } else if (adminChoice === 2) {
+                                  notificationFunction = sendNotification_to_allUser;
+                                } else {
+                                  return res.status(400).json({
+                                    success: false,
+                                    message: 'Invalid admin choice. Please provide valid choice (1 or 2).',
+                                  });
+                                }
+                            
+                                // Call the selected notification function
+                                await notificationFunction(req, res);
+                            
+                                // Only send the success response if the notification function didn't send a response
+                                if (!res.headersSent) {
+                                  return res.status(200).json({
+                                    success: true,
+                                    message: 'Notification sent',
+                                  });
+                                }
+                              } catch (error) {
+                                console.error(error);
+                                if (!res.headersSent) {
+                                  return res.status(500).json({
+                                    success: false,
+                                    message: 'Server error',
+                                  });
+                                }
+                              }
+                            };
+         
+                            
+        // API for get all notification details
+                               const getAll_Users_Notificatation = async (req , res)=>{
+                                               try {
+                                                     const { title } = req.query
+                                                     const filter = {};
+                                                     if(title)
+                                                     {
+                                                       filter.title = title
+                                                     }
+                                                     const notifications = await UsersNotificationModel.find(filter);
+                                                     if(notifications.length === 0)
+                                                      {
+                                                        return res.status(400).json({
+                                                                         success : false ,
+                                                                         message : 'no notification for User'
+                                                        })
+                                                      }
+                                                     
+                                                     return res.status(200).json({
+                                                      success: true,
+                                                      message: 'User Notifications',
+                                                      notifications: notifications,
+                                                    });
+                                               } catch (error) {
+                                                return res.status(500).json({
+                                                                      success : false ,
+                                                                      message : 'server error'
+                                                })
+                                               }
+                                                }
+
+            
+            
 
                     
     
@@ -3223,8 +3293,9 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
                           calculateFareForSelectedSeats , trackBus   , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
-                          export_Users , allUsers , getNotification , getAdminNotification , sendNotification_to_tripUsers ,
-                          getBookingTrip , sendNotification_to_allUser
+                          export_Users , allUsers , getNotification , getAdminNotification ,  
+                          getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
+                          getAll_Users_Notificatation
 
 
 

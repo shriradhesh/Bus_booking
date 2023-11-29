@@ -137,6 +137,8 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
           router.get('/export_Trips' , adminController.export_Trips)
 // Api for export transaction
           router.get('/export_Users' , adminController.export_Users)
+
+                             /* Notifications  */
 // APi for get all Users
           router.get('/allUsers', adminController.allUsers)
 // API for get notifcation of the user
@@ -144,11 +146,15 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 // API for get Admin notification 
          router.get('/getAdminNotification/:adminId', adminController.getAdminNotification)
 // APi to send Notification to trip user
-         router.post('/sendNotification_to_tripUsers/:tripId' , adminController.sendNotification_to_tripUsers)
+         router.post('/sendNotification_to_tripUsers' , adminController.sendNotification_to_tripUsers)
 // APi for get BookingModel trips
          router.get('/getBookingTrip', adminController.getBookingTrip)
 // APi for send notification to all user
          router.post('/sendNotification_to_allUser', adminController.sendNotification_to_allUser)
+// API for combine APi for send notification
+         router.post('/sendNotifications', adminController.sendNotifications)
+// API for get user Notification 
+         router.get('/getAll_Users_Notificatation', adminController.getAll_Users_Notificatation)
 
                                    
                                      
