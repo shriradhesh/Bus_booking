@@ -103,6 +103,20 @@ const userRegister = async (req, res) => {
           return res.status(401).json({ EmailMessage : 'Invalid email' , success : false });
         }
         
+           if(!email)
+           {
+            return res.status(400).json({
+                                      success : false ,
+                                      message : 'email is required'
+            })
+           }
+           if(!password)
+           {
+            return res.status(400).json({
+                                      success : false ,
+                                      message : 'password is required'
+            })
+           }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
           return res.status(401).json({ passwordMessage : 'Invalid password' , success: false});
@@ -519,35 +533,8 @@ const userRegister = async (req, res) => {
                     }
                    }
 
-    // push notification 
-      
-          const subscribeToPushNotifications = async (req,res)=>{
-            try {
-                   const { token , userId } = req.body
-
-                   // check for user
-                   const user = await UserModel.findById(userId)
-                   if(!user)
-                   {
-                    return res.status(400).json({ success : false , message : 'user not found'})
-                   }
-
-                   // ADD fcm token to the user's tokens 
-                   if(!user.fcmTokens.includes(token))
-                   {
-                    user.fcmTokens.push(token)
-                    await user.save()
-                   }
-                   res.status(200).json({ success : true , message : 'subscription successfully' })
-
-            } catch (error) {
-              res.status(500).json({ 
-                                   success : false ,
-                                   errorMessage : ' Internal server Error '
-              })
-            }
-          }
+    
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassOTP ,verifyOTP , userResetPass,
                     updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs ,
-                    allFeedback , subscribeToPushNotifications
+                    allFeedback 
                   }

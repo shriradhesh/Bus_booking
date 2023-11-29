@@ -8,6 +8,7 @@ const BusModel = require('../models/busModel')
 const stopModel = require('../models/stopModel')
 const sendCancelEmail =require("../utils/sendCancelEmail")
 const sendBookingEmail =require("../utils/sendBookingEmail")
+const sendTripNotificationEmails = require('../utils/sendtripNotificationEmail')
 const NotificationDetail = require('../models/notificationDetails')
 const TransactionModel = require('../models/transactionModel')
 const userController = require('./userController')
@@ -28,12 +29,11 @@ const TripModel = require('../models/tripModel')
 const cron = require('node-cron');
 const axios = require('axios');
 const ExcelJs = require('exceljs')
-const serviceAccount = require("../utils/bus-book-29765-firebase-adminsdk-eihc4-9e45efe148.json");
 const _ = require('lodash')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { validationResult } = require('express-validator');
-const { sendPushNotification } = require('../utils/notificationService')
-
+const AdminNotificationDetail = require('../models/AdminNotification')
+const UsersNotificationModel = require('../models/UsersNotificationModel')
 
 
     
@@ -52,8 +52,20 @@ const { sendPushNotification } = require('../utils/notificationService')
                       const admin = await Admin.findOne({ username });
 
                       if (!admin) {
-                          return res.status(401).json({ message: 'Username incorrect', success: false });
+                          return res.status(401).json({ userMessage: 'Username incorrect', success: false });
                       }
+                      const requiredFields = [
+                        'username',
+                        'password'
+                       
+                    ];
+            
+                    for (const field of requiredFields) {
+                        if (!req.body[field]) {
+                            return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
+                        }
+                    }
+            
 
                       // Compare passwords using bcrypt
                       const passwordMatch = await bcrypt.compare(password, admin.password);
@@ -61,7 +73,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                       if (passwordMatch) {
                           return res.json({ message: 'Admin Login Successful', success: true, data: admin });
                       } else {
-                          return res.status(401).json({ message: 'Password incorrect', success: false });
+                          return res.status(401).json({ passwordMessage: 'Password incorrect', success: false });
                       }
                   } catch (error) {
                       console.error(error);
@@ -88,13 +100,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                           res.status(500).json({ message: 'Internal server error', success: false });
                         }
                       };
-                       
-                    
-  
-                           
-
-
-
+   
   // APi for change  Login password 
         
             const changePassword = async (req, res)=>{
@@ -220,7 +226,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                             amenities: amenities,
                             images: imagePaths,
                             status: busStatus,
-                        });
+                        });                     
                 
                         const savedBus = await newBus.save();
                         res.status(200).json({ success: true, message: 'Bus Added successfully', Bus: savedBus });
@@ -299,7 +305,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                                           // Update the images with the new one(s) or create a new one if it doesn't exist
                                           existBus.images = images.length > 0 ? images : undefined;
                                       }
-                              
+                                     
                                       const updatedBus = await existBus.save();
                                       res.status(200).json({ success: true, message: 'Bus Details Edited Successfully', updatedBus });
                                   } catch (error) {
@@ -505,9 +511,8 @@ const { sendPushNotification } = require('../utils/notificationService')
                             destination : destination,
                             stops : stops
                                             
-                          });
-                                
-                          
+                          });                    
+                                                         
                             // Save the new route to the database
                                   await newRoute.save();
 
@@ -564,8 +569,9 @@ const { sendPushNotification } = require('../utils/notificationService')
                                     
                                     existRoute.source = source;
                                     existRoute.destination = destination;                                                       
-                                    existRoute.status = status;                                   
-                                  
+                                    existRoute.status = status;    
+                                                                     
+                                        
                                     // Save the updated route details to the database
                                     const updatedRoute = await existRoute.save();
                                     res.status(200).json({ success: true, message: 'Route Details Edited Successfully', route: updatedRoute });
@@ -895,7 +901,15 @@ const { sendPushNotification } = require('../utils/notificationService')
                        if(req.file)
                   {
                     admin.profileImage = req.file.filename                 
-                  }                   
+                  }        
+                  const newNotification = new AdminNotificationDetail({
+                    adminId : AdminId,
+                    message: `your profile has been updated successfully `,
+                    date: new Date(),                         
+
+                  });
+                  await newNotification.save()
+                                   
                       await admin.save()
                       return res.status(200).json({ success: true, message: 'Admin profile change successfully' });
                 }
@@ -951,7 +965,9 @@ const { sendPushNotification } = require('../utils/notificationService')
                                     newDriver.availability = 'available'; 
                                     if (req.file) {
                                       newDriver.driverProfileImage = req.file.filename;
-                                    }             
+                                    }    
+                                                                  
+                                          
                                 
                                     const savedDriver = await newDriver.save();
                                     res.status(200).json({ success: true, message: ' New Driver added successfully', driver: savedDriver });
@@ -1009,7 +1025,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                                         if (req.file) {
                                           existingDriver.driverProfileImage = req.file.filename;
                                         }
-                                    
+                                                                                     
                                         // Save the updated driver data into the database
                                         const updatedDriver = await existingDriver.save();
                                     
@@ -1202,6 +1218,8 @@ const { sendPushNotification } = require('../utils/notificationService')
                               stops
                             })
 
+                           
+                                  
                             const savedTrip = await newTrip.save()
                             res.status(200).json({ success : true , message : 'new trip created successfully', Trip_Detail : savedTrip})
 
@@ -1612,13 +1630,8 @@ const { sendPushNotification } = require('../utils/notificationService')
                                               message: 'User not found',
                                             });
                                           }
-                                          const userId = user._id;
-                                            
-                                            // Notification details
-                                            const title = 'upcoming Trip'
-                                            const body = 'Your trip is coming soon'
-                                              const tokens = user.fcmTokens
-
+                                          const userId = user._id;                                      
+                                          
                                           // Fetch trip and check if it exists
                                           const trip = await TripModel.findById(tripId);
                                        
@@ -1797,6 +1810,17 @@ const { sendPushNotification } = require('../utils/notificationService')
 
                                           });
                                           await newNotification.save()
+                                          await transaction.save();
+                                          const newAdminNotification = new AdminNotificationDetail({
+                                            userId  ,                                           
+                                            message: `congratulation ..!! , new booking has been made by the user : ${userId} in a trip : ${tripId} with bookingId : ${bookingId} `,
+                                            date: date,
+                                            status: 'confirmed', 
+                                            bookingId: bookingId,
+                                            tripId
+
+                                          });
+                                          await newAdminNotification.save()
                                       
                                           // Save the updated trip
                                           await trip.save();
@@ -1958,7 +1982,7 @@ const { sendPushNotification } = require('../utils/notificationService')
                                           await qrcode.toFile(qrCodeImage, qrCodeData);
                                       
                                           await sendBookingEmail(email, 'Your Booking has been confirmed', emailContent);
-                                          await sendPushNotification(tokens , title , body)
+                                         
                                           res.status(200).json({
                                             success: true,
                                             message: 'Booking successful. Ticket sent to user email.',
@@ -2113,6 +2137,16 @@ const { sendPushNotification } = require('../utils/notificationService')
 
                                         });
                                         await newNotification.save()
+                                        // notification for admin
+                                        const newAdminNotification = new AdminNotificationDetail({
+                                          userId : booking.userId ,
+                                          message: ` cancle booking request sent by the user : ${booking.userId} in a trip : ${booking.tripId} with bookingId : ${bookingId} `,
+                                          date: new Date() ,
+                                          bookingId: bookingId,
+                                          tripId : booking.tripId
+
+                                        });
+                                        await newAdminNotification.save()
 
                                         await booking.save();
                                         await trip.save();
@@ -2931,8 +2965,8 @@ const { sendPushNotification } = require('../utils/notificationService')
                                   })
                                   if(notification.length === 0)
                                   {
-                                    return res.status(200).json({
-                                                  success : true ,
+                                    return res.status(400).json({
+                                                  success : false ,
                                                   message :  `there is no notification for the user yet`
                                     })
                                   }
@@ -2953,11 +2987,227 @@ const { sendPushNotification } = require('../utils/notificationService')
                                 }
                                }
            
-                                                                           
+       
+    // Api for get notification of admin
+                      const getAdminNotification = async(req , res)=>{
+                        try {
+                                const adminId = req.params.adminId
+                                // check for admin
+                              const admin = await Admin.findById(adminId)
+                              if(!admin)
+                              {
+                                return res.status(400).json({
+                                                        success : false ,
+                                                        message : 'Admin not found'
+                                })
+                              }
 
+                              // check for notification
+                              const notification = await AdminNotificationDetail.find({})
+                              if(notification.length === 0)
+                              {
+                                return res.status(400).json({
+                                                    success : false ,
+                                                    message : 'there is no notification for Admin'
+                                })
+                              }
+                              else
+                              {
+                                const notifications = notification.sort((a , b)=>  b.createdAt - a.createdAt)
+                                return res.status(200).json({
+                                                     success : true,
+                                                     message : 'Admin Notification',
+                                                     admin_notification : notifications
+                                })
+                              }
+                            
+                        } catch (error) {
+                          return res.status(500).json({
+                                                success : false ,
+                                                message : 'server error'
+                          })
+                        }
+                      }
 
+     // APi for send Notification to all user about trip
+                          
+                                const sendNotification_to_tripUsers = async (req ,res)=>{
+                                 
+                                    try {
+                                      const { title, message } = req.body;
+                                      const tripId = req.params.tripId;
+                                  
+                                      const requiredFields = ['title', 'message'];
+                                  
+                                      for (const field of requiredFields) {
+                                        if (!req.body[field]) {
+                                          return res.status(400).json({ message: `missing ${field.replace('_', ' ')} field`, success: false });
+                                        }
+                                      }
+                                  
+                                      // check for trip
+                                      const trip = await BookingModel.findOne({ tripId: tripId });
+                                  
+                                      if (!trip) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          message: 'trip not found',
+                                        });
+                                      }
+                                  
+                                      // Retrieve all user IDs for the given trip ID
+                                      const userTripIds = await BookingModel.find({ tripId: tripId }).distinct('userId');
+                                  
+                                      // Send the same notification to all users
+                                      const notifications = [];
+                                  
+                                      for (const userId of userTripIds) {
+                                        const user = await UserModel.findById(userId);
+                                  
+                                        if (user) {
+                                          notifications.push({
+                                            userId: userId,
+                                            tripId: tripId,
+                                            date: trip.date,
+                                            title: title,
+                                            message: message,
+                                            userEmail: user.email, 
+                                          });
+                                            let messasgeContant = `
+                                                              Dear ${user.fullName} \n 
+                                            *************************************************************** 
+                                              ${title} 
+                                              ---------
+                                                    ${message}
+                                          *****************************************************************
+                                                                      ,
+                                                                  `
+                                          // Send email notification to the user
+                                          await sendTripNotificationEmails(user.email, 'trip notification', messasgeContant);
+                                        }
+                                      }
+                                  
+                                      // Save all notifications in a single database operation
+                                      const savedNotifications = await UsersNotificationModel.insertMany(notifications);
+                                  
+                                      return res.status(200).json({
+                                        success: true,
+                                        message: 'notifications sent to user email',
+                                        notification_details: savedNotifications,
+                                      });
+                                    } catch (error) {
+                                      console.error(error);
+                                      return res.status(500).json({
+                                        success: false,
+                                        message: 'server error',
+                                      });
+                                    }
+                                  };
+                                  
+                // APi for get booking trip
+                                    const getBookingTrip = async (req, res) => {
+                                      try {
+                                        // Get unique tripIds from BookingModel
+                                        const uniqueTripIds = await BookingModel.distinct('tripId');
                                     
-                                            
+                                        // Fetch tripNumber for each tripId from tripModel
+                                        const tripsWithNumbers = await Promise.all(
+                                          uniqueTripIds.map(async (tripId) => {
+                                            const trip = await TripModel.findOne({ _id: tripId });
+                                            return { tripId, tripNumber: trip ? trip.tripNumber : null };
+                                          })
+                                        );
+                                    
+                                        // Create formatted response
+                                        const formattedTrips = tripsWithNumbers.map(({ tripId, tripNumber }) => {
+                                          return { tripNumber, tripId };
+                                        }); 
+                                        
+                                        return res.status(200).json({
+                                          success: true,
+                                          message: 'All trips in Booking with corresponding tripNumbers',
+                                          trips: formattedTrips,
+                                        });
+                                      } catch (error) {
+                                        console.error(error);
+                                        return res.status(500).json({
+                                          success: false,
+                                          message: 'Server error',
+                                        });
+                                      }
+                                    };
+                
+
+        // API for sendNotification_to_all user
+                                const sendNotification_to_allUser = async (req, res) => {
+                                  try {
+                                    const { title, message } = req.body;
+                                
+                                    const requiredFields = ['title', 'message'];
+                                
+                                    for (const field of requiredFields) {
+                                      if (!req.body[field]) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          message: `missing ${field.replace('_', ' ')} field `,
+                                        });
+                                      }
+                                    }
+                                
+                                    // Get all users
+                                    const users = await UserModel.find({});
+                                
+                                    if (users.length === 0) {
+                                      return res.status(400).json({
+                                        success: false,
+                                        message: 'There is no user in UserModel',
+                                      });
+                                    }
+                                
+                                    // Send the same notification to all users
+                                    const notifications = [];
+                                
+                                    for (const user of users) {
+                                      notifications.push({
+                                        userId: user._id,
+                                        title: title,
+                                        message: message,
+                                        userEmail: user.email,
+                                      });
+                                
+                                      // Prepare email content
+                                      let messageContent = `
+                                        Dear ${user.fullName}, 
+                                        *************************************************************** 
+                                        ${title} 
+                                        ---------
+                                        ${message}
+                                        *****************************************************************
+                                      `;
+                                
+                                      // Send email notification to the user
+                                      await sendTripNotificationEmails(user.email, 'trip notification', messageContent);
+                                    }
+                                
+                                    // Save all notifications in a single database operation
+                                    const savedNotifications = await UsersNotificationModel.insertMany(notifications);
+                                
+                                    return res.status(200).json({
+                                      success: true,
+                                      message: 'Notifications sent to user email',
+                                      notification_details: savedNotifications,
+                                    });
+                                  } catch (error) {
+                                    console.error(error);
+                                    return res.status(500).json({
+                                      success: false,
+                                      message: 'Server error',
+                                    });
+                                  }
+                                };
+                                
+                                                              
+                                                                                  
                 
 
                     
@@ -2973,7 +3223,8 @@ const { sendPushNotification } = require('../utils/notificationService')
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
                           calculateFareForSelectedSeats , trackBus   , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
-                          export_Users , allUsers , getNotification
+                          export_Users , allUsers , getNotification , getAdminNotification , sendNotification_to_tripUsers ,
+                          getBookingTrip , sendNotification_to_allUser
 
 
 
