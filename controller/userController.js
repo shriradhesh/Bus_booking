@@ -77,9 +77,10 @@ const userRegister = async (req, res) => {
     
       // Send registration email
       const link = `\nClick the link or button below to login. \n ${process.env.User_loginUrl}`;
-      await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.`, link);
+      // const messageContent = `User Registered Successfully ... wellcome to CamerBus Group`
+      await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.` , link);
 
-      res.status(200).json({ message: `user created successfully , \n successfull email send to registered email`, success: true, Data: data });
+      res.status(200).json({ message: `user created successfully , \n successfull email send to registered user email`, success: true, Data: data });
   } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error while creating User', success: false });
@@ -151,13 +152,27 @@ const userRegister = async (req, res) => {
    
       try{
           const { email , oldPassword , newPassword , confirmPassword} = req.body                
-            
+             
+          const requiredFields = [
+            'email',
+            'oldPassword',
+            'newPassword',
+            'confirmPassword',
+                               
+
+          ]
+          
+          for(const field of requiredFields){
+            if(!req.body[field]){
+              return res.status(400).json({ message : `missing ${field.replace('_',' ')} field`, success : false})
+            }
+          }
 
           // check for password match                     
             
             if( newPassword !== confirmPassword )
             {
-              return res.status(400).json({ message : 'Password do not match' , success : false})
+              return res.status(400).json({ notMatchedPassword : 'Password do not match' , success : false})
             }
 
              // find Admin by Id
@@ -166,7 +181,7 @@ const userRegister = async (req, res) => {
               
              if(!user){
        
-              return res.status(404).json({ message : ' user not found' , success : false})
+              return res.status(404).json({ NotUser : ' user not found' , success : false})
              }
              else
              {
@@ -176,7 +191,7 @@ const userRegister = async (req, res) => {
                const isOldPasswordValid = await bcrypt.compare(oldPassword , user.password)
                   if(!isOldPasswordValid)
                   {
-                      return res.status(400).json({ message : 'Old Password incorrect ', success : false})
+                      return res.status(400).json({ IncorrectPassword : 'Old Password incorrect ', success : false})
                   }
             
                   // encrypt the newPassword 
@@ -185,7 +200,7 @@ const userRegister = async (req, res) => {
                   // update the admin password with new encrypted password 
                           user.password = hashedNewPassword
                           await user.save()
-                          return res.json({ message : ' Password changed Successfully', success : true})
+                          return res.json({ successMessage : ' Password changed Successfully', success : true})
                       
               } 
           }
@@ -193,7 +208,7 @@ const userRegister = async (req, res) => {
       catch(error)
       {
           console.error(error);
-          res.status(500).json({ message : 'Internal server error ', success : false})
+          res.status(500).json({ serverMessage : 'Internal server error ', success : false})
       }
   }
       // APi for otp generate and email send to user for  forget password  

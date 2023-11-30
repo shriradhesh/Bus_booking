@@ -155,7 +155,11 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
          router.post('/sendNotifications', adminController.sendNotifications)
 // API for get user Notification 
          router.get('/getAll_Users_Notificatation', adminController.getAll_Users_Notificatation)
+// API for delete all Notification
 
+         router.delete('/deleteAllUserNotifications', adminController.deleteAllUserNotifications)
+// APi for delte particular notification by Id
+         router.delete('/deleteNotifcationById/:notificationId' , adminController.deleteNotifcationById)
                                    
                                      
 

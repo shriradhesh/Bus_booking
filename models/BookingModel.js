@@ -11,6 +11,7 @@ const bookingSchema = new mongoose.Schema({
         ref: 'TripModel', 
         required: true, 
     },
+    
 
     date: {
         type: Date,
@@ -41,7 +42,7 @@ const bookingSchema = new mongoose.Schema({
         enum: ['success', 'pending', 'failed'],
         default: 'success',
     },
-
+ 
     bookingId: {
         type: String,
     },

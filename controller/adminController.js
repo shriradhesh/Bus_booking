@@ -44,42 +44,41 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
 
 //admin login API                           // UserName : Admin , Password : A1bcd2@12
     
-                const adminLogin = async (req, res) => {
-                  try {
-                      const { username, password } = req.body
+const adminLogin = async (req, res) => {
+  try {
+      const { username, password } = req.body;
 
-                      // Find Admin by username
-                      const admin = await Admin.findOne({ username });
+      // Find Admin by email
+      const admin = await Admin.findOne({ username });
 
-                      if (!admin) {
-                          return res.status(401).json({ userMessage: 'Username incorrect', success: false });
-                      }
-                      const requiredFields = [
-                        'username',
-                        'password'
-                       
-                    ];
-            
-                    for (const field of requiredFields) {
-                        if (!req.body[field]) {
-                            return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
-                        }
-                    }
-            
+      if (!admin) {
+          return res.status(401).json({ message: 'username incorrect', success: false });
+      }
 
-                      // Compare passwords using bcrypt
-                      const passwordMatch = await bcrypt.compare(password, admin.password);
+      // Check if the stored password is in plain text
+      if (admin.password && admin.password.startsWith('$2b$')) {
+          // Password is already bcrypt hashed
+          const passwordMatch = await bcrypt.compare(password, admin.password);
 
-                      if (passwordMatch) {
-                          return res.json({ message: 'Admin Login Successful', success: true, data: admin });
-                      } else {
-                          return res.status(401).json({ passwordMessage: 'Password incorrect', success: false });
-                      }
-                  } catch (error) {
-                      console.error(error);
-                      res.status(500).json({ message: 'Internal server error', success: false });
-                  }
-                };
+          if (!passwordMatch) {
+              return res.status(401).json({ message: 'Password incorrect', success: false });
+          }
+      } else {
+          // Convert plain text password to bcrypt hash
+          const saltRounds = 10;
+          const hashedPassword = await bcrypt.hash(password, saltRounds);
+          
+          // Update the stored password in the database
+          admin.password = hashedPassword;
+          await admin.save();
+      }
+
+      return res.json({ message: 'Admin Login Successful', success: true, data: admin });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error', success: false });
+  }
+};
 
   // API for google login
                     const googleLogin = async(req,res)=>{                      
@@ -127,7 +126,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                       
                       if( newPassword !== confirmPassword )
                       {
-                        return res.status(400).json({ message : 'Password do not match' , success : false})
+                        return res.status(400).json({ passNotMatchedMessage : 'Password do not match' , success : false})
                       }
 
                        // find Admin by Id
@@ -136,7 +135,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                         
                        if(!admin){
                  
-                        return res.status(404).json({ message : ' Admin not found' , success : false})
+                        return res.status(404).json({ NotAdminMessage : ' Admin not found' , success : false})
                        }
                        else
                        {
@@ -146,7 +145,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                          const isOldPasswordValid = await bcrypt.compare(oldPassword , admin.password)
                             if(!isOldPasswordValid)
                             {
-                                return res.status(400).json({ message : 'Old Password incorrect ', success : false})
+                                return res.status(400).json({ OldPassIncorrectMessage : 'Old Password incorrect ', success : false})
                             }
                       
                             // encrypt the newPassword 
@@ -155,7 +154,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                             // update the admin password with new encrypted password 
                                     admin.password = hashedNewPassword
                                     await admin.save()
-                                    return res.json({ message : ' Password changed Successfully', success : true})                                
+                                    return res.json({SuccessMessage : ' Password changed Successfully', success : true})                                
                         } 
                     }
                     
@@ -1466,8 +1465,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                         })
                       }
 
-                      let bus_type = trip.bus_type
-                        
+                      let bus_type = trip.bus_type                 
                         
 
                       // Within the switch statement
@@ -1488,8 +1486,6 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                           console.log("Fare type: Default");
                           farePerUnitDistance = 0.2;
                       }
-
-                          
 
                       // Calculate the age group of the passenger
                       const ageGroup = calculateAgeGroup(passengerAges[index]);
@@ -1634,7 +1630,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                           
                                           // Fetch trip and check if it exists
                                           const trip = await TripModel.findById(tripId);
-                                       
+                                           const tripNumber = trip.tripNumber
                                       
                                           if (!trip) {
                                             return res.status(400).json({
@@ -1828,6 +1824,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                           // Create a new booking
                                           const booking = new BookingModel({
                                             tripId,
+                                            tripNumber,
                                             date,
                                             status,
                                             bookingId,
@@ -1871,109 +1868,68 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                                       
                                           const emailContent = `
                                           <main>
-                                                <div style="width:700px; border:2px solid #ccc; margin:40px auto;">
-                                                  <table style="width: 100%;" cellspacing="0">
-                                                  <thead class="card-header">
-                                                   <tr>
-                                                    <td colspan="4" style="padding: 10px 0px;"><img id="logo" src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" title="InspHired" alt="InspHired" style="width:25%;">
-                                                    </td> 
-                                                    <td colspan="2" style="font-size:25px; font-weight:700; text-align:right; padding: 0px 10px 0px 0px;">Ticket Details</td> 
-                                                   </tr>
-                                                    <tr>
-                                                     <td  colspan="5" style="border:2px solid #dadada; border-bottom: 0; padding: 15px 0px 15px 10px; font-size:18px; border-right:0; border-left: 0;"><strong>Dear </strong>${user.fullName}</td> 
-                                                     <td  colspan="1" style="border:2px solid #dadada; border-bottom: 0; padding: 15px 10px 15px 0px; font-size:18px; border-left: 0; border-right: 0; text-align:right;"></td>
-                                                    </tr>
-                                                    <tr>
-                                                     <td  colspan="5" style="border:2px solid #dadada; border-top: 0; padding:0px 0px 15px 10px; font-size:16px; border-right:0; border-left: 0; font-weight:600;"> Your booking for departure on ${date} has been confirmed.</td>  
-                                                     <td  colspan="1" style="border:2px solid #dadada; border-top: 0; padding: 15px 10px 15px 0px; font-size:18px; border-left: 0; border-right: 0; text-align:right;"></td> 
-                                                    </tr>
-                                                    <!-- <tr>
-                                                     <td colspan="4" style="font-size:20px; font-weight:700; padding:10px 0px 0px 10px;"><strong>Pay To:</strong></td>
-                                                     <td colspan="2" style="font-size:20px; font-weight:700; padding: 10px 10px 0px 0px; text-align:right;"><strong>Invoiced To:</strong></td>
-                                                    </tr>
-                                                   <tr>
-                                                    <td colspan="4" style="padding: 10px;"><address>Koice Inc<br>2705 N. Enterprise St<br>Orange, CA mailto:92865<br>contact@koiceinc.com</address>
-                                                    </td>
-                                                    <td colspan="2" style="text-align:right; padding: 10px;"><address>Smith Rhodes<br>15 Hodges Mews, High Wycombe<br>HP12 3JL<br>United Kingdom</address>
-                                                    </td>    
-                                                   </tr>  --> 
-                                                    
-                                                  </thead>
-                                                    <tbody>
-                                                      <tr>
-                                                        <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px;"><strong>Booking ID</strong></th>
-                                                        <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${bookingId}</td>
-                                                        </tr>
-                                                        <tr>
-                                                         <th style="border-bottom:2px solid #dadada;  text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;"><strong>Trip Number</strong>
-                                                         </th>
-                                                          <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${trip.tripNumber}</td>
-                                                        </tr>  
-                                                        <tr>
-                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;">
-                                                          <strong>Bus Number</strong>
-                                                         </th>
-                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${trip.bus_no}</td>
-                                                        </tr>
-                                                        <tr>
-                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;"><strong>Driver Name</strong>
-                                                         </th> 
-                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${Driver.driverName}</td>
-                                                        </tr>
-                                                        <tr>
-                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; white-space:nowrap; border-right:0;">
-                                                          <strong>Driver Contact</strong></th> 
-                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${Driver.driverContact}</td>
-                                                        </tr>
-                                                        <tr>
-                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; border-right: 0; white-space: nowrap;">
-                                                          <strong>Trip Starting Time</strong></th> 
-                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${trip.startingTime}</td> 
-                                                        </tr>
-                                                        <tr>
-                                                         <th style="border-bottom:2px solid #dadada; text-align: left; padding:10px; font-size:18px; border-right: 0; white-space: nowrap;">
-                                                         <strong>Your Source</strong></th> 
-                                                         <td colspan="6" style="border:2px solid #dadada; padding:10px; font-size:18px; border-top:0; border-right: 0;">${source}</td>
-                                                        </tr>
-                                                        <tr>
-                                                         <th style="text-align: left; padding:10px; font-size:18px; border-right: 0; white-space: nowrap;">
-                                                          <strong>Your Destination</strong></th> 
-                                                          <td colspan="6" style="border:2px solid #dadada; border-bottom: 0; padding:10px; font-size:18px; border-top:0; border-right: 0;">${destination}</td>
-                                                        </tr>
-                                                    </tbody>
-                                                    <!-- Passenger Details Section -->
-                                                    <thead>
-                                                      <tr>
-                                                        <td style="border: 2px solid #dadada; border-right: 0; border-left: 0; padding: 10px; font-size: 18px; white-space: nowrap;">
-                                                          <strong>Passenger Name</strong>
-                                                        </td>
-                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
-                                                          <strong>Age</strong>
-                                                        </td>
-                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
-                                                          <strong>Gender</strong>
-                                                        </td>
-                                                        <td colspan="3" style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
-                                                          <strong>Seat Number</strong>
-                                                        </td>
-                                                      </tr>
-                                                    </thead>
-                                                
-                                                    <tbody>
-                                                      ${passengerDetails}
-                                                    </tbody>                                                    
-                                                  </table>
-                                                       <!-- Footer -->
-                                          <!--<a href="javascript:window.print()" class="btn btn-light border text-black-50 shadow-none"><i class="fa fa-print"></i> Print</a>  -->
-                                            <!-- <footer class="download-btn-info-area" style="text-align: center; margin:30px;">
-                                              <a href="#" class="download-btn" style="background: #138aab; color: #fff; padding: 10px 20px; font-size: 20px; font-weight: 600; 
-                                              text-decoration: none; border-radius: 5px;"><i class="fa fa-download"></i> Download</a> 
-                                            </footer> -->
-                                          
-                                          <!-- footer -->
+                                          <div style="width: 80%; margin: 40px auto; padding: 20px; background-color: #fff; border: 2px solid #000; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                            <img src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" alt="InspHired" style="width: 25%;">
+                                            <h2 style="font-size: 28px; font-weight: 700; color: #000; margin: 0; text-align: right;">Bus Ticket</h2>
+                                          </div>
+                                            <hr style="border-top: 2px solid #000;">
+                                            <div style="margin-top: 20px;">
+                                              <p style="font-size: 18px; margin-bottom: 10px;"><strong>Dear ${user.fullName},</strong></p>
+                                              <p style="font-size: 16px; margin-bottom: 20px;">Your booking for departure on ${date} has been confirmed.</p>
+                                              <table style="width: 100%; border-collapse: collapse;">
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Booking ID</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${bookingId}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Number</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.tripNumber}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Bus Number</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.bus_no}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Name</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverName}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Contact</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverContact}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Starting Time</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.startingTime}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Your Source</th>
+                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${source}</td>
+                                                </tr>
+                                                <tr>
+                                                  <th style="padding: 10px; text-align: left; font-size: 18px;"><strong>Your Destination</strong></th>
+                                                  <td style="padding: 10px; font-size: 18px;">${destination}</td>
+                                                </tr>
+                                              </table>
+                                              <!-- Passenger Details Section -->
+                                              <div style="margin-top: 20px;">
+                                                <h3 style="font-size: 24px; font-weight: 700; color: #000; margin-bottom: 10px;">Passenger Details</h3>
+                                                <table style="width: 100%; border-collapse: collapse; text-align: center;">
+                                                  <tr>
+                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Passenger Name</th>
+                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Age</th>
+                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Gender</th>
+                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Seat Number</th>
+                                                  </tr>
+                                                  ${passengerDetails}
+                                                </table>
                                               </div>
-                                          
-                                            </main>
+                                            </div>
+                                            <!-- Footer -->
+                                            
+                                          </div>
+                                        </main>
+                                        
                                             `;
                                           
                                           // Generate the QR CODE and send the booking confirmation email
@@ -3031,78 +2987,77 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
 
      // APi for send Notification to all user about trip
                           
-                                const sendNotification_to_tripUsers = async (req ,res)=>{
-                                 
-                                    try {
-                                      const { title, message , tripId } = req.body;
-                                     
-                                      const requiredFields = ['title', 'message' ,'tripId'];
-                                  
-                                      for (const field of requiredFields) {
-                                        if (!req.body[field]) {
-                                          return res.status(400).json({ message: `missing ${field.replace('_', ' ')} field`, success: false });
-                                        }
-                                      }
-                                  
-                                      // check for trip
-                                      const trip = await BookingModel.findOne({ tripId: tripId });
-                                  
-                                      if (!trip) {
-                                        return res.status(400).json({
-                                          success: false,
-                                          message: 'trip not found',
-                                        });
-                                      }
-                                  
-                                      // Retrieve all user IDs for the given trip ID
-                                      const userTripIds = await BookingModel.find({ tripId: tripId }).distinct('userId');
-                                  
-                                      // Send the same notification to all users
-                                      const notifications = [];
-                                  
-                                      for (const userId of userTripIds) {
-                                        const user = await UserModel.findById(userId);
-                                  
-                                        if (user) {
-                                          notifications.push({
-                                            userId: userId,
-                                            tripId: tripId,
-                                            date: trip.date,
-                                            title: title,
-                                            message: message,
-                                            userEmail: user.email, 
-                                          });
-                                            let messasgeContant = `
-                                                              Dear ${user.fullName} \n 
-                                            *************************************************************** 
-                                              ${title} 
-                                              ---------
-                                                    ${message}
-                                          *****************************************************************
-                                                                      ,
-                                                                  `
-                                          // Send email notification to the user
-                                          await sendTripNotificationEmails(user.email, 'trip notification', messasgeContant);
-                                        }
-                                      }
-                                  
-                                      // Save all notifications in a single database operation
-                                      const savedNotifications = await UsersNotificationModel.insertMany(notifications);
-                                  
-                                      return res.status(200).json({
-                                        success: true,
-                                        message: 'notifications sent to user email',
-                                        notification_details: savedNotifications,
-                                      });
-                                    } catch (error) {
-                                      console.error(error);
-                                      return res.status(500).json({
+                              const sendNotification_to_tripUsers = async (req, res) => {
+                                try {
+                                  const { title, message, tripId } = req.body;
+                              
+                                  const requiredFields = ['title', 'message', 'tripId'];
+                              
+                                  for (const field of requiredFields) {
+                                    if (!req.body[field]) {
+                                      return res.status(400).json({
+                                        message: `Missing ${field.replace('_', ' ')} field`,
                                         success: false,
-                                        message: 'server error',
                                       });
                                     }
+                                  }
+                              
+                                  // Check for the trip
+                                  const trip = await BookingModel.findOne({ tripId });
+                              
+                                  if (!trip) {
+                                    return res.status(400).json({
+                                      success: false,
+                                      message: 'Trip not found',
+                                    });
+                                  }
+                              
+                                  // Save the notification in the database
+                                  const notification = {
+                                    tripId,
+                                    date: trip.date,
+                                    title,
+                                    message,
                                   };
-                                  
+                              
+                                  const savedNotification = await UsersNotificationModel.create(notification);
+                              
+                                  // Send email notification to all users
+                                  const userTripIds = await BookingModel.find({ tripId }).distinct('userId');
+                              
+                                  for (const userId of userTripIds) {
+                                    const user = await UserModel.findById(userId);
+                              
+                                    if (user) {
+                                      let messageContent = `
+                                        Dear ${user.fullName}, 
+                                        *************************************************************** 
+                                        ${title} 
+                                        ---------
+                                        ${message}
+                                        *****************************************************************
+                                      `;
+                              
+                                      // Send email notification to the user
+                                      await sendTripNotificationEmails(user.email, 'Trip Notification', messageContent);
+                                    }
+                                  }
+                              
+                                  return res.status(200).json({
+                                    success: true,
+                                    message: 'Notification sent to user emails',
+                                    notification_details: savedNotification,
+                                  });
+                                } catch (error) {
+                                  console.error(error);
+                                  return res.status(500).json({
+                                    success: false,
+                                    message: 'Server error',
+                                  });
+                                }
+                              };
+                              
+                                                            
                 // APi for get booking trip
                                     const getBookingTrip = async (req, res) => {
                                       try {
@@ -3138,72 +3093,76 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                 
 
         // API for sendNotification_to_all user
-                                const sendNotification_to_allUser = async (req, res) => {
-                                  try {
-                                    const { title, message } = req.body;
-                                
-                                    const requiredFields = ['title', 'message'];
-                                
-                                    for (const field of requiredFields) {
-                                      if (!req.body[field]) {
-                                        return res.status(400).json({
-                                          success: false,
-                                          message: `missing ${field.replace('_', ' ')} field `,
-                                        });
-                                      }
-                                    }
-                                
-                                    // Get all users
-                                    const users = await UserModel.find({});
-                                
-                                    if (users.length === 0) {
-                                      return res.status(400).json({
-                                        success: false,
-                                        message: 'There is no user in UserModel',
-                                      });
-                                    }
-                                
-                                    // Send the same notification to all users
-                                    const notifications = [];
-                                
-                                    for (const user of users) {
-                                      notifications.push({
-                                        userId: user._id,
-                                        title: title,
-                                        message: message,
-                                        userEmail: user.email,
-                                      });
-                                
-                                      // Prepare email content
-                                      let messageContent = `
-                                        Dear ${user.fullName}, 
-                                        *************************************************************** 
-                                        ${title} 
-                                        ---------
-                                        ${message}
-                                        ****************************************************************
-                                      `;
-                                
-                                      // Send email notification to the user
-                                      await sendTripNotificationEmails(user.email, 'trip notification', messageContent);
-                                    }
-                                
-                                    // Save all notifications in a single database operation
-                                    const savedNotifications = await UsersNotificationModel.insertMany(notifications);
-                                
-                                    return res.status(200).json({
-                                      success: true,
-                                      message: 'Notifications sent to user email',
-                                      notification_details: savedNotifications,
-                                    });
-                                  } catch (error) {
-                                    console.error(error);
-                                    return res.status(500).json({
-                                      success: false,
-                                      message: 'Server error',
-                                    });
-                                  }
-                                };
+                                      const sendNotification_to_allUser = async (req, res) => {
+                                        try {
+                                          const { title, message } = req.body;
+                                      
+                                          const requiredFields = ['title', 'message'];
+                                      
+                                          for (const field of requiredFields) {
+                                            if (!req.body[field]) {
+                                              return res.status(400).json({
+                                                success: false,
+                                                message: `Missing ${field.replace('_', ' ')} field `,
+                                              });
+                                            }
+                                          }
+                                      
+                                          // Get all users
+                                          const users = await UserModel.find({});
+                                      
+                                          if (users.length === 0) {
+                                            return res.status(400).json({
+                                              success: false,
+                                              message: 'There is no user in UserModel',
+                                            });
+                                          }
+                                      
+                                          // Send the same notification email to all users
+                                          const notifications = await Promise.all(users.map(async (user) => {
+                                            // Prepare email content
+                                            let messageContent = `
+                                              Dear ${user.fullName}, 
+                                              *************************************************************** 
+                                              ${title} 
+                                              ---------
+                                              ${message}
+                                              ****************************************************************
+                                            `;
+                                      
+                                            // Send email notification to the user
+                                            await sendTripNotificationEmails(user.email, 'Notification', messageContent);
+                                      
+                                            // Add user-specific data to the notifications array
+                                           return {
+                                              userId: user._id,
+                                              title,
+                                              message,
+                                              userEmail: user.email,
+                                            }
+                                          }))
+                                      
+                                          // Save a single record in UsersNotificationModel
+                                          const savedNotification = await UsersNotificationModel.create({
+                                            title,
+                                            message,
+                                            date : new Date()
+                                          });
+                                      
+                                          return res.status(200).json({
+                                            success: true,
+                                            message: 'Notifications sent to user email',
+                                            notification_details: savedNotification,
+                                          });
+                                        } catch (error) {
+                                          console.error(error);
+                                          return res.status(500).json({
+                                            success: false,
+                                            message: 'Server error',
+                                          });
+                                        }
+                                      };
+                                      
 
                                 
                             // API for send notification to users about trips 
@@ -3247,38 +3206,101 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
          
                             
         // API for get all notification details
-                               const getAll_Users_Notificatation = async (req , res)=>{
-                                               try {
-                                                     const { title } = req.query
-                                                     const filter = {};
-                                                     if(title)
-                                                     {
-                                                       filter.title = title
-                                                     }
-                                                     const notifications = await UsersNotificationModel.find(filter);
-                                                     if(notifications.length === 0)
-                                                      {
-                                                        return res.status(400).json({
-                                                                         success : false ,
-                                                                         message : 'no notification for User'
-                                                        })
-                                                      }
-                                                     
-                                                     return res.status(200).json({
+                                  const getAll_Users_Notificatation = async (req, res) => {
+                                    try {
+                                      const { title, tripId } = req.query;
+                                      const filter = {};
+                                  
+                                      if (title) {
+                                        filter.title = title;
+                                      }
+                                  
+                                      if (tripId) {
+                                        filter.tripId = tripId;
+                                      }
+                                  
+                                      const notifications = await UsersNotificationModel.find(filter);
+                                  
+                                      if (notifications.length === 0) {
+                                        return res.status(400).json({
+                                          success: false,
+                                          message: 'No notifications for the user',
+                                        });
+                                      }
+                                  
+                                      const allNotifications = notifications.map((notification) => ({
+                                        ...notification.toObject(),
+                                        send_to: notification.tripId ? 'tripUser' : 'allUser',
+                                      }));
+                                  
+                                      const response = {
+                                        success: true,
+                                        message: 'User Notifications',
+                                        notifications: allNotifications,
+                                      };
+                                  
+                                      return res.status(200).json(response);
+                                    } catch (error) {
+                                      return res.status(500).json({
+                                        success: false,
+                                        message: 'Server error',
+                                      });
+                                    }
+                                  };
+        
+        
+        
+
+           // APi to delete ALL USER notification
+            
+                                             const deleteAllUserNotifications =   async (req, res) => {
+                                                  try {
+                                                    // Delete all records in the UsersNotificationModel
+                                                    await UsersNotificationModel.deleteMany({});
+                                                
+                                                    return res.status(200).json({
                                                       success: true,
-                                                      message: 'User Notifications',
-                                                      notifications: notifications,
+                                                      message: 'All notifications deleted successfully',
                                                     });
-                                               } catch (error) {
-                                                return res.status(500).json({
-                                                                      success : false ,
-                                                                      message : 'server error'
-                                                })
-                                               }
+                                                  } catch (error) {
+                                                    console.error(error);
+                                                    return res.status(500).json({
+                                                      success: false,
+                                                      message: 'Server error',
+                                                    });
+                                                  }
                                                 }
 
-            
-            
+          // API for delete notification by Id
+                              const deleteNotifcationById = async(req ,res)=>{
+                                try {
+                                    const notificationId = req.params.notificationId
+                                    // check for notification
+                                
+                                    const notification = await UsersNotificationModel.findByIdAndDelete({
+                                                      _id : notificationId
+                                    })
+                                    if(!notification)
+                                    {
+                                      return res.status(400).json({
+                                                           success : false ,
+                                                           message : 'no notifcation found with the given Id'
+                                      })
+                                    }
+                                    else
+                                    {
+                                      return res.status(200).json({
+                                                           success : true ,
+                                                           message : 'notification deleted successfully'
+                                      })
+                                    }
+                                    } catch (error) {
+                                  return res.status(500).json({
+                                               success : false ,
+                                               message : 'server error'
+                                  })
+                                }
+                              }
 
                     
     
@@ -3295,7 +3317,7 @@ const UsersNotificationModel = require('../models/UsersNotificationModel')
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
                           export_Users , allUsers , getNotification , getAdminNotification ,  
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
-                          getAll_Users_Notificatation
+                          getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById
 
 
 
