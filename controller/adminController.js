@@ -1869,10 +1869,10 @@ const adminLogin = async (req, res) => {
                                           const emailContent = `
                                           <main>
                                           <div style="width: 80%; margin: 40px auto; padding: 20px; background-color: #fff; border: 2px solid #000; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                                            <img src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" alt="InspHired" style="width: 25%;">
-                                            <h2 style="font-size: 28px; font-weight: 700; color: #000; margin: 0; text-align: right;">Bus Ticket</h2>
-                                          </div>
+                                          <div>
+                                          <img src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" alt="InspHired" style="width: 25%;">
+                                          <h2 style="font-size: 28px; font-weight: 700; color: #000; margin: 0%; text-align: right;">Bus Ticket</h2>
+                                        </div>
                                             <hr style="border-top: 2px solid #000;">
                                             <div style="margin-top: 20px;">
                                               <p style="font-size: 18px; margin-bottom: 10px;"><strong>Dear ${user.fullName},</strong></p>
