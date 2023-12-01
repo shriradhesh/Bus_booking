@@ -34,6 +34,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { validationResult } = require('express-validator');
 const AdminNotificationDetail = require('../models/AdminNotification')
 const UsersNotificationModel = require('../models/UsersNotificationModel')
+const contactModel = require('../models/contactUs')
 
 
     
@@ -491,7 +492,7 @@ const adminLogin = async (req, res) => {
                           
                               for (const field of requiredFields) {
                                   if (!req.body[field]) {
-                                      return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                      return res.status(400).json({ ReguiredFieldMessage: `Missing ${field.replace('_', ' ')} field`, success: false });
                                   }
                               }
                                 
@@ -499,7 +500,7 @@ const adminLogin = async (req, res) => {
                           const existRoute = await BusRoute.findOne({ routeNumber })
                               if(existRoute)
                               {
-                            return res.status(400).json({ success : false ,  message : `route already exit with the route number : ${routeNumber} `})
+                            return res.status(400).json({ success : false ,  existRouteMessage : `route already exit with the route number : ${routeNumber} `})
                             }
                               
                         const newRoute = new BusRoute({
@@ -515,11 +516,11 @@ const adminLogin = async (req, res) => {
                             // Save the new route to the database
                                   await newRoute.save();
 
-                      return res.status(200).json({ success: true, message: 'Route added successfully ',  routeNumber : routeNumber , details : newRoute});
+                      return res.status(200).json({ success: true, SuccessMessage: 'Route added successfully ',  routeNumber : routeNumber , details : newRoute});
                           }
                           catch (error) {
                                     console.error(error);
-                          return res.status(500).json({ success: false, message: 'An error occurred while add route' });
+                          return res.status(500).json({ success: false, errorMessage: 'An error occurred while add route' });
                         }
                       }
 
@@ -1155,7 +1156,7 @@ const adminLogin = async (req, res) => {
                                   return res
                                     .status(400)
                                     .json({
-                                      message: 'A trip with the same Driver and starting date already exists',
+                                      DriverExistanceMessage: 'A trip with the same Driver and starting date already exists',
                                       success: false,
                                     });
                                 }
@@ -1167,7 +1168,7 @@ const adminLogin = async (req, res) => {
                                       if(existingTripNumber)
                                       {
                                         return res.status(400).json({
-                                                    message : ' trip number already exist',
+                                                    TripExistanceMessage : ' trip number already exist',
                                                     success : false
                                         })
                                       }
@@ -1176,7 +1177,7 @@ const adminLogin = async (req, res) => {
                         const bus = await BusModel.findOne({ bus_no });
                     
                         if (!bus) {
-                          return res.status(400).json({ message : 'Bus not found ', success: false });
+                          return res.status(400).json({ BusMessage : 'Bus not found ', success: false });
                         }
                            
                         const { bus_type , amenities , images } = bus
@@ -1184,13 +1185,13 @@ const adminLogin = async (req, res) => {
                         const route = await BusRoute.findOne({ routeNumber });
                     
                         if (!route) {
-                          return res.status(400).json({ message: 'Route not found', success: false });
+                          return res.status(400).json({ Routemessage: 'Route not found', success: false });
                         }
                           // Check for Driver existence
                           const driver = await DriverModel.findOne({ driverId })
 
                           if (!driver) {
-                            return res.status(400).json({ message : 'Driver with the specified ID not exist', success: false });
+                            return res.status(400).json({ Drivermessage : 'Driver with the specified ID not exist', success: false });
                           }  
                               const stops = route.stops
                               // Create an array for available seats
@@ -1220,13 +1221,13 @@ const adminLogin = async (req, res) => {
                            
                                   
                             const savedTrip = await newTrip.save()
-                            res.status(200).json({ success : true , message : 'new trip created successfully', Trip_Detail : savedTrip})
+                            res.status(200).json({ success : true , SuccessMessage : 'new trip created successfully', Trip_Detail : savedTrip})
 
                       }
                       catch(error)
                       {
                            console.error(error);
-                            res.status(500).json({success : false , message : ' there is an error while creating the trip'})
+                            res.status(500).json({success : false , ServerErrorMessage : ' there is an error while creating the trip'})
                       }
                     } 
 
@@ -1286,8 +1287,7 @@ const adminLogin = async (req, res) => {
                                   
                                       // Find trips that match the given date
                                       const trips = await TripModel.find({
-                                        startingDate: { $lte: date },
-                                        endDate: { $gte: date }
+                                        startingDate: date
                                       });
                                   
                                       if (!trips || trips.length === 0) {
@@ -2125,33 +2125,34 @@ const adminLogin = async (req, res) => {
                         
   // Api for get tickits booked by a user 
 
-                                      const userTickets = async (req,res)=>{
-                                        try{
-                                          const userId = req.params.userId
-                                          const status = req.query.status
-
-                                          let tickets
-
-                                          if(status === 'confirmed')
-                                          {
-                                            tickets = await BookingModel.find({ userId , status : 'confirmed'})
-                                          }
-                                          else if(status === 'panding' || status === 'cancelled')
-                                          {
-                                            tickets = await BookingModel.find({ userId , status : {$in: ['pending', 'cancelled']}})
-                                          }
-                                          else
-                                          {
-                                            return res.status(400).json({ success : false , message : 'Invalid Status Value' })
-                                          }
-
-                                          res.status(200).json({ success : true , message : "user Tickets" , tickets})
-                                        }catch(error)
-                                        {
-                                          res.status(500).json({ success: false, message: 'Error finding tickets' });
-
-                                        }
-                                      }
+                              const userTickets = async (req, res) => {
+                                try {
+                                  const userId = req.params.userId;
+                                  const status = req.query.status;
+                              
+                                  if (!userId) {
+                                    return res.status(400).json({ success: false, message: 'Invalid User ID' });
+                                  }
+                              
+                                  let tickets;
+                              
+                                  if (status === 'confirmed') {
+                                    tickets = await BookingModel.find({ userId, status: 'confirmed' });
+                                  } else if (status === 'pending' || status === 'cancelled') {
+                                    tickets = await BookingModel.find({ userId, status: { $in: ['pending', 'cancelled'] } });
+                                  } else if (!status) {
+                                    // If status is not provided, fetch all tickets without filtering by status
+                                    tickets = await BookingModel.find({ userId });
+                                  } else {
+                                    return res.status(400).json({ success: false, message: 'Invalid Status Value' });
+                                  }
+                              
+                                  res.status(200).json({ success: true, message: 'User Tickets', tickets });
+                                } catch (error) {
+                                  res.status(500).json({ success: false, message: 'Error finding tickets', error: error.message });
+                                }
+                              };
+  
 
   // APi for change trip Date 
 
@@ -3302,6 +3303,36 @@ const adminLogin = async (req, res) => {
                                 }
                               }
 
+
+      // // API for delete particular feedback by id
+                              const deleteFeedback = async (req , res) =>{
+                                try {
+                                         const feedbackId = req.params.feedbackId
+                                    // check for feedback existance
+                                     const feedback = await contactModel.findOneAndDelete({
+                                                    _id : feedbackId
+                                     })
+                                     if(!feedback)
+                                     {
+                                      return res.status(400).json({
+                                                         success : false,
+                                                         feedbackExistanceMessage : 'no feedback exist for the given feedback Id'          
+                                      })
+                                     }
+                                     else
+                                     {
+                                      return res.status(200).json({ 
+                                                            success : true ,
+                                                            SuccessMessage : 'Feedback deleted successfully'
+                                      })
+                                     }
+                                } catch (error) {
+                                  return res.status(500).json({  
+                                                      success : false ,
+                                                      ServerErrorMessage : 'server Error'
+                                  })
+                                }
+                              }
                     
     
                 
@@ -3317,7 +3348,7 @@ const adminLogin = async (req, res) => {
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
                           export_Users , allUsers , getNotification , getAdminNotification ,  
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
-                          getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById
+                          getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback
 
 
 

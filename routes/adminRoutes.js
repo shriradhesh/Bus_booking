@@ -158,8 +158,10 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 // API for delete all Notification
 
          router.delete('/deleteAllUserNotifications', adminController.deleteAllUserNotifications)
-// APi for delte particular notification by Id
+// APi for delete particular notification by Id
          router.delete('/deleteNotifcationById/:notificationId' , adminController.deleteNotifcationById)
+// API for delete particular feedback
+        router.delete('/deleteFeedback/:feedbackId', adminController.deleteFeedback)
                                    
                                      
 
