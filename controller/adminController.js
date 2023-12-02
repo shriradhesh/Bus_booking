@@ -937,13 +937,13 @@ const adminLogin = async (req, res) => {
                         
                             for (const field of requiredFields) {
                                 if (!req.body[field]) {
-                                    return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                    return res.status(400).json({ missingFieldMessage: `Missing ${field.replace('_', ' ')} field`, success: false });
                                 }
                             }                                              
                                     // Check for driver existence
                                     const existingDriver = await DriverModel.findOne({ driverId });
                                     if (existingDriver) {
-                                      return res.status(400).json({ success: false, message :'driver already exist' });
+                                      return res.status(400).json({ existDriverMessage: false, message :'driver already exist' });
                                     }                                   
                                 
                                     // Check for valid driver status
@@ -970,10 +970,10 @@ const adminLogin = async (req, res) => {
                                           
                                 
                                     const savedDriver = await newDriver.save();
-                                    res.status(200).json({ success: true, message: ' New Driver added successfully', driver: savedDriver });
+                                    res.status(200).json({ success: true, SuccessMessage: ' New Driver added successfully', driver: savedDriver });
                                   } catch (error) {
                                     console.error(error);
-                                    res.status(500).json({ success: false, message: 'Error adding driver details' });
+                                    res.status(500).json({ success: false, ServerErrorMessage: 'server error' });
                                   }
                                 };
         
