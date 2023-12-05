@@ -4,7 +4,8 @@ const AdminNotificationSchema = new mongoose.Schema({
 userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UserModel'      
-},  
+}, 
+
 adminId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin'      

@@ -5,6 +5,9 @@ const bookingSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'UserModel'      
     },  
+    userEmail : {
+        type : String
+    },
 
     tripId: {
         type: mongoose.Schema.Types.ObjectId,

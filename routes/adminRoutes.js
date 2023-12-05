@@ -162,6 +162,9 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
          router.delete('/deleteNotifcationById/:notificationId' , adminController.deleteNotifcationById)
 // API for delete particular feedback
         router.delete('/deleteFeedback/:feedbackId', adminController.deleteFeedback)
+// API for cancelled trip
+        router.post('/cancelTrip/:tripId', adminController.cancelTrip)
+
                                    
                                      
 

@@ -9,6 +9,7 @@ const stopModel = require('../models/stopModel')
 const sendCancelEmail =require("../utils/sendCancelEmail")
 const sendBookingEmail =require("../utils/sendBookingEmail")
 const sendTripNotificationEmails = require('../utils/sendtripNotificationEmail')
+const CancelTripEmail = require('../utils/CancelTripEmail')
 const NotificationDetail = require('../models/notificationDetails')
 const TransactionModel = require('../models/transactionModel')
 const userController = require('./userController')
@@ -1287,7 +1288,8 @@ const adminLogin = async (req, res) => {
                                   
                                       // Find trips that match the given date
                                       const trips = await TripModel.find({
-                                        startingDate: date
+                                        startingDate: date ,
+                                        status : "scheduled"
                                       });
                                   
                                       if (!trips || trips.length === 0) {
@@ -1837,7 +1839,8 @@ const adminLogin = async (req, res) => {
                                             })),
                                             totalFare: totalFare_in_Euro,
                                             source,
-                                            destination
+                                            destination,
+                                            userEmail : email
 
                                           });
                                       
@@ -1973,15 +1976,15 @@ const adminLogin = async (req, res) => {
                                         const { email, bookingId } = req.body;
 
                                         if (!email) {
-                                          return res.status(400).json({ success: false, message: 'Missing Email' });
+                                          return res.status(400).json({ success: false, missingEmail: 'Missing Email' });
                                         }
                                         if (!bookingId) {
-                                          return res.status(400).json({ success: false, message: 'Missing bookingId' });
+                                          return res.status(400).json({ success: false, missingBookingId: 'Missing bookingId' });
                                         }
 
                                         const booking = await BookingModel.findOne({ bookingId });
                                         if (!booking) {
-                                          return res.status(404).json({ success: false, message: 'Booking not found' });
+                                          return res.status(404).json({ success: false, BookingNotFound: 'Booking not found with the given ID' });
                                         }
 
                                         // Fetch the user associated with the booking
@@ -1991,19 +1994,19 @@ const adminLogin = async (req, res) => {
                                         if (user.email !== email) {
                                           return res.status(400).json({
                                             success: false,
-                                            message: 'Unauthorized: You are not allowed to cancel this booking with these email',
+                                            unAuthMessage: 'Unauthorized: You are not allowed to cancel this booking with these email',
                                           });
                                         }
 
                                         // Check if the booking status allows cancellation
                                         if (booking.status === 'cancelled') {
-                                          return res.status(400).json({ success: false, message: 'Booking already cancelled' });
+                                          return res.status(400).json({ success: false, alreadyCancelledMessage: 'Booking already cancelled' });
                                         }
 
                                         // Get the trip details
                                         const trip = await TripModel.findById(booking.tripId);
                                         if (!trip) {
-                                          return res.status(400).json({ success: false, message: 'Trip not found' });
+                                          return res.status(400).json({ success: false, tripNotFound: 'Trip not found' });
                                         }
 
                                         // calculate the refund amount and cancellation type based on the cancellation policy
@@ -2032,7 +2035,7 @@ const adminLogin = async (req, res) => {
                                         if (refundAmount === 0) {
                                           return res.status(400).json({
                                             success: false,
-                                            message: 'No refund provided for these cancellation types',
+                                            noRefundMessage: 'No refund provided for these cancellation types',
                                           });
                                         }
 
@@ -2078,14 +2081,14 @@ const adminLogin = async (req, res) => {
                                             } else {
                                               return res.status(400).json({
                                                 success: false,
-                                                message: 'Refund failed',
+                                                refundFailedMessage: 'Refund failed',
                                               });
                                             }
                                           }
                                         }
                                         const newNotification = new NotificationDetail({
                                           userId : booking.userId ,
-                                          message: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
+                                          notificationMessage: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
                                           date: new Date(),
                                           status: 'cancelled', 
                                           bookingId: bookingId,
@@ -2096,7 +2099,7 @@ const adminLogin = async (req, res) => {
                                         // notification for admin
                                         const newAdminNotification = new AdminNotificationDetail({
                                           userId : booking.userId ,
-                                          message: ` cancle booking request sent by the user : ${booking.userId} in a trip : ${booking.tripId} with bookingId : ${bookingId} `,
+                                          cancellationMessage: ` cancle booking request sent by the user : ${booking.userId} in a trip : ${booking.tripId} with bookingId : ${bookingId} `,
                                           date: new Date() ,
                                           bookingId: bookingId,
                                           tripId : booking.tripId
@@ -2114,11 +2117,11 @@ const adminLogin = async (req, res) => {
 
                                         res.status(200).json({
                                           success: true,
-                                          message: 'Ticket cancellation and refund successful. Confirmation sent to user email.',
+                                          SuccessMessage: 'Ticket cancellation and refund successful. Confirmation sent to user email.',
                                         });
                                       } catch (error) {
                                         console.error(error);
-                                        return res.status(500).json({ success: false, message: 'An error occurred' });
+                                        return res.status(500).json({ success: false, ServerErrorMessage: 'An error occurred' });
                                       }
                                     };
                       
@@ -2992,7 +2995,7 @@ const adminLogin = async (req, res) => {
                                 try {
                                   const { title, message, tripId } = req.body;
                               
-                                  const requiredFields = ['title', 'message', 'tripId'];
+                                  const requiredFields = ['title', 'message', ];
                               
                                   for (const field of requiredFields) {
                                     if (!req.body[field]) {
@@ -3002,6 +3005,14 @@ const adminLogin = async (req, res) => {
                                       });
                                     }
                                   }
+                                  if(!tripId)
+                                  {
+                                    return res.status(400).json({
+                                                   success : false ,
+                                                   tripValidationMessage : 'select trip for send notification'
+                                    })
+                                  }
+                                  
                               
                                   // Check for the trip
                                   const trip = await BookingModel.findOne({ tripId });
@@ -3334,8 +3345,131 @@ const adminLogin = async (req, res) => {
                                 }
                               }
                     
-    
-                
+    // cancle trip
+                                          const cancelTrip = async (req, res) => {
+                                            try {
+                                                const tripId = req.params.tripId;
+                                        
+                                                // Check for trip
+                                                const trip = await TripModel.findOne({ _id: tripId });
+                                        
+                                                if (!trip) {
+                                                    return res.status(400).json({
+                                                        success: false,
+                                                        TripExistanceMessage: 'Trip not found in TripModel'
+                                                    });
+                                                }
+                                        
+                                                // Check the same trip in BookingModel
+                                                const bookedTrip = await BookingModel.find({ tripId: tripId });
+                                                               
+                                                if (!bookedTrip || bookedTrip.length === 0) {
+                                                    return res.status(400).json({
+                                                        success: false,
+                                                        bookedTripExistance: 'Trip not found in BookingModel'
+                                                    });
+                                                }
+
+                                                    const userIds = bookedTrip.map(booking => booking.userId)                                     
+                                                    
+
+                                                // Access user names by userIds
+                                                const userNames = await UserModel.find({
+                                                    _id: { $in: userIds }
+                                                }).distinct('fullName');
+                                        
+                                                // Fetch all booking IDs associated with the trip
+                                                      const bookingIds = await BookingModel.find({ tripId: tripId }).distinct('bookingId');
+
+                                                      if (bookingIds.length > 0) {
+                                                          for (const bookingId of bookingIds) {
+                                                              try {
+                                                                  // Update the booking status to 'cancelled' directly
+                                                                  await BookingModel.updateMany({ bookingId: bookingId }, { $set: { status: 'cancelled' } });
+
+                                                                  // Find the transaction associated with the booking
+                                                                  const transaction = await TransactionModel.find({
+                                                                      bookingId: bookingId
+                                                                  });
+
+                                                                  if (transaction) {
+                                                                      // Check if the transaction has a paymentIntentId
+                                                                      let paymentIntentId = transaction.paymentIntentId;
+
+                                                                      if (paymentIntentId) {
+                                                                          // Calculate refund processing date between 2 to 5 working days
+                                                                          const refundProcessingDays = Math.floor(Math.random() * (5 - 2 + 1)) + 2;
+                                                                          const refundProcessingDate = new Date();
+                                                                          refundProcessingDate.setDate(refundProcessingDate.getDate() + refundProcessingDays);
+
+                                                                          // Calculate refund amount (80% of the original amount)
+                                                                          const refundAmount = transaction.amount * 0.8;
+
+                                                                          // Refund the payment using Stripe
+                                                                          const refund = await stripe.refunds.create({
+                                                                              payment_intent: paymentIntentId,
+                                                                              amount: Math.floor(refundAmount * 100),
+                                                                          });
+
+                                                                          if (refund.status === 'succeeded') {
+                                                                              // Update transaction details
+                                                                              transaction.status = 'cancelled';
+                                                                              transaction.amount = refundAmount;
+                                                                              transaction.refundProcessingDate = refundProcessingDate;
+
+                                                                              await transaction.save();
+                                                                          } else {
+                                                                              return res.status(400).json({
+                                                                                  success: false,
+                                                                                  message: 'Refund failed',
+                                                                              });
+                                                                          }
+                                                                      }
+                                                                  }
+                                                              } catch (error) {
+                                                                  console.error('Error during booking processing:', error);
+                                                              }
+                                                          }
+                                                      }
+
+                                                      // Send cancellation emails to all trip users
+                                                      await Promise.all(userIds.map(async (userId, index) => {
+                                                          const userEmail = await UserModel.findById(userId).select('email');
+                                                          console.log("userEmail", userEmail);
+                                                          const emailContent = `Dear ${userNames[index]},\n
+                                                                  *************************************************
+                                                                  Your booking on trip: ${trip.tripNumber} has been cancelled\n
+                                                                  Due to some technical issues,\n
+                                                                  your  amount will be refunded within 2 to 5 working days.\n
+                                                                  ----------------------------------------------------
+                                                                  Thank you for using our service!\n
+                                                                  ***************************************************
+                                                              `;
+
+                                                          // Replace the following line with your actual email sending function
+                                                          await CancelTripEmail(userEmail, 'Trip Cancellation Notification', emailContent);
+                                                      }));
+
+                                                      // Update trip status to "cancelled" in TripModel
+                                                      trip.status = 'cancelled';
+                                                      await trip.save();
+
+                                                      return res.status(200).json({
+                                                          success: true,
+                                                          SuccessMessage: 'Trip cancellation emails sent successfully to all trip users',
+                                                      });
+                                                  } catch (error) {
+                                                      console.error('Error during trip cancellation:', error);
+                                                      return res.status(500).json({
+                                                          success: false,
+                                                          ServerErrorMessage: 'Server Error',
+                                                      });
+                                                  }
+                                              };
+                                                                                      
+                                                
+              
+
     module.exports = { 
                         adminLogin , googleLogin , changePassword, addBus , updateBus ,
                         deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,addStop_in_Route,
@@ -3348,7 +3482,8 @@ const adminLogin = async (req, res) => {
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
                           export_Users , allUsers , getNotification , getAdminNotification ,  
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
-                          getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback
+                          getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback,
+                          cancelTrip
 
 
 

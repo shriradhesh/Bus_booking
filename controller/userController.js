@@ -21,6 +21,7 @@ const mongoose = require('mongoose')
 const fs = require('fs')
 const sendUserRegisterEmail = require('../utils/userRegisterEmail')
 const NotificationDetail = require('../models/notificationDetails')
+ 
                     
                                     /* --> User API <-- */
 
