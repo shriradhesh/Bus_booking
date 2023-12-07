@@ -392,7 +392,7 @@ const adminLogin = async (req, res) => {
      
       //API for add stop in Stop Schema 
 
-                        const createStop = async (req,res)=>{          
+                        const createStop = async (req,res)=>{ 
                         
                         const {stopName} = req.body          
                           
@@ -437,13 +437,22 @@ const adminLogin = async (req, res) => {
                       
                           try {         
                             
-                          
-                            const stops = await stopModel.find();         
-                              
+                        // check for stops
+                            const stops = await stopModel.find({ })        
+                          if(!stops)
+                          {
+                            return res.status(400).json({
+                                                success : false  ,
+                                                stopExistanceMessage : 'no stops found'
+                            })
+                          }
+                          else
+                          {
                             res.status(200).json({ success: true, message: 'All Stops', stop_details : stops });
-                          } catch (error) {
+                          }
+                         } catch (error) {
                             
-                            res.status(500).json({ success: false, message: 'There is an error to find all Stops ' });
+                            res.status(500).json({ success: false, message: 'server error' });
                           }
                         }
                             
@@ -835,7 +844,7 @@ const adminLogin = async (req, res) => {
                                                           
                               if(!existRoute)
                               {
-                                return res.status(404).json({ success : false , message : " Route not found"})
+                                return res.status(404).json({ success : false , message : "Route not found"})
                               }
                               
                               // check for stop
@@ -1033,7 +1042,7 @@ const adminLogin = async (req, res) => {
                                         res.status(200).json({ success: true, message: 'Driver details updated successfully', Driver: updatedDriver });
                                       } catch (error) {
                                         console.error(error);
-                                        res.status(500).json({ success: false, error: 'There was an error updating the driver details' });
+                                        res.status(500).json({ success: false, error: 'server error' });
                                       }
                                     };
                     
@@ -1102,135 +1111,142 @@ const adminLogin = async (req, res) => {
 
 
 //API for create a new trip
-                    const createTrip = async(req,res) =>{
-                      try{
-                        const {
-                          tripNumber,
-                          bus_no,
-                          driverId,
-                          routeNumber,
-                          startingDate,
-                          endDate,  
-                          startingTime,                        
-                          status                         
-                        } = req.body
+                                  const createTrip = async (req, res) => {
+                                    try {
+                                      const {
+                                        tripNumber,
+                                        bus_no,
+                                        driverId,
+                                        routeNumber,
+                                        startingDate,
+                                        endDate,
+                                        startingTime,
+                                        status,
+                                      } = req.body;
 
-                        const requiredFields = [
-                          'bus_no',
-                          'driverId',
-                          'routeNumber',
-                          'startingDate',
-                          'endDate' ,
-                          'startingTime'                   
+                                      const requiredFields = [
+                                        'bus_no',
+                                        'driverId',
+                                        'routeNumber',
+                                        'startingDate',
+                                        'endDate',
+                                        'startingTime',
+                                      ];
 
-                        ]
-                        
-                        for(const field of requiredFields){
-                          if(!req.body[field]){
-                            return res.status(400).json({ message : `missing ${field.replace('_',' ')} field`, success : false})
-                          }
-                        }
-                       
-                           // Check if a trip with the same bus number and startingDate already exists
-                                const existingbus = await TripModel.findOne({
-                                  bus_no,
-                                  startingDate,
-                                });
-                                    
-                                if (existingbus) {
-                                  return res
-                                    .status(400)
-                                    .json({
-                                      message: 'A trip with the same Bus and starting date already exists',
-                                      success: false,
-                                    });
-                                }
-                                
-                           
-                           // Check if a trip with the same driver ID and startingDate already exists
-                                const existingdriver = await TripModel.findOne({
-                                  driverId,
-                                  startingDate,
-                                });
-
-                                if (existingdriver) {
-                                  return res
-                                    .status(400)
-                                    .json({
-                                      DriverExistanceMessage: 'A trip with the same Driver and starting date already exists',
-                                      success: false,
-                                    });
-                                }
-                                      
-                                // check for Trip number
-                                const existingTripNumber = await TripModel.findOne({
-                                  tripNumber,
-                                      })
-                                      if(existingTripNumber)
-                                      {
-                                        return res.status(400).json({
-                                                    TripExistanceMessage : ' trip number already exist',
-                                                    success : false
-                                        })
+                                      for (const field of requiredFields) {
+                                        if (!req.body[field]) {
+                                          return res
+                                            .status(400)
+                                            .json({ message: `missing ${field.replace('_', ' ')} field`, success: false });
+                                        }
                                       }
 
-                        // Check for bus number
-                        const bus = await BusModel.findOne({ bus_no });
-                    
-                        if (!bus) {
-                          return res.status(400).json({ BusMessage : 'Bus not found ', success: false });
-                        }
-                           
-                        const { bus_type , amenities , images } = bus
-                        // Check for Route number
-                        const route = await BusRoute.findOne({ routeNumber });
-                    
-                        if (!route) {
-                          return res.status(400).json({ Routemessage: 'Route not found', success: false });
-                        }
-                          // Check for Driver existence
-                          const driver = await DriverModel.findOne({ driverId })
+                                      var [hours, minutes] = startingTime.split(':');
+                                      var dateObj = new Date();
+                                      dateObj.setHours(hours);
+                                      dateObj.setMinutes(minutes);
 
-                          if (!driver) {
-                            return res.status(400).json({ Drivermessage : 'Driver with the specified ID not exist', success: false });
-                          }  
-                              const stops = route.stops
-                              // Create an array for available seats
-                          const busCapacity = bus.seating_capacity;
-                          const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
-                                
-                             
+                                      var updateStartingTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                            const newTrip = new TripModel({
-                              tripNumber,
-                              startingDate,
-                              endDate,
-                              source : route.source,
-                              destination :route.destination,
-                              startingTime,
-                              bus_no,
-                              driverId,
-                              routeNumber,                                                                               
-                              status,
-                              Available_seat,
-                              bus_type,
-                              amenities,
-                              images,
-                              stops
-                            })
+                                      // Check if a trip with the same bus number and startingDate already exists
+                                      const existingbus = await TripModel.findOne({
+                                        bus_no,
+                                        startingDate,
+                                      });
 
-                           
-                                  
-                            const savedTrip = await newTrip.save()
-                            res.status(200).json({ success : true , SuccessMessage : 'new trip created successfully', Trip_Detail : savedTrip})
+                                      if (existingbus) {
+                                        return res.status(400).json({
+                                          message: 'A trip with the same Bus and starting date already exists',
+                                          success: false,
+                                        });
+                                      }
 
-                      }
-                      catch(error)
-                      {
-                           console.error(error);
-                            res.status(500).json({success : false , ServerErrorMessage : ' there is an error while creating the trip'})
-                      }
-                    } 
+                                      // Check if a trip with the same driver ID and startingDate already exists
+                                      const existingdriver = await TripModel.findOne({
+                                        driverId,
+                                        startingDate,
+                                      });
+
+                                      if (existingdriver) {
+                                        return res.status(400).json({
+                                          DriverExistanceMessage: 'A trip with the same Driver and starting date already exists',
+                                          success: false,
+                                        });
+                                      }
+
+                                      // check for Trip number
+                                      const existingTripNumber = await TripModel.findOne({
+                                        tripNumber,
+                                      });
+                                      if (existingTripNumber) {
+                                        return res.status(400).json({
+                                          TripExistanceMessage: ' trip number already exist',
+                                          success: false,
+                                        });
+                                      }
+
+                                      // Check for bus number
+                                      const bus = await BusModel.findOne({ bus_no });
+
+                                      if (!bus) {
+                                        return res.status(400).json({ BusMessage: 'Bus not found ', success: false });
+                                      }
+
+                                      const { bus_type, amenities, images } = bus;
+                                      // Check for Route number
+                                      const route = await BusRoute.findOne({ routeNumber });
+
+                                      if (!route) {
+                                        return res.status(400).json({ Routemessage: 'Route not found', success: false });
+                                      }
+                                      // Check for Driver existence
+                                      const driver = await DriverModel.findOne({ driverId });
+
+                                      if (!driver) {
+                                        return res
+                                          .status(400)
+                                          .json({ Drivermessage: 'Driver with the specified ID not exist', success: false });
+                                      }
+                                      const stops = route.stops;
+                                      // Create an array for available seats
+                                      const busCapacity = bus.seating_capacity;
+                                      const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
+
+                                      const newTrip = new TripModel({
+                                        tripNumber,
+                                        startingDate,
+                                        endDate,
+                                        source: route.source,
+                                        destination: route.destination,
+                                        // Modify the startingTime creation to include the startingDate and format the time
+                                        startingTime: `${startingDate}, ${updateStartingTime}`,
+                                        bus_no,
+                                        driverId,
+                                        routeNumber,
+                                        status,
+                                        Available_seat,
+                                        bus_type,
+                                        amenities,
+                                        images,
+                                        stops,
+                                      });
+
+                                      const savedTrip = await newTrip.save();
+                                      res.status(200).json({
+                                        success: true,
+                                        SuccessMessage: 'new trip created successfully',
+                                        Trip_Detail: savedTrip,
+                                      });
+                                    } catch (error) {
+                                      console.error(error);
+                                      res.status(500).json({
+                                        success: false,
+                                        ServerErrorMessage: 'there is an error while creating the trip',
+                                      });
+                                    }
+                                  };
+
+
 
                                 // schedule a job to update trip status
                                 
@@ -1259,28 +1275,36 @@ const adminLogin = async (req, res) => {
 
 
       // Api to get all the Trip for a particular StartingDate
-                                    const allTrips =  async (req, res) => {
-                                      try {
-                                        // const { startingDate } = req.query;
-                                    
-                                        // if (!startingDate) {
-                                        //   return res.status(400).json({ error: 'Starting date is required', success: false });
-                                        // }
-                                    
-                                        // Find trips with the specified startingDate
-                                        const trips = await TripModel.find();
-                                    
-                                        if (trips.length === 0) {
-                                          return res.status(404).json({ message: 'No trips found for the specified startingDate', success: false });
+                                      const allTrips = async (req, res) => {
+                                        try {
+                                          const { status } = req.query;
+                                      
+                                          // Validate if a valid status is provided
+                                          if (status && !['scheduled', 'cancelled', 'completed'].includes(status)) {
+                                            return res.status(400).json({ error: 'Invalid status provided', success: false });
+                                          }
+                                      
+                                          // Filter trips based on status
+                                          let query = {};
+                                          if (status) {
+                                            query = { status };
+                                          }
+                                      
+                                          // Find trips with the specified query
+                                          const trips = await TripModel.find(query);
+                                      
+                                          if (trips.length === 0) {
+                                            return res.status(404).json({ notripMessage: `No trips found for the specified status: ${status}`, success: false });
+                                          }
+                                      
+                                        
+                                          res.status(200).json({ success: true, trips });
+                                        } catch (error) {
+                                          console.error(error);
+                                          res.status(500).json({ success: false, ServerErrorMessage : 'There was an error while fetching trips' });
                                         }
-                                    
-                                        res.status(200).json({ success: true, trips });
-                                      } catch (error) {
-                                        console.error(error);
-                                        res.status(500).json({ success: false, message: 'There was an error while fetching trips' });
-                                      }
-                                    };
-                                     
+                                      };
+      
       // Api for searchtrips    
                                   const searchTrips = async (req, res) => {
                                     try {
@@ -1587,10 +1611,7 @@ const adminLogin = async (req, res) => {
                                             email,
                                             passengers,
                                             totalFare_in_Euro,
-                                            number,
-                                            exp_month,
-                                            exp_year ,   
-                                            cvc                          
+                                             payment                       
                                             
                                           } = req.body;
                                                
@@ -1734,47 +1755,23 @@ const adminLogin = async (req, res) => {
                                               message: `Seats ${selectedSeatNumbers.join(', ')} are already booked for this trip`,
                                             });
                                           }
-                                            // Create a customer in Stripe
-                                            const customer = await stripe.customers.create({
-                                              email: email, 
-                                            });
-                                            // Store the customer ID in your database or application
-                                            const customerId = customer.id;
-                                              
-                                        //  Create a Payment Method for testing purposes
 
-                                          const paymentMethod = await stripe.paymentMethods.create({
-                                            type: 'card',
-                                            card: {
-                                              number: number,
-                                              exp_month: exp_month,
-                                              exp_year: exp_year,
-                                              cvc: cvc,
-                                            },
-                                          });
-                                            // Attach the payment method to the customer
-                                              await stripe.paymentMethods.attach(paymentMethod.id, {
-                                                customer: customerId,
-                                              });
-                                              const totalFareInCents = totalFare_in_Euro * 100 
-                                            //Create a Payment Intent
-                                            const paymentIntent = await stripe.paymentIntents.create({
-                                              amount:totalFareInCents,
-                                              currency: 'usd',
-                                              description: 'Bus ticket booking',
-                                              payment_method: paymentMethod.id,
-                                              customer: customerId,
-                                              confirm: true,
-                                              receipt_email : email,
-                                              return_url: 'http://localhost:4000/',
-                                            });
+                                    
+                                        const totalFareInCents = totalFare_in_Euro * 100 
 
-                                          if (paymentIntent.status !== 'succeeded') {
-                                            return res.status(400).json({
-                                              success: false,
-                                              message: 'Payment confirmation failed',
-                                            });
-                                          }
+                                        const charge = await stripe.charges.create({
+                                          amount : totalFareInCents,
+                                          currency: 'usd',
+                                          description: 'Bus ticket booking',
+                                          source: payment,                                           
+                                           receipt_email : email,
+                                        
+                                        });
+                                    
+                                        // Send the charge object back to the frontend or handle accordingly
+                                       
+                                        // res.json(charge);
+                                     
                                       
                                           // Check if this booking ID has already been paid
                                           const bookingId = shortid.generate();
@@ -1786,11 +1783,11 @@ const adminLogin = async (req, res) => {
                                               message: 'Booking has already been paid',
                                             });
                                           }
-                                      
+                                             
                                           // Store the payment transaction
                                           const transaction = new TransactionModel({
                                             bookingId: bookingId,
-                                            paymentIntentId: paymentIntent.id,
+                                           chargeId : charge.id,
                                             amount: totalFare_in_Euro,
                                             currency: 'usd',
                                             paymentStatus : 'paid',
@@ -1950,7 +1947,7 @@ const adminLogin = async (req, res) => {
                                           console.error(error);
                                           return res.status(500).json({
                                             success: false,
-                                            message: 'An error occurred',
+                                            message: 'server error',
                                           });
                                         }
                                       };
@@ -2059,24 +2056,24 @@ const adminLogin = async (req, res) => {
                                         });
 
                                         if (transaction) {
-                                          // Check if the transaction has a paymentIntentId
-                                          const paymentIntentId = transaction.paymentIntentId;
+                                          // Check if the transaction has a chargeId
+                                          const chargeId = transaction.chargeId;
 
-                                          if (paymentIntentId) {
+                                          if (chargeId) {
                                             // Calculate random refund processing days between 5 to 10 working days
                                             const refundProcessingDays = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
                                             const refundProcessingDate = new Date();
                                             refundProcessingDate.setDate(refundProcessingDate.getDate() + refundProcessingDays);
 
                                             const refund = await stripe.refunds.create({
-                                              payment_intent: paymentIntentId,
+                                              charge: chargeId,
                                               amount: Math.floor(refundAmount * 100),
                                             });
 
                                             if (refund.status === 'succeeded') {
                                               transaction.status = 'cancelled';
                                               transaction.amount = refundAmount;
-                                              transaction.refundProcessingDate = refundProcessingDate; // Save the refund processing date
+                                              transaction.refundProcessingDate = refundProcessingDate; 
                                               await transaction.save();
                                             } else {
                                               return res.status(400).json({
@@ -2121,7 +2118,7 @@ const adminLogin = async (req, res) => {
                                         });
                                       } catch (error) {
                                         console.error(error);
-                                        return res.status(500).json({ success: false, ServerErrorMessage: 'An error occurred' });
+                                        return res.status(500).json({ success: false, ServerErrorMessage: 'server error' });
                                       }
                                     };
                       
@@ -2427,66 +2424,78 @@ const adminLogin = async (req, res) => {
 
     // API for TrackBus
       
-                                        const trackBus = async (req, res) => {
-                                          try {
-                                            const { tripId } = req.params;
-                                            const yourStopName = req.body.yourStopName;
-                                        
-                                            // Find the trip by Trip Id
-                                            const trip = await TripModel.findById(tripId);
-                                        
-                                            if (!trip) {
-                                              return res.status(404).json({ success: false, message : 'Trip not found' });
-                                            }
-                                        
-                                            // Find the route in a trip using tripId
-                                            const routeNumber = trip.routeNumber;
-                                        
-                                            const route = await BusRoute.findOne({ routeNumber });
-                                            if (!route) {
-                                              return res.status(404).json({ success: false, message : 'Route not found in trip' });
-                                            }
-                                        
-                                            // Get the stops for the route
-                                            const stops = route.stops || [];
-                                        
-                                            // Find the currentStop
-                                            const currentStopIndex = stops.findIndex((stop) => stop.stopName === yourStopName);
-                                        
-                                            if (currentStopIndex === -1) {
-                                              return res.status(400).json({ success: false, message : 'Your stop not found. Please enter a valid stop' });
-                                            }
-                                        
-                                            const currentStop = stops[currentStopIndex];
-                                            let previousStop = null;
-                                        
-                                            if (currentStopIndex > 0) {
-                                              previousStop = stops[currentStopIndex - 1];
-                                            }
-                                        
-                                            res.status(200).json({
-                                              success: true,
-                                              message: 'Bus Tracking Information',
-                                              Bus_Tracking: {
-                                                your_Stop: {
-                                                  stopName: currentStop.stopName,
-                                                  EstimatedTimeTaken: currentStop.EstimatedTimeTaken,
-                                                },
-                                                previousStop: previousStop
-                                                  ? {
-                                                      stopName: previousStop.stopName,                                                      
-                                                    }
-                                                  : null,
-                                              },
-                                            });
-                                          } catch (error) {
-                                            console.error(error);
-                                            res.status(500).json({ success: false, message : 'There is an error tracking the bus' });
-                                          }
-                                        };
+                                       // APi to change particular trip's stop status 
+                   const change_trips_stop_status = async (req ,res) =>
+                   {
+                    try {
+                           const { tripId , stopId } = req.params
+
+                    // check for trip
+                    const trip = await TripModel.findOne({ _id : tripId ,
+                                                         status : 'scheduled'})
+                     if(!trip)
+                     {
+                      return res.status(400).json({
+                                           success : false ,
+                                           TripExistanceMessage : 'trip not found'
+                      })
+                     }
+                     // find the stop with in stops array by stopId
+                  const stopToUpdate = trip.stops.find((stop)=> stop._id.toString() === stopId )
+
+                  if(!stopToUpdate)
+                  {
+                    return res.status(400).json({ success: true ,
+                                                  stopExistanceMessage : 'stop not found in trip'})
+                  }
+                  stopToUpdate.stop_status = !stopToUpdate.stop_status
+                       const updateTrip = await trip.save()
+
+                       return res.status(200).json({
+                                       success : true,
+                                       SuccessMessage : 'stop status update successfully',
+                                      
+                       })
+                    
+                    } catch (error) {
+                      console.error(error);
+                      return res.status(500).json({
+                                       success : false ,
+                                       ServerErrorMessage : 'server error'
+                      })
+                    }
+                   }
+                                    
     
                               
-   // send PUSH Notification
+ // APi to get all stops in trip
+                        const getTripStops = async (req ,res)=>{
+                          try {
+                                const tripId = req.params.tripId
+                                // check for event
+                            const trip = await TripModel.findOne({ _id : tripId })
+                            if(!trip)
+                            {
+                              return res.status(400).json({
+                                                      success : false ,
+                                                      TripExistanceMessage : 'trip not found'
+                              })
+                            }
+                            
+                            const tripStops  = trip.stops                                 
+                              return res.status(200).json({
+                                                    success : true ,
+                                                    SuccessMessage : 'trip Stops ',
+                                                    tripStops : tripStops
+                              })
+                          } catch (error) {
+                            console.error(error);
+                            return res.status(500).json({
+                                                    success : false ,
+                                                    ServerErrorMessage : 'there is an server error'
+                            })
+                          }
+                        }
                                   
                                                
 
@@ -2684,7 +2693,7 @@ const adminLogin = async (req, res) => {
                                                            header: 'Booking ID', key: 'bookingId'
                                                         },
                                                         {
-                                                           header: 'PaymentIntent ID', key: 'paymentIntentId'
+                                                           header: 'charge ID', key: 'chargeId'
                                                         },
                                                         { 
                                                           header: 'Amount', key: 'amount' 
@@ -2698,7 +2707,7 @@ const adminLogin = async (req, res) => {
                                                       transactions.forEach((transaction) => {
                                                         worksheet.addRow({
                                                           bookingId: transaction.bookingId,
-                                                          paymentIntentId: transaction.paymentIntentId,
+                                                          chargeId: transaction.chargeId,
                                                           amount: transaction.amount,
                                                           status: transaction.status,
                                                         });
@@ -3363,12 +3372,12 @@ const adminLogin = async (req, res) => {
                                                 // Check the same trip in BookingModel
                                                 const bookedTrip = await BookingModel.find({ tripId: tripId });
                                                                
-                                                if (!bookedTrip || bookedTrip.length === 0) {
-                                                    return res.status(400).json({
-                                                        success: false,
-                                                        bookedTripExistance: 'Trip not found in BookingModel'
-                                                    });
-                                                }
+                                                // if (!bookedTrip || bookedTrip.length === 0) {
+                                                //     return res.status(400).json({
+                                                //         success: false,
+                                                //         bookedTripExistance: 'Trip not found in BookingModel'
+                                                //     });
+                                                // }
 
                                                     const userIds = bookedTrip.map(booking => booking.userId)                                     
                                                     
@@ -3393,10 +3402,10 @@ const adminLogin = async (req, res) => {
                                                                   });
 
                                                                   if (transaction) {
-                                                                      // Check if the transaction has a paymentIntentId
-                                                                      let paymentIntentId = transaction.paymentIntentId;
+                                                                      // Check if the transaction has a chargeId
+                                                                      let chargeId = transaction.chargeId;
 
-                                                                      if (paymentIntentId) {
+                                                                      if (chargeId) {
                                                                           // Calculate refund processing date between 2 to 5 working days
                                                                           const refundProcessingDays = Math.floor(Math.random() * (5 - 2 + 1)) + 2;
                                                                           const refundProcessingDate = new Date();
@@ -3407,7 +3416,7 @@ const adminLogin = async (req, res) => {
 
                                                                           // Refund the payment using Stripe
                                                                           const refund = await stripe.refunds.create({
-                                                                              payment_intent: paymentIntentId,
+                                                                              charge : chargeId,
                                                                               amount: Math.floor(refundAmount * 100),
                                                                           });
 
@@ -3478,12 +3487,12 @@ const adminLogin = async (req, res) => {
                          deleteStop , changeProfile , addDriver ,editDriver,
                          deleteDriver , allDrivers ,getDriver , createTrip, allTrips , bookTicket, cancelTicket,
                           userTickets , getUpcomingTrip_for_DateChange , changeTrip , allBookings,countBookings , viewSeats ,
-                          calculateFareForSelectedSeats , trackBus   , All_Transaction,
+                          calculateFareForSelectedSeats   , All_Transaction,
                           import_Buses , generate_sampleFile ,export_Bookings , export_Transactions , export_Trips,
                           export_Users , allUsers , getNotification , getAdminNotification ,  
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
                           getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback,
-                          cancelTrip
+                          cancelTrip  , change_trips_stop_status , getTripStops
 
 
 

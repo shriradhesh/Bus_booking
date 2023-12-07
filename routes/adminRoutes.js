@@ -94,9 +94,12 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
 // Api for view seats in Bus for a Route
            router.post('/viewSeats', adminController.viewSeats)
 // Api for calculate Fare For SelectedSeats in a Bus
-router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateFareForSelectedSeats)
-
-
+           router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateFareForSelectedSeats)
+    // track BUS
+                  //API for change stop status
+            router.post('/change_trips_stop_status/:tripId/:stopId' , adminController.change_trips_stop_status)
+                  // API to get stops of trip
+            router.get('/getTripStops/:tripId', adminController.getTripStops)
 
 
                                      /*  Tickit Manage  */
@@ -110,6 +113,7 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
         router.post('/getUpcomingTrip_for_DateChange', adminController.getUpcomingTrip_for_DateChange)
 // Api for change Trip 
         router.post('/changeTrip', adminController.changeTrip)
+
                                  
                                         /*  Booking Manage */
 // Api for get all Tickits done by users
@@ -117,8 +121,8 @@ router.post('/calculateFareForSelectedSeats/:tripId', adminController.calculateF
 // APi for count bookings for particular date
         router.get('/countBookings',adminController.countBookings)
 
-// Api for traclBus
-        router.post('/trackBus/:tripId', adminController.trackBus)
+
+     
 
                                       /*  transaction Manage */
 // Api for get all transaction on Date

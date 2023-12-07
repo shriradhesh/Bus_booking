@@ -6,9 +6,9 @@ const transactionSchema = new mongoose.Schema({
         required : true ,
         unique : true
        },
-       paymentIntentId : {
+       chargeId : {
         type : String,
-        required : true,
+        // required : true,
        },
        amount : {
         type : Number,
