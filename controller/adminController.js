@@ -167,7 +167,33 @@ const adminLogin = async (req, res) => {
                 }
             }
 
-
+// APi for get Admin Details
+            const getAdminDetails = async(req , res)=>{
+              try {
+                         // check for admin
+                const admin = await Admin.find({ })
+                if(!admin)
+                {
+                  return res.status(400).json({
+                                          success : false ,
+                                          adminExistanceMessage : 'admin not found'
+                  })
+                }
+                else
+                {
+                  return res.status(200).json({
+                                     success : true ,
+                                     SuccessMessage : 'admin details',
+                                     Admin_details : admin
+                  })
+                }
+              } catch (error) {
+                return res.status(500).json({
+                                    success : false ,
+                                    ServerErrorMessage : 'server error'
+                })
+              }
+            }
                                              /* BUS MANAGEMENT */
         
 // APi for add new bus
@@ -3492,7 +3518,7 @@ const adminLogin = async (req, res) => {
                           export_Users , allUsers , getNotification , getAdminNotification ,  
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
                           getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback,
-                          cancelTrip  , change_trips_stop_status , getTripStops
+                          cancelTrip  , change_trips_stop_status , getTripStops , getAdminDetails
 
 
 

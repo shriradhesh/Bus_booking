@@ -5,7 +5,7 @@ const port = process.env.PORT || 4001;
 const db= require('./config/db')
 const userRoutes = require('./routes/userRoutes')
 const adminRoute = require('./routes/adminRoutes')
-const socialRoutes = require('./routes/socialRoutes')
+
 const cors = require('cors')
 const multer = require('multer')
 const path =require('path')
@@ -110,7 +110,7 @@ app.get('/login', (req, res) => {
 //Router configuration   
 app.use('/api', userRoutes );
 app.use('/api', adminRoute);
-app.use('/auth' , socialRoutes);
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://13.51.77.134/'); 
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');

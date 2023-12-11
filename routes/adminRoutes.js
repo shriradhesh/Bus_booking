@@ -168,6 +168,8 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
         router.delete('/deleteFeedback/:feedbackId', adminController.deleteFeedback)
 // API for cancelled trip
         router.post('/cancelTrip/:tripId', adminController.cancelTrip)
+// APi for get admin details
+         router.get('/getAdminDetails', adminController.getAdminDetails)
 
                                    
                                      
