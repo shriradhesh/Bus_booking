@@ -685,8 +685,24 @@ const adminLogin = async (req, res) => {
                                     EstimatedTimeTaken : `${hours} Hour, ${minutes} Minute`,                               
                                     distance
                                 })
-                                await route.save()
-                                 
+                               let savedStop =  await route.save()
+                                      // Assuming your data is stored in a variable named 'savedStop'
+                                  const lastStopObjectId = savedStop.stops[savedStop.stops.length - 1]._id;                                
+
+                                 // Update the Trip model with the new stop
+                            const trips = await TripModel.find({
+                                            routeNumber: route.routeNumber });
+
+                            for (const trip of trips) {
+                              trip.stops.push({
+                                stopName,
+                                EstimatedTimeTaken: `${hours} Hour, ${minutes} Minute`,
+                                distance,
+                                stop_status : 0,
+                                _id : lastStopObjectId
+                              });
+                              await trip.save();
+                            }
 
                                 return res.status(200).json({ success : true , message : `stop added successfully in routeID : ${routeId}`})
                             }
@@ -761,7 +777,17 @@ const adminLogin = async (req, res) => {
                       
                           // Save the updated route back to the database
                           await existRoute.save();
-                      
+                           // Update the corresponding Trip model
+                          const trips = await TripModel.find({ routeNumber: existRoute.routeNumber });
+
+                          for (const trip of trips) {
+                            const tripStopIndex = trip.stops.findIndex((stop) => stop._id.toString() === stopId);
+                            if (tripStopIndex !== -1) {
+                              trip.stops[tripStopIndex].EstimatedTimeTaken = `${hours} Hour, ${minutes} Minute`;
+                              trip.stops[tripStopIndex].distance = distance;
+                              await trip.save();
+                            }
+                          }
                           res.status(200).json({
                             success: true,
                             message: `Stop is edited successfully for routeId: ${routeId}`,
@@ -887,7 +913,15 @@ const adminLogin = async (req, res) => {
                                         { _id:routeId },
                                         {stops : existRoute.stops}
                                   )
+                                  const trips = await TripModel.find({ routeNumber: existRoute.routeNumber });
 
+                                  for (const trip of trips) {
+                                    const tripStopIndex = trip.stops.findIndex((stop) => stop._id.toString() === stopId);
+                                    if (tripStopIndex !== -1) {
+                                      trip.stops.splice(tripStopIndex, 1);
+                                      await trip.save();
+                                    }
+                                  }
                                   res.status(200).json({ success : true , message : "stop delete successfully in Route"})
                         
                           }
@@ -1137,140 +1171,135 @@ const adminLogin = async (req, res) => {
 
 
 //API for create a new trip
-                                  const createTrip = async (req, res) => {
-                                    try {
-                                      const {
-                                        tripNumber,
-                                        bus_no,
-                                        driverId,
-                                        routeNumber,
-                                        startingDate,
-                                        endDate,
-                                        startingTime,
-                                        status,
-                                      } = req.body;
+                                        const createTrip = async (req, res) => {
+                                          try {
+                                            const {
+                                              tripNumber,
+                                              bus_no,
+                                              driverId,
+                                              routeNumber,
+                                              startingDate,
+                                              endDate,
+                                              startingTime,
+                                              status,
+                                            } = req.body;
 
-                                      const requiredFields = [
-                                        'bus_no',
-                                        'driverId',
-                                        'routeNumber',
-                                        'startingDate',
-                                        'endDate',
-                                        'startingTime',
-                                      ];
+                                            const requiredFields = [
+                                              'bus_no',
+                                              'driverId',
+                                              'routeNumber',
+                                              'startingDate',
+                                              'endDate',
+                                              'startingTime',
+                                            ];
 
-                                      for (const field of requiredFields) {
-                                        if (!req.body[field]) {
-                                          return res
-                                            .status(400)
-                                            .json({ message: `missing ${field.replace('_', ' ')} field`, success: false });
-                                        }
-                                      }
+                                            for (const field of requiredFields) {
+                                              if (!req.body[field]) {
+                                                return res
+                                                  .status(400)
+                                                  .json({ message: `missing ${field.replace('_', ' ')} field`, success: false });
+                                              }
+                                            }
 
-                                      var [hours, minutes] = startingTime.split(':');
-                                      var dateObj = new Date();
-                                      dateObj.setHours(hours);
-                                      dateObj.setMinutes(minutes);
+                                            var [hours, minutes] = startingTime.split(':');
+                                            var dateObj = new Date();
+                                            dateObj.setHours(hours);
+                                            dateObj.setMinutes(minutes);
 
-                                      var updateStartingTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                            var updateStartingTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                                      // Check if a trip with the same bus number and startingDate already exists
-                                      const existingbus = await TripModel.findOne({
-                                        bus_no,
-                                        startingDate,
-                                      });
+                                            // Check if a trip with the same bus number and startingDate already exists
+                                            const existingBus = await TripModel.findOne({
+                                              bus_no,
+                                              startingDate,
+                                            });
 
-                                      if (existingbus) {
-                                        return res.status(400).json({
-                                          message: 'A trip with the same Bus and starting date already exists',
-                                          success: false,
-                                        });
-                                      }
+                                            if (existingBus) {
+                                              return res.status(400).json({
+                                                message: 'A trip with the same Bus and starting date already exists',
+                                                success: false,
+                                              });
+                                            }
 
-                                      // Check if a trip with the same driver ID and startingDate already exists
-                                      const existingdriver = await TripModel.findOne({
-                                        driverId,
-                                        startingDate,
-                                      });
+                                            // Check if a trip with the same driver ID and startingDate already exists
+                                            const existingDriver = await TripModel.findOne({
+                                              driverId,
+                                              startingDate,
+                                            });
 
-                                      if (existingdriver) {
-                                        return res.status(400).json({
-                                          DriverExistanceMessage: 'A trip with the same Driver and starting date already exists',
-                                          success: false,
-                                        });
-                                      }
+                                            if (existingDriver) {
+                                              return res.status(400).json({
+                                                DriverExistanceMessage: 'A trip with the same Driver and starting date already exists',
+                                                success: false,
+                                              });
+                                            }
 
-                                      // check for Trip number
-                                      const existingTripNumber = await TripModel.findOne({
-                                        tripNumber,
-                                      });
-                                      if (existingTripNumber) {
-                                        return res.status(400).json({
-                                          TripExistanceMessage: ' trip number already exist',
-                                          success: false,
-                                        });
-                                      }
+                                            // check for Trip number
+                                            const existingTripNumber = await TripModel.findOne({
+                                              tripNumber,
+                                            });
+                                            if (existingTripNumber) {
+                                              return res.status(400).json({
+                                                TripExistanceMessage: ' trip number already exist',
+                                                success: false,
+                                              });
+                                            }
 
-                                      // Check for bus number
-                                      const bus = await BusModel.findOne({ bus_no });
+                                            // Check for bus number
+                                            const bus = await BusModel.findOne({ bus_no });
 
-                                      if (!bus) {
-                                        return res.status(400).json({ BusMessage: 'Bus not found ', success: false });
-                                      }
+                                            if (!bus) {
+                                              return res.status(400).json({ BusMessage: 'Bus not found ', success: false });
+                                            }
 
-                                      const { bus_type, amenities, images } = bus;
-                                      // Check for Route number
-                                      const route = await BusRoute.findOne({ routeNumber });
+                                            const { bus_type, amenities, images } = bus;
 
-                                      if (!route) {
-                                        return res.status(400).json({ Routemessage: 'Route not found', success: false });
-                                      }
-                                      // Check for Driver existence
-                                      const driver = await DriverModel.findOne({ driverId });
+                                            // Check for Route number and fetch stops
+                                            const route = await BusRoute.findOne({ routeNumber });
 
-                                      if (!driver) {
-                                        return res
-                                          .status(400)
-                                          .json({ Drivermessage: 'Driver with the specified ID not exist', success: false });
-                                      }
-                                      const stops = route.stops;
-                                      // Create an array for available seats
-                                      const busCapacity = bus.seating_capacity;
-                                      const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
+                                            if (!route) {
+                                              return res.status(400).json({ Routemessage: 'Route not found', success: false });
+                                            }
 
-                                      const newTrip = new TripModel({
-                                        tripNumber,
-                                        startingDate,
-                                        endDate,
-                                        source: route.source,
-                                        destination: route.destination,
-                                        // Modify the startingTime creation to include the startingDate and format the time
-                                        startingTime: `${startingDate}, ${updateStartingTime}`,
-                                        bus_no,
-                                        driverId,
-                                        routeNumber,
-                                        status,
-                                        Available_seat,
-                                        bus_type,
-                                        amenities,
-                                        images,
-                                        stops,
-                                      });
+                                            const stops = route.stops;
 
-                                      const savedTrip = await newTrip.save();
-                                      res.status(200).json({
-                                        success: true,
-                                        SuccessMessage: 'new trip created successfully',
-                                        Trip_Detail: savedTrip,
-                                      });
-                                    } catch (error) {
-                                      console.error(error);
-                                      res.status(500).json({
-                                        success: false,
-                                        ServerErrorMessage: 'there is an error while creating the trip',
-                                      });
-                                    }
-                                  };
+                                            // Create an array for available seats
+                                            const busCapacity = bus.seating_capacity;
+                                            const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
+
+                                            const newTrip = new TripModel({
+                                              tripNumber,
+                                              startingDate,
+                                              endDate,
+                                              source: route.source,
+                                              destination: route.destination,
+                                              // Modify the startingTime creation to include the startingDate and format the time
+                                              startingTime: `${startingDate}, ${updateStartingTime}`,
+                                              bus_no,
+                                              driverId,
+                                              routeNumber,
+                                              status,
+                                              Available_seat,
+                                              bus_type,
+                                              amenities,
+                                              images,
+                                              stops,
+                                            });
+
+                                            const savedTrip = await newTrip.save();
+                                            res.status(200).json({
+                                              success: true,
+                                              SuccessMessage: 'new trip created successfully',
+                                              Trip_Detail: savedTrip,
+                                            });
+                                          } catch (error) {
+                                            console.error(error);
+                                            res.status(500).json({
+                                              success: false,
+                                              ServerErrorMessage: 'there is an error while creating the trip',
+                                            });
+                                          }
+                                        };
 
 
 
@@ -2393,28 +2422,53 @@ const adminLogin = async (req, res) => {
                                                       /* Booking Manage */
 //Api for get all Bookings
                  
-                  const allBookings = async (req, res) => {
-                    try {
-                      const {status} = req.query
-                  
-                      let bookings;                     
-                     
-                      if (status === 'confirmed') {
-                        bookings = await BookingModel.find({ status: 'confirmed'  });
-                      } else if (status === 'pending' || status ==='cancelled') {
-                        bookings = await BookingModel.find({ status:  {$in:['pending','cancelled'] }});
-                      }
-                      else {
-                        return res.status(400).json({ success: false, error: 'Invalid status value' });
-                      }
-                        
-                      res.status(200).json({ success: true, message: `All ${status} Tickites`, All_Bookings : bookings });
-                    } catch (error) {
-                      
-                      res.status(500).json({ success: false, error: 'There is an error to find Bookings '});
-                    }
-                  }
-              
+const allBookings = async (req, res) => {
+  try {
+    const { status, dateRange } = req.query;
+
+    let bookings = [];
+    let dateFilter = {};
+
+    if (dateRange) {
+      const startDate = new Date();
+      let endDate = new Date();
+
+      switch (dateRange.toLowerCase()) {
+        case 'daily':
+          endDate.setDate(startDate.getDate() + 1);
+          break;
+        case 'weekly':
+          endDate.setDate(startDate.getDate() + 7);
+          break;
+        case 'monthly':
+          endDate.setMonth(startDate.getMonth() + 1);
+          break;
+        default:
+          return res.status(400).json({ success: false, error: 'Invalid date range value' });
+      }
+
+      dateFilter = { createdAt: { $gte: startDate, $lt: endDate } };
+    }
+
+    if (status === 'confirmed') {
+      bookings = await BookingModel.find({ status: 'confirmed', ...dateFilter });
+    } else if (status === 'pending' || status === 'cancelled') {
+      bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] }, ...dateFilter });
+    } else if (!status) {
+      // If status is not provided, retrieve all bookings
+      bookings = await BookingModel.find(dateFilter);
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid status value' });
+    }
+
+    res.status(200).json({ success: true, message: 'All Tickets', All_Bookings: bookings });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: 'There is an error finding bookings' });
+  }
+};
+
+
 // Api for GET Bookings for a particular date and status
 
                       
