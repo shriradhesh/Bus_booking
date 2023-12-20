@@ -630,15 +630,13 @@ const adminLogin = async (req, res) => {
                               'stopName', 
                               'EstimatedTimeTaken',                                                                          
                               'distance'          
-                      
-                          ];
+                             ];
 
                           for (const field of requiredFields) {
                               if (!req.body[field]) {
                                   return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
                               }
-                          }
-                                      
+                          }                                      
                                 const route = await BusRoute.findOne({ _id:routeId })
                           
                                 if(!route)
@@ -927,7 +925,7 @@ const adminLogin = async (req, res) => {
                           }
                         catch(error)
                         {
-                              res.status(500).json({ success : false , message :  ` there is an error to delete the stop `})
+                              res.status(500).json({ success : false , message :  `there is an error to delete the stop `})
                         }
                         }         
 
@@ -994,7 +992,7 @@ const adminLogin = async (req, res) => {
   //Api for add New Driver
                                 const addDriver = async (req, res) => {
                                   try {
-                                    const { driverId ,driverName, driverContact, driverLicence_number, status , driverProfileImage } = req.body;
+                                    const { driverId , driverName, driverContact, driverLicence_number, status , driverProfileImage } = req.body;
 
                                     const requiredFields = [
                                       'driverId',                
@@ -1014,13 +1012,11 @@ const adminLogin = async (req, res) => {
                                     const existingDriver = await DriverModel.findOne({ driverId });
                                     if (existingDriver) {
                                       return res.status(400).json({ existDriverMessage: false, message :'driver already exist' });
-                                    }                                   
-                                
+                                    }   
                                     // Check for valid driver status
                                     const validStatus = ['active', 'inactive'];
                                     const driverStatus = validStatus.includes(status) ? status : 'active';
 
-                                  
                                     const newDriver = new DriverModel({
                                       driverId,
                                       driverName,
@@ -1028,17 +1024,13 @@ const adminLogin = async (req, res) => {
                                       driverLicence_number,
                                       status: driverStatus
                                       
-                                    });  
-
-                                          
+                                    });                                            
                                           // set Driver availability  and profile Images
                                     newDriver.availability = 'available'; 
                                     if (req.file) {
                                       newDriver.driverProfileImage = req.file.filename;
-                                    }    
-                                                                  
-                                          
-                                
+                                    }  
+
                                     const savedDriver = await newDriver.save();
                                     res.status(200).json({ success: true, SuccessMessage: ' New Driver added successfully', driver: savedDriver });
                                   } catch (error) {
@@ -1262,8 +1254,18 @@ const adminLogin = async (req, res) => {
                                             }
 
                                             const stops = route.stops;
+                                            console.log('stops:', stops);
+                                             // Ensure that EstimatedTimeTaken is a number for each stop
+                                          const totalDurationInMinutes = stops.reduce((acc, stop) => {
+                                            const [hours, minutes] = stop.EstimatedTimeTaken.split(',').map((str) => parseInt(str.trim()));
+                                            return acc + (hours * 60 + minutes);
+                                          }, 0);
+                                              // Convert total duration to hours and minutes
+                                              const totalHours = Math.floor(totalDurationInMinutes / 60);
+                                              const totalMinutes = totalDurationInMinutes % 60;
 
-                                            // Create an array for available seats
+
+                                              // Create an array for available seats
                                             const busCapacity = bus.seating_capacity;
                                             const Available_seat = Array.from({ length: busCapacity }, (_, index) => index + 1);
 
@@ -1272,8 +1274,7 @@ const adminLogin = async (req, res) => {
                                               startingDate,
                                               endDate,
                                               source: route.source,
-                                              destination: route.destination,
-                                              // Modify the startingTime creation to include the startingDate and format the time
+                                              destination: route.destination,                                              
                                               startingTime: `${startingDate}, ${updateStartingTime}`,
                                               bus_no,
                                               driverId,
@@ -1284,6 +1285,7 @@ const adminLogin = async (req, res) => {
                                               amenities,
                                               images,
                                               stops,
+                                              totalDuration: `${totalHours} hour${totalHours !== 1 ? 's' : ''} ${totalMinutes} minute${totalMinutes !== 1 ? 's' : ''}`,
                                             });
 
                                             const savedTrip = await newTrip.save();
@@ -1856,7 +1858,8 @@ const adminLogin = async (req, res) => {
                                             date: date,
                                             status: 'confirmed', 
                                             bookingId: bookingId,
-                                            tripId
+                                            tripId,
+                                            notification_status : 0
 
                                           });
                                           await newNotification.save()
@@ -1879,7 +1882,7 @@ const adminLogin = async (req, res) => {
                                           const booking = new BookingModel({
                                             tripId,
                                             tripNumber,
-                                            date,
+                                            date,  
                                             status,
                                             bookingId,
                                             userId,
@@ -2026,22 +2029,22 @@ const adminLogin = async (req, res) => {
                                     const cancelTicket = async (req, res) => {
                                       try {
                                         const { email, bookingId } = req.body;
-
+                                    
                                         if (!email) {
                                           return res.status(400).json({ success: false, missingEmail: 'Missing Email' });
                                         }
                                         if (!bookingId) {
                                           return res.status(400).json({ success: false, missingBookingId: 'Missing bookingId' });
                                         }
-
+                                    
                                         const booking = await BookingModel.findOne({ bookingId });
                                         if (!booking) {
                                           return res.status(404).json({ success: false, BookingNotFound: 'Booking not found with the given ID' });
                                         }
-
+                                    
                                         // Fetch the user associated with the booking
                                         const user = await UserModel.findById(booking.userId);
-
+                                    
                                         // check if the provided email matches the user email
                                         if (user.email !== email) {
                                           return res.status(400).json({
@@ -2049,51 +2052,52 @@ const adminLogin = async (req, res) => {
                                             unAuthMessage: 'Unauthorized: You are not allowed to cancel this booking with these email',
                                           });
                                         }
-
+                                    
                                         // Check if the booking status allows cancellation
                                         if (booking.status === 'cancelled') {
                                           return res.status(400).json({ success: false, alreadyCancelledMessage: 'Booking already cancelled' });
                                         }
-
+                                    
                                         // Get the trip details
                                         const trip = await TripModel.findById(booking.tripId);
                                         if (!trip) {
                                           return res.status(400).json({ success: false, tripNotFound: 'Trip not found' });
                                         }
-
+                                    
                                         // calculate the refund amount and cancellation type based on the cancellation policy
                                         const cancellationDate = new Date(booking.date);
                                         const currentDate = new Date();
                                         let cancellationType = '';
-
+                                    
                                         const dayBeforeTrip = Math.ceil((cancellationDate - currentDate) / (1000 * 60 * 60 * 24));
-
+                                    
+                                        // Debugging alerts or console logs
+                                        console.log('Day before trip:', dayBeforeTrip);
+                                    
                                         if (dayBeforeTrip >= 5) {
                                           cancellationType = 'flexible';
                                         } else if (dayBeforeTrip >= 3) {
                                           cancellationType = 'moderate';
-                                        } else {
+                                        } else if (dayBeforeTrip < 3 ){
                                           cancellationType = 'strict';
                                         }
-
+                                    
+                                       
                                         let refundAmount = 0;
-
+                                    
                                         if (cancellationType === 'flexible') {
                                           refundAmount = booking.totalFare;
-                                        } else if (cancellationType === 'moderate') {
+                                        }
+                                         else if (cancellationType === 'moderate') {
                                           refundAmount = booking.totalFare * 0.5;
                                         }
-
-                                        if (refundAmount === 0) {
-                                          return res.status(400).json({
-                                            success: false,
-                                            noRefundMessage: 'No refund provided for these cancellation types',
-                                          });
+                                         else if (cancellationType === 'strict') {
+                                          refundAmount = booking.totalFare * 0.0001;
                                         }
-
+                                         
                                         // Update the available seats and booked seats on the bus
                                         const { selectedSeatNumbers } = booking;
-
+                                    
                                         for (const seat of selectedSeatNumbers) {
                                           const index = trip.booked_seat.indexOf(seat);
                                           if (index !== -1) {
@@ -2101,34 +2105,34 @@ const adminLogin = async (req, res) => {
                                             trip.Available_seat.push(seat);
                                           }
                                         }
-
+                                    
                                         // Set the booking status to 'cancelled'
                                         booking.status = 'cancelled';
-
+                                    
                                         // Find the transaction associated with the booking
                                         const transaction = await TransactionModel.findOne({
                                           bookingId: booking.bookingId,
                                         });
-
+                                    
                                         if (transaction) {
                                           // Check if the transaction has a chargeId
                                           const chargeId = transaction.chargeId;
-
+                                    
                                           if (chargeId) {
                                             // Calculate random refund processing days between 5 to 10 working days
                                             const refundProcessingDays = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
                                             const refundProcessingDate = new Date();
                                             refundProcessingDate.setDate(refundProcessingDate.getDate() + refundProcessingDays);
-
+                                    
                                             const refund = await stripe.refunds.create({
                                               charge: chargeId,
                                               amount: Math.floor(refundAmount * 100),
                                             });
-
+                                    
                                             if (refund.status === 'succeeded') {
                                               transaction.status = 'cancelled';
                                               transaction.amount = refundAmount;
-                                              transaction.refundProcessingDate = refundProcessingDate; 
+                                              transaction.refundProcessingDate = refundProcessingDate;
                                               await transaction.save();
                                             } else {
                                               return res.status(400).json({
@@ -2138,35 +2142,36 @@ const adminLogin = async (req, res) => {
                                             }
                                           }
                                         }
+                                    
                                         const newNotification = new NotificationDetail({
-                                          userId : booking.userId ,
-                                          notificationMessage: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
+                                          userId: booking.userId,
+                                          message: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
                                           date: new Date(),
-                                          status: 'cancelled', 
+                                          status: 'cancelled',
                                           bookingId: bookingId,
-                                          tripId : booking.tripId
-
+                                          tripId: booking.tripId,
+                                          notification_status : 0
                                         });
-                                        await newNotification.save()
+                                        await newNotification.save();
+                                    
                                         // notification for admin
                                         const newAdminNotification = new AdminNotificationDetail({
-                                          userId : booking.userId ,
+                                          userId: booking.userId,
                                           cancellationMessage: ` cancle booking request sent by the user : ${booking.userId} in a trip : ${booking.tripId} with bookingId : ${bookingId} `,
-                                          date: new Date() ,
+                                          date: new Date(),
                                           bookingId: bookingId,
-                                          tripId : booking.tripId
-
+                                          tripId: booking.tripId,
                                         });
-                                        await newAdminNotification.save()
-
+                                        await newAdminNotification.save();
+                                    
                                         await booking.save();
                                         await trip.save();
-
+                                    
                                         // Send a cancellation email to the user
                                         const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
                                                               Refund Amount: $${refundAmount}\n\nYour amount will refund within 5 to 10 working days.\n\nThank you for using our service.`;
                                         await sendCancelEmail(user.email, 'Ticket Cancellation Confirmation', emailContent);
-
+                                    
                                         res.status(200).json({
                                           success: true,
                                           SuccessMessage: 'Ticket cancellation and refund successful. Confirmation sent to user email.',
@@ -2176,7 +2181,7 @@ const adminLogin = async (req, res) => {
                                         return res.status(500).json({ success: false, ServerErrorMessage: 'server error' });
                                       }
                                     };
-                      
+                                    
                         
   // Api for get tickits booked by a user 
 
@@ -2224,7 +2229,8 @@ const adminLogin = async (req, res) => {
 
                                         // Find trips that fall within the calculated date range
                                         const trips = await TripModel.find({
-                                          startingDate: { $gte: today, $lte: nextWeek }
+                                          startingDate: { $gte: today, $lte: nextWeek },
+                                          status : 'scheduled'
                                         });
                                             
                                         if (!trips || trips.length === 0) {
@@ -2422,51 +2428,72 @@ const adminLogin = async (req, res) => {
                                                       /* Booking Manage */
 //Api for get all Bookings
                  
-const allBookings = async (req, res) => {
-  try {
-    const { status, dateRange } = req.query;
+                          const allBookings = async (req, res) => {
+                            try {
+                              const { status, dateRange } = req.query;
 
-    let bookings = [];
-    let dateFilter = {};
+                              let bookings = [];
+                              let dateFilter = {};
 
-    if (dateRange) {
-      const startDate = new Date();
-      let endDate = new Date();
+                              if (dateRange) {
+                                const startDate = new Date();
 
-      switch (dateRange.toLowerCase()) {
-        case 'daily':
-          endDate.setDate(startDate.getDate() + 1);
-          break;
-        case 'weekly':
-          endDate.setDate(startDate.getDate() + 7);
-          break;
-        case 'monthly':
-          endDate.setMonth(startDate.getMonth() + 1);
-          break;
-        default:
-          return res.status(400).json({ success: false, error: 'Invalid date range value' });
-      }
+                                switch (dateRange.toLowerCase()) {
+                                  case 'daily':
+                                    dateFilter = { createdAt: { $gte: startDate } };
+                                    break;
+                                  case 'weekly':
+                                    const weeklyStartDate = new Date(startDate);
+                                    weeklyStartDate.setDate(startDate.getDate() - 7);
+                                    dateFilter = { createdAt: { $gte: weeklyStartDate, $lte: startDate } };
+                                    break;
+                                  case 'monthly':
+                                    const monthlyStartDate = new Date(startDate);
+                                    monthlyStartDate.setMonth(startDate.getMonth() - 30);
+                                    dateFilter = { createdAt: { $gte: monthlyStartDate, $lte: startDate } };
+                                    break;
+                                  default:
+                                    return res.status(400).json({ success: false, error: 'Invalid date range value' });
+                                }
+                              }
 
-      dateFilter = { createdAt: { $gte: startDate, $lt: endDate } };
-    }
+                              if (status === 'confirmed') {
+                                bookings = await BookingModel.find({ status: 'confirmed', ...dateFilter });
+                              } else if (status === 'pending' || status === 'cancelled') {
+                                bookings = await BookingModel.find({ status, ...dateFilter });
+                              } else if (!status && !dateRange) {
+                                // If neither status nor dateRange is provided, retrieve all bookings
+                                bookings = await BookingModel.find();
+                              } else if (!status && dateRange) {
+                                // If only dateRange is provided, retrieve bookings based on the date range
+                                bookings = await BookingModel.find(dateFilter);
+                              } else {
+                                return res.status(400).json({ success: false, error: 'Invalid combination of status and dateRange' });
+                              }
 
-    if (status === 'confirmed') {
-      bookings = await BookingModel.find({ status: 'confirmed', ...dateFilter });
-    } else if (status === 'pending' || status === 'cancelled') {
-      bookings = await BookingModel.find({ status: { $in: ['pending', 'cancelled'] }, ...dateFilter });
-    } else if (!status) {
-      // If status is not provided, retrieve all bookings
-      bookings = await BookingModel.find(dateFilter);
-    } else {
-      return res.status(400).json({ success: false, error: 'Invalid status value' });
-    }
+                              const confirmBookingLength = bookings.filter((booking) => booking.status === 'confirmed').length;
+                              const cancleBookingLength = bookings.filter((booking) => ['pending', 'cancelled'].includes(booking.status)).length;
+                              const bookingLength = bookings.length;
 
-    res.status(200).json({ success: true, message: 'All Tickets', All_Bookings: bookings });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: 'There is an error finding bookings' });
-  }
-};
+                              res.status(200).json({ 
+                                success: true, 
+                                message: 'All Bookings', 
+                                All_Bookings: bookings, 
+                                totalBooking: bookingLength, 
+                                confirmBooking: confirmBookingLength, 
+                                cancleBooking: cancleBookingLength 
+                              });
+                            } catch (error) {
+                              console.error(error);
+                              res.status(500).json({ success: false, error: 'There is an error finding bookings' });
+                            }
+                          };
+
+
+
+
+
+
 
 
 // Api for GET Bookings for a particular date and status
@@ -2612,8 +2639,9 @@ const allBookings = async (req, res) => {
               }
           
               const transactions = await TransactionModel.find(query);
+               const transactionlength = transactions.length
           
-              res.status(200).json({ success: true, message: 'All Transactions', transactions: transactions });
+              res.status(200).json({ success: true, message: 'All Transactions', transactions: transactions , transactionlength : transactionlength });
             } catch (error) {
               console.error('Error fetching transactions:', error);
               res.status(500).json({ success: false, message: 'Internal server error' });
@@ -2993,48 +3021,109 @@ const allBookings = async (req, res) => {
 
      // API for get notification of particular user
      
-                               const getNotification = async (req , res )=>{
+                            const getNotification = async (req, res) => {
+                              try {
+                                const userId = req.params.userId;
+                            
+                                // Check for user
+                                const user = await UserModel.findById(userId);
+                                if (!user) {
+                                  return res.status(400).json({
+                                    success: false,
+                                    message: 'User not found',
+                                  });
+                                }
+                            
+                                // Check for notifications
+                                const notifications = await NotificationDetail.find({
+                                  userId,
+                                });
+                                    
+                                      
+                                if (notifications.length === 0) {
+                                  return res.status(400).json({
+                                    success: false,
+                                    message: 'There are no notifications for the user yet',
+                                  });
+                                } else {
+                                  // Update notification status
+                                  await NotificationDetail.updateMany(
+                                    { userId, notification_status: 0 },
+                                    { $set: { notification_status: 1 } }
+                                  );
+                            
+                                  // Fetch updated notifications
+                                  const updatedNotifications = await NotificationDetail.find({
+                                    userId,
+                                  }).sort({ createdAt: -1 });
+                                    
+                                  return res.status(200).json({
+                                    success: true,
+                                    message: 'User notifications',
+                                    notification_details: updatedNotifications,
+                                  });
+                                }
+                              } catch (error) {
+                                return res.status(500).json({
+                                  success: false,
+                                  message: 'Server error',
+                                });
+                              }
+                            };
+      // API for notification status count
+                              const notificationCount = async ( req , res)=>{
                                 try {
-                                         const userId = req.params.userId
-                                         // check for user
-                                      const user = await UserModel.findById(
-                                             userId
-                                      )
-                                      if(!user)
-                                      {
-                                        return res.status(400).json({ 
-                                          success : false ,
-                                          message : 'user not found'
-                                        })
-                                      }
-
-                                      // check for notification
-                                  const notification = await NotificationDetail.find({
-                                                 userId
-                                  })
-                                  if(notification.length === 0)
-                                  {
+                                  const userId = req.params.userId;
+                              
+                                  // Check for user
+                                  const user = await UserModel.findById(userId);
+                                  if (!user) {
                                     return res.status(400).json({
-                                                  success : false ,
-                                                  message :  `there is no notification for the user yet`
-                                    })
+                                      success: false,
+                                      message: 'User not found',
+                                    });
+                                  }
+                              
+                                  // Check for notifications
+                                  const notifications = await NotificationDetail.find({
+                                    userId,
+                                  });
+                                      
+                                        // Separate notifications based on notification_status
+                                        const unseenNotifications_Count = notifications.filter(
+                                          (notification) => notification.notification_status === 0
+                                        );
+                                          
+                                  
+                                        // Sort notifications by createdAt
+                                        const sortedUnseenNotifications_Count = unseenNotifications_Count.sort(
+                                          (a, b) => b.createdAt - a.createdAt
+                                        );
+      
+                                  if (notifications.length === 0) {
+                                    return res.status(400).json({
+                                      success: false,
+                                      message: 'There are no notifications for the user yet',
+                                    });
                                   }
                                   else
                                   {
-                                    const notifications = notification.sort((a ,b)=>  b.createdAt - a.createdAt)
                                     return res.status(200).json({
-                                                   success : true ,
-                                                   message : 'user notifications',
-                                                  notification_details : notifications
+                                                       success : true ,
+                                                       SuccessMessage : 'notification count' ,
+                                                       unseenNotification : sortedUnseenNotifications_Count,
+                                                       unseenNotifications_Count : sortedUnseenNotifications_Count.length
+
                                     })
                                   }
+                                       
                                 } catch (error) {
                                   return res.status(500).json({
-                                                      success : false ,
-                                                      message : 'server error'
+                                                   success : false ,
+                                                   ServerErrorMessage : 'server error'
                                   })
                                 }
-                               }
+                              }
            
        
     // Api for get notification of admin
@@ -3557,7 +3646,145 @@ const allBookings = async (req, res) => {
                                               };
                                                                                       
                                                 
-              
+    // APi for update Admin profile
+                        const updateAdmin = async (req, res) => {
+                          try {
+                              const id = req.params.id;
+                              const { username, email } = req.body;
+                                  
+                              const requiredFields = ['username', 'email'];
+
+                              for (const field of requiredFields) {
+                                  if (!req.body[field]) {
+                                      return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
+                                  }
+                              }
+                      
+                              // Check for admin existence
+                              let admin = await Admin.findOne({ _id: id });
+                      
+                              if (!admin) {
+                                  return res.status(400).json({
+                                      success: false,
+                                      message: "Admin not found",
+                                  });
+                              }
+                      
+                              // Update username and email
+                              admin.username = username;
+                              admin.email = email;
+                                      
+                              // Handle file upload if a file is present in the request
+                              if (req.file) {
+                                  if (admin.profileImage) {
+                                      // If the admin already has a profileImage, delete the old file if it exists
+                                      const oldFilePath = `path_to_profile_images/${admin.profileImage}`;
+                                      if (fs.existsSync(oldFilePath)) {
+                                          fs.unlink(oldFilePath, (err) => {
+                                              if (err) {
+                                                  console.error('Error deleting old file:', err);
+                                              }
+                                          });
+                                      }
+                                      // Update the profileImage with the new one
+                                      admin.profileImage = req.file.filename;
+                                  } else {
+                                      // If it doesn't exist, simply set it to the new file
+                                      admin.profileImage = req.file.filename;
+                                  }
+                              }
+                                         
+                              // Save the updated admin object in the database
+                            await admin.save()
+                          
+                              return res.status(200).json({ success: true, message: 'Admin profile updated successfully',  });
+                          } catch (error) {
+                              console.log(error);
+                              res.status(500).json({ success: false, message: 'Server Error' });
+                          }
+                      };
+                          
+
+     // API for get bookings by date 
+                              const getBookings_By_Date = async (req, res) => {
+                                try {
+                                  const { key } = req.query;
+                                  let dateFilter = {};
+                                  const startDate = new Date();
+                              
+                                  switch (key) {
+                                    case '1': // Monthly
+                                      const monthlyStartDate = new Date(startDate);
+                                      monthlyStartDate.setMonth(startDate.getMonth() - 1); // subtract 1 month
+                                      dateFilter = { createdAt: { $gte: monthlyStartDate, $lte: startDate } };
+                                      break;
+                                    case '2': // Weekly
+                                      const weeklyStartDate = new Date(startDate);
+                                      weeklyStartDate.setDate(startDate.getDate() - 7); // subtract 7 days
+                                      dateFilter = { createdAt: { $gte: weeklyStartDate, $lte: startDate } };
+                                      break;
+                                    case '3': // Daily
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);                               
+                                    
+                                    dateFilter = { createdAt: { $gte: today, $lt: new Date() } };
+                                    break;
+                                    default:
+                                      return res.status(400).json({ success: false, error: 'Invalid key value' });
+                                  }
+                              
+                                  const bookings = await BookingModel.find(dateFilter);
+                              
+                                  // Initialize counters
+                                  let cancelBookingCount = 0;
+                                  let successBookingCount = 0;
+                              
+                                  // Group bookings by Date
+                                  const BookingsByDate = {};
+                              
+                                  bookings.forEach((booking) => {
+                                    const bookingDate = (new Date(booking.createdAt)).toISOString().split('T')[0];
+                              
+                                    if (!BookingsByDate[bookingDate]) {
+                                      BookingsByDate[bookingDate] = {
+                                        cancelBooking: 0,
+                                        successBooking: 0,
+                                        totalBooking: 0,
+                                      };
+                                    }
+                              
+                                    // Categorize bookings
+                                    if (booking.status === 'cancelled') {
+                                      cancelBookingCount++;
+                                      BookingsByDate[bookingDate].cancelBooking++;
+                                    } else if (booking.status === 'confirmed') {
+                                      successBookingCount++;
+                                      BookingsByDate[bookingDate].successBooking++;
+                                    }
+                              
+                                    BookingsByDate[bookingDate].totalBooking++;
+                                  });
+                              
+                                  return res.status(200).json({
+                                    success: true,
+                                    SuccessMessage: `Booking for key: ${key}`,
+                                    BookingCounts: {
+                                      cancelBooking: cancelBookingCount,
+                                      successBooking: successBookingCount,
+                                      totalBooking: bookings.length,
+                                    },
+                                    BookingsByDate,
+                                  });
+                                } catch (error) {
+                                  console.error(error);
+                                  return res.status(500).json({
+                                    success: false,
+                                    ServerErrorMessage: 'server error',
+                                  });
+                                }
+                              };
+                              
+    
 
     module.exports = { 
                         adminLogin , googleLogin , changePassword, addBus , updateBus ,
@@ -3572,7 +3799,8 @@ const allBookings = async (req, res) => {
                           export_Users , allUsers , getNotification , getAdminNotification ,  
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
                           getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback,
-                          cancelTrip  , change_trips_stop_status , getTripStops , getAdminDetails
+                          cancelTrip  , change_trips_stop_status , getTripStops , getAdminDetails , updateAdmin ,
+                          notificationCount , getBookings_By_Date
 
 
 

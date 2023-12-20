@@ -72,6 +72,7 @@ const userRegister = async (req, res) => {
       message: 'Welcome! user registered successfully.',
       date: new Date(),
       status: 'confirmed', 
+      status : 0
     });
     await newNotification.save()
     // Emit a notification to the WebSocket server
@@ -447,33 +448,32 @@ const userRegister = async (req, res) => {
     
    //Api for check upcoming bookings
          
-                        const upcoming_Booking = async (req,res)=>{
-
-                            try{
-                                const  userId  = req.params.userId                                          
-                                const today = new Date()                                         
-                                const user = await UserModel.findOne({_id:userId})  
-                                if (!user) {
-                                  return res.status(400).json({ success: false, message: 'User not found' });
-                                    }
-                                                    
-                              const upcomingBookings = await BookingModel.find({    
-                                userId: userId,                                    
-                                "date":{
-                                  $gte: today,
-                                },
-                                "status": "confirmed" 
-                              }).sort({date : 1})                                       
-                                res.status(200).json({ success : true , bookings : upcomingBookings})  
-                              }
-
-                            catch(error)
-                            {
-                              console.error(error);
-                                return res.status(500).json({ success : false , message : ' error occured to find upcoming booking'})
-                            }
-                        }
-
+   const upcoming_Booking = async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Set time to the beginning of the day
+      const user = await UserModel.findOne({ _id: userId });
+      
+      if (!user) {
+        return res.status(400).json({ success: false, message: 'User not found' });
+      }
+  
+      const upcomingBookings = await BookingModel.find({
+        userId: userId,
+        date: {
+          $gte: today,
+        },
+        status: "confirmed",
+      }).sort({ date: 1 });
+  
+      res.status(200).json({ success: true, bookings: upcomingBookings });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ success: false, message: 'Error occurred while finding upcoming bookings' });
+    }
+  };
+  
             
         //Api for check  Bookings History
             
@@ -486,12 +486,14 @@ const userRegister = async (req, res) => {
               return res.status(400).json({ success: false, error: 'User not found' });
             }
         
-            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1); 
+            yesterday.setHours(0, 0, 0, 0); 
         
             const bookingHistory = await BookingModel.find({
-              userId: userId, 
+              userId: userId,
               date: {
-                $lte: today,
+                $lt: yesterday,
               },
             }).sort({ date: 1 });
         
@@ -500,7 +502,8 @@ const userRegister = async (req, res) => {
             console.error(error);
             return res.status(500).json({ success: false, message: 'Error occurred while finding booking history' });
           }
-        }
+        };
+        
 
     // contact us 
     const contactUs =  async (req,res)=>{

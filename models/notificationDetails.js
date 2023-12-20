@@ -28,6 +28,11 @@ message :
 {
   type : String
 },
+notification_status: {
+  type: Number,
+  enum: [0,1],    
+  default : 0
+},
 
 },{
   timestamps: true,

@@ -12,6 +12,10 @@ const adminSchema = mongoose.Schema({
         type: String,
         default: '',
       },
+      email :
+      {
+        type : String
+      },
       googleId : String,
 
       linkedinId : String,

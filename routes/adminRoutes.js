@@ -71,7 +71,8 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
 //Api for change Admin Profile
 
         router.put('/changeprofile/:AdminId',upload.single('profileImage'), adminController.changeProfile)
-                   
+// API for update Admin 
+        router.post('/updateAdmin/:id',upload.single('profileImage'), adminController.updateAdmin) 
                                /* Admin Manage Drivers */
 // Api for add Driver 
         router.post('/addDriver',upload.single('driverProfileImage'), adminController.addDriver)
@@ -113,6 +114,8 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
         router.post('/getUpcomingTrip_for_DateChange', adminController.getUpcomingTrip_for_DateChange)
 // Api for change Trip 
         router.post('/changeTrip', adminController.changeTrip)
+  // APi for get booking by Date
+        router.get('/getBookings_By_Date', adminController.getBookings_By_Date)
 
                                  
                                         /*  Booking Manage */
@@ -147,6 +150,11 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
           router.get('/allUsers', adminController.allUsers)
 // API for get notifcation of the user
          router.get('/getNotification/:userId', adminController.getNotification)
+// APi for get unseen notification
+         router.get('/notificationCount/:userId', adminController.notificationCount)
+           
+// // APi for change notification status
+//          router.post('/changeNotificationStatus/:notificationId', adminController.changeNotificationStatus)
 // API for get Admin notification 
          router.get('/getAdminNotification/:adminId', adminController.getAdminNotification)
 // APi to send Notification to trip user

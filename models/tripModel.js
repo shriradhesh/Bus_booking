@@ -72,6 +72,7 @@ const tripSchema = new mongoose.Schema({
   bus_type: String,
   amenities: [String],
   images: [String],
+  totalDuration : String
  
 }, { timestamps: true });
 
