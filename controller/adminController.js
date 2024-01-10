@@ -49,12 +49,25 @@ const contactModel = require('../models/contactUs')
 const adminLogin = async (req, res) => {
   try {
       const { username, password } = req.body;
-
+              if(!username)
+              {
+                return res.status(400).json({
+                                    success : false ,
+                                    userNameMessage : 'username Required'
+                })
+              }
+              if(!password)
+              {
+                return res.status(400).json({
+                                    success : false ,
+                                    passwordMessage : 'password Required'
+                })
+              }
       // Find Admin by email
       const admin = await Admin.findOne({ username });
 
       if (!admin) {
-          return res.status(401).json({ message: 'username incorrect', success: false });
+          return res.status(401).json({ userNameMessage: 'username incorrect', success: false });
       }
 
       // Check if the stored password is in plain text
@@ -63,7 +76,7 @@ const adminLogin = async (req, res) => {
           const passwordMatch = await bcrypt.compare(password, admin.password);
 
           if (!passwordMatch) {
-              return res.status(401).json({ message: 'Password incorrect', success: false });
+              return res.status(401).json({ passwordMessage: 'Password incorrect', success: false });
           }
       } else {
           // Convert plain text password to bcrypt hash
@@ -197,151 +210,170 @@ const adminLogin = async (req, res) => {
                                              /* BUS MANAGEMENT */
         
 // APi for add new bus
-                  const addBus = async (req, res) => {
-                    try {
-                        const {
-                            bus_type,
-                            seating_capacity,
-                            bus_no,
-                            model,
-                            manufacture_year,
-                            amenities,
-                            status,
-                        } = req.body;
-                
-                        const requiredFields = [
-                            'bus_type',
-                            'seating_capacity',
-                            'bus_no',
-                            'model',
-                            'manufacture_year',
-                            'amenities',
-                            'status',
-                        ];
-                
-                        for (const field of requiredFields) {
-                            if (!req.body[field]) {
-                                return res.status(400).json({ message: `Missing ${field.replace('_', ' ')} field`, success: false });
-                            }
-                        }
-                
-                        // Check for bus number
-                        const existBus = await BusModel.findOne({ bus_no });
-                
-                        if (existBus) {
-                            return res.status(400).json({ message: 'Bus with the same Number is Already Exist', success: false });
-                        }
-                
-                       // Process and store multiple image files
-                          const imagePaths = [];
-                          if (req.files && req.files.length > 0) {
-                            req.files.forEach(file => {
-                              imagePaths.push(file.filename);
-                            });
-                          }
-                
-                        // Check Bus status
-                        const validStatuses = ['active', 'inactive'];
-                        const busStatus = validStatuses.includes(status) ? status : 'active';
-                
-                        const newBus = new BusModel({
-                            bus_type: bus_type,
-                            seating_capacity: seating_capacity,
-                            bus_no: bus_no,
-                            model: model,
-                            manufacture_year: manufacture_year,
-                            amenities: amenities,
-                            images: imagePaths,
-                            status: busStatus,
-                        });                     
-                
-                        const savedBus = await newBus.save();
-                        res.status(200).json({ success: true, message: 'Bus Added successfully', Bus: savedBus });
-                    } catch (error) {
-                        console.error('Error while adding the Bus', error);
-                        res.status(500).json({ success: false, message: 'Error while adding the Bus', error: error });
-                    }
-                };
-                
+const addBus = async (req, res) => {
+  try {
+    const {
+      bus_category,
+      bus_type,
+      seating_capacity,
+      backSeat_capacity,
+      bus_no,
+      model,
+      manufacture_year,
+      amenities,
+      status,
+    } = req.body;
 
+    const requiredFields = [
+      'bus_category',
+      'bus_type',
+      'backSeat_capacity',
+      'seating_capacity',
+      'bus_no',
+      'model',
+      'manufacture_year',
+      'amenities',
+      'status',
+    ];
+
+    for (const field of requiredFields) {
+      if (!req.body[field]) {
+        return res.status(400).json({
+          message: `Missing ${field.replace('_', ' ')} field`,
+          success: false,
+        });
+      }
+    }
+
+    const existBus = await BusModel.findOne({ bus_no });
+    if (existBus) {
+      return res.status(400).json({
+        message: 'Bus with the same Number is Already Exist',
+        success: false,
+      });
+    }
+
+    let amenitiesArray = [];
+
+    if (amenities) {
+      if (amenities !== '') {
+        amenitiesArray = JSON.parse(amenities);
+      }
+    }
+
+    const imagePaths = req.files ? req.files.map(file => file.filename) : [];
+
+    const validStatuses = ['active', 'inactive'];
+    const busStatus = validStatuses.includes(status) ? status : 'active';
+
+    const newBus = new BusModel({
+      bus_category,
+      bus_type,
+      seating_capacity,
+      backSeat_capacity,
+      bus_no,
+      model,
+      manufacture_year,
+      amenities: amenitiesArray, // Use the correct variable name here
+      images: imagePaths,
+      status: busStatus,
+    });
+
+    const savedBus = await newBus.save();
+    res.status(200).json({
+      success: true,
+      message: 'Bus Added successfully',
+      Bus: savedBus,
+    });
+  } catch (error) {
+    console.error('Error while adding the Bus', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error while adding the Bus',
+      error: error,
+    });
+  }
+};
 
   // Api for update bus with id
-                                const updateBus = async (req, res) => {
-                                  try {
-                                      const id = req.params.id;
-                                      const {
-                                          bus_type,
-                                          seating_capacity,
-                                          model,
-                                          manufacture_year,
-                                          amenities,
-                                          status,
-                                          availability
-                                      } = req.body;
-                              
-                                      const existBus = await BusModel.findOne({ _id: id });
-                              
-                                      if (!existBus) {
-                                          return res.status(404).json({ message: 'Bus Not found', success: false });
-                                      }
-                              
-                                      const validStatuses = ['active', 'inactive'];
-                                      const validAvailabilities = ['available', 'unavailable', 'booked'];
-                              
-                                      if (!validStatuses.includes(status) || !validAvailabilities.includes(availability)) {
-                                          return res.status(400).json({ message: 'Invalid status or availability value', success: false });
-                                      }
-                              
-                                      if ((status === 'inactive' && availability !== 'unavailable') ||
-                                          (availability === 'unavailable' && status !== 'inactive')) {
-                                          return res.status(400).json({
-                                              message: 'Invalid combination of status and availability',
-                                              success: false
-                                          });
-                                      }
-                              
-                                      existBus.bus_type = bus_type;
-                                      existBus.seating_capacity = seating_capacity;
-                                      existBus.model = model;
-                                      existBus.manufacture_year = manufacture_year;
-                                      existBus.amenities = amenities;
-                                      existBus.status = status;
-                                      existBus.availability = availability;
-                              
-                                      // Check if req.files exist and if it contains images
-                                      if (req.files && req.files.length > 0) {
-                                          const images = [];
-                              
-                                          for (const file of req.files) {
-                                              // Ensure that the file is an image
-                                              if (file.mimetype.startsWith('image/')) {
-                                                  // If the Bus Images already exist, delete the old file if it exists
-                                                  if (existBus.images && existBus.images.length > 0) {
-                                                      existBus.images.forEach(oldFileName => {
-                                                          const oldFilePath = `uploads/${oldFileName}`;
-                                                          if (fs.existsSync(oldFilePath)) {
-                                                              fs.unlinkSync(oldFilePath);
-                                                          }
-                                                      });
-                                                  }
-                                                  // Add the new image filename to the images array
-                                                  images.push(file.filename);
-                                              }
-                                          }
-                              
-                                          // Update the images with the new one(s) or create a new one if it doesn't exist
-                                          existBus.images = images.length > 0 ? images : undefined;
-                                      }
-                                     
-                                      const updatedBus = await existBus.save();
-                                      res.status(200).json({ success: true, message: 'Bus Details Edited Successfully', updatedBus });
-                                  } catch (error) {
-                                      console.error('Error while editing the bus details', error);
-                                      res.status(500).json({ success: false, message: 'Error while editing the bus details', error });
-                                  }
-                              };
-                              
-
+  const updateBus = async (req, res) => {
+    try {
+      const id = req.params.id;
+      const {
+        bus_type,
+        seating_capacity,
+        model,
+        manufacture_year,
+        amenities,
+        status,
+        availability
+      } = req.body;
+  
+      const existBus = await BusModel.findOne({ _id: id });
+  
+      if (!existBus) {
+        return res.status(404).json({ message: 'Bus Not found', success: false });
+      }
+  
+      const validStatuses = ['active', 'inactive'];
+      const validAvailabilities = ['available', 'unavailable', 'booked'];
+  
+      if (!validStatuses.includes(status) || !validAvailabilities.includes(availability)) {
+        return res.status(400).json({ message: 'Invalid status or availability value', success: false });
+      }
+  
+      if ((status === 'inactive' && availability !== 'unavailable') ||
+          (availability === 'unavailable' && status !== 'inactive')) {
+        return res.status(400).json({
+          message: 'Invalid combination of status and availability',
+          success: false
+        });
+      }
+  
+      existBus.bus_type = bus_type;
+      existBus.seating_capacity = seating_capacity;
+      existBus.model = model;
+      existBus.manufacture_year = manufacture_year;
+  
+      // Update amenities based on the input
+      existBus.amenities = amenities && amenities !== '' ? JSON.parse(amenities) : [];
+  
+      existBus.status = status;
+      existBus.availability = availability;
+  
+      // Check if req.files exist and if it contains images
+      if (req.files && req.files.length > 0) {
+        const images = [];
+  
+        for (const file of req.files) {
+          // Ensure that the file is an image
+          if (file.mimetype.startsWith('image/')) {
+            // If the Bus Images already exist, delete the old file if it exists
+            if (existBus.images && existBus.images.length > 0) {
+              existBus.images.forEach(oldFileName => {
+                const oldFilePath = `uploads/${oldFileName}`;
+                if (fs.existsSync(oldFilePath)) {
+                  fs.unlinkSync(oldFilePath);
+                }
+              });
+            }
+            // Add the new image filename to the images array
+            images.push(file.filename);
+          }
+        }
+  
+        // Update the images with the new one(s) or create a new one if it doesn't exist
+        existBus.images = images.length > 0 ? images : undefined;
+      }
+  
+      const updatedBus = await existBus.save();
+      res.status(200).json({ success: true, message: 'Bus Details Edited Successfully', updatedBus });
+    } catch (error) {
+      console.error('Error while editing the bus details', error);
+      res.status(500).json({ success: false, message: 'Error while editing the bus details', error });
+    }
+  };
+  
   //APi for delete Bus 
                
                   const deleteBus = async (req, res) => {
@@ -960,6 +992,14 @@ const adminLogin = async (req, res) => {
               const changeProfile = async(req,res)=>{
                 try{
                        const AdminId = req.params.AdminId
+
+                  if(!AdminId)
+                  {
+                    return res.status(400).json({
+                                      success : false ,
+                                      adminExistanceMessage : 'AdminId required'
+                    })
+                  }
                  // check for Admin exist
                  const admin = await Admin.findById(AdminId)
                  if(!admin){
@@ -1146,6 +1186,14 @@ const adminLogin = async (req, res) => {
                               const getDriver = async (req, res) => {
                                 try {
                                   const driverId = req.params.driverId;
+                                  if(!driverId)
+                                  {
+                                    return res.status(400).json({
+                                                       success : false ,
+                                                       driverIdExistance : 'DriverId required'
+                                    })
+                                  }
+
                                   const driver = await DriverModel.findById(driverId);
 
                                   if (!driver) {
@@ -1173,7 +1221,7 @@ const adminLogin = async (req, res) => {
                                               startingDate,
                                               endDate,
                                               startingTime,
-                                              status,
+                                              status ,
                                             } = req.body;
 
                                             const requiredFields = [
@@ -1244,7 +1292,8 @@ const adminLogin = async (req, res) => {
                                               return res.status(400).json({ BusMessage: 'Bus not found ', success: false });
                                             }
 
-                                            const { bus_type, amenities, images } = bus;
+                                            const { bus_type, amenities, images , seating_capacity , backSeat_capacity , bus_category
+                                               } = bus;
 
                                             // Check for Route number and fetch stops
                                             const route = await BusRoute.findOne({ routeNumber });
@@ -1254,7 +1303,7 @@ const adminLogin = async (req, res) => {
                                             }
 
                                             const stops = route.stops;
-                                            console.log('stops:', stops);
+                                           
                                              // Ensure that EstimatedTimeTaken is a number for each stop
                                           const totalDurationInMinutes = stops.reduce((acc, stop) => {
                                             const [hours, minutes] = stop.EstimatedTimeTaken.split(',').map((str) => parseInt(str.trim()));
@@ -1279,12 +1328,15 @@ const adminLogin = async (req, res) => {
                                               bus_no,
                                               driverId,
                                               routeNumber,
-                                              status,
+                                              status :  'scheduled',
                                               Available_seat,
                                               bus_type,
                                               amenities,
                                               images,
                                               stops,
+                                              seating_capacity,
+                                              backSeat_capacity,
+                                              bus_category,
                                               totalDuration: `${totalHours} hour${totalHours !== 1 ? 's' : ''} ${totalMinutes} minute${totalMinutes !== 1 ? 's' : ''}`,
                                             });
 
@@ -1307,35 +1359,41 @@ const adminLogin = async (req, res) => {
 
                                 // schedule a job to update trip status
                                 
-                                cron.schedule('* * * * *', async ()=>{
-                                  try{
-                                    const currentDate = new Date()
-                                         // find trips with end Date
+                                cron.schedule('* * * * *', async () => {
+                                  try {
+                                    const currentDate = new Date();
+                                
+                                    // find trips with end Date over
                                     const expiredTrips = await TripModel.find({
-                                      endDate : {
-                                        $lt : currentDate
-                                      }                                     
-                                    })
-                                    if(expiredTrips.length > 0)
-                                     {
-                                        await TripModel.updateMany({ _id:{
-                                                                  $in : expiredTrips.map(trip => trip._id)}} ,
-                                                                   { status : 'completed'}
-                                                                   )
-                                          }
-                                           }
-                                             catch(error)
-                                                 {
-                                                console.error('Error while updating trip status :', error);
-                                                 }
-                                     })
-
+                                      endDate: {
+                                        $lt: currentDate,
+                                      },
+                                      status: { $ne: 'completed' }, 
+                                    });
+                                
+                                    if (expiredTrips.length > 0) {
+                                      await TripModel.updateMany(
+                                        {
+                                          _id: {
+                                            $in: expiredTrips.map((trip) => trip._id),
+                                          },
+                                        },
+                                        {
+                                          status: 'completed',
+                                        }
+                                      );
+                                    }
+                                  } catch (error) {
+                                    console.error('Error while updating trip status:', error);
+                                  }
+                                });
+                                
 
       // Api to get all the Trip for a particular StartingDate
                                       const allTrips = async (req, res) => {
                                         try {
                                           const { status } = req.query;
-                                      
+                                           
                                           // Validate if a valid status is provided
                                           if (status && !['scheduled', 'cancelled', 'completed'].includes(status)) {
                                             return res.status(400).json({ error: 'Invalid status provided', success: false });
@@ -1366,7 +1424,27 @@ const adminLogin = async (req, res) => {
                                   const searchTrips = async (req, res) => {
                                     try {
                                       const { sourceStop, destinationStop, date } = req.body;
-                                  
+                                  if(!sourceStop)
+                                  {
+                                    return res.status(400).json({
+                                                       success : false ,
+                                                       sourceStopExistance : 'sourceStop required'
+                                    })
+                                  }
+                                  if(!destinationStop)
+                                  {
+                                    return res.status(400).json({
+                                                       success : false ,
+                                                       destinationStopExistance : 'destinationStop required'
+                                    })
+                                  }
+                                  if(!date)
+                                  {
+                                    return res.status(400).json({
+                                                       success : false ,
+                                                       dateExistance : 'date required'
+                                    })
+                                  }
                                       // Find trips that match the given date
                                       const trips = await TripModel.find({
                                         startingDate: date ,
@@ -1429,58 +1507,91 @@ const adminLogin = async (req, res) => {
                  
  // API for View seats in Bus for a trip
                             
-                                const viewSeats = async (req, res) => {
-                                  try {
-                                    const tripId = req.body.tripId
+                      const viewSeats = async (req, res) => {
+                        try {
+                          const tripId = req.body.tripId;
 
-                                    // Find the trip by its ID
-                                    const trip = await TripModel.findById(tripId);
+                          if (!tripId) {
+                            return res.status(400).json({
+                              success: false,
+                              tripId: 'tripId required',
+                            });
+                          }
 
-                                    if (!trip) {
-                                      return res.status(404).json({ success: false, error: 'Trip not found' });
-                                    }
-                                    
-                                    let tripNumber = trip.tripNumber;
+                          // Find the trip by its ID
+                          const trip = await TripModel.findById(tripId);
 
-                                    // Initialize seats array with status codes
-                                    let seats = [];
+                          if (!trip) {
+                            return res.status(404).json({ success: false, error: 'Trip not found' });
+                          }
 
-                                    
-                                    const bookingsOnDate = await BookingModel.find({
-                                      tripId,
-                                      status: 'confirmed',
-                                    });
+                          let tripNumber = trip.tripNumber;
+                          const seatCapacity = trip.seating_capacity;
 
-                                    // If there are bookings on the given trip, populate seats array
-                                    if (bookingsOnDate.length > 0) {
-                                      const bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
-                                      trip.Available_seat.forEach((seat) => {
-                                        const status = bookedSeats.includes(seat) ? 1 : 0;
-                                        seats.push({ seat, status });
-                                      });
-                                      
-                                      // Also add the booked seats with status 1
-                                      bookedSeats.forEach((seat) => {
-                                        seats.push({ seat, status: 1 });
-                                      });
-                                    } else {
-                                      // If there are no bookings, all seats are marked as available.
-                                      trip.Available_seat.forEach((seat) => {
-                                        seats.push({ seat, status: 0 });
-                                      });
-                                    }
+                          const backSeat_capacity = trip.backSeat_capacity
+                          const resultSeat = seatCapacity - backSeat_capacity
 
-                                    res.status(200).json({
-                                      success: true,
-                                      message: 'Seat information of a Bus in a Trip',
-                                      tripNumber: tripNumber,
-                                      Seat_Info: seats,
-                                    });
-                                  } catch (error) {
-                                    console.error(error);
-                                    res.status(500).json({ success: false, error: 'Error while fetching seat information' });
-                                  }
-                                };
+                          // Initialize seats array with status codes
+                          let seats = [];
+
+                          const bookingsOnDate = await BookingModel.find({
+                            tripId,
+                            status: 'confirmed',
+                          });
+
+                          // If there are bookings on the given trip, populate seats array
+                          if (bookingsOnDate.length > 0) {
+                            const bookedSeats = [].concat(...bookingsOnDate.map((booking) => booking.selectedSeatNumbers));
+
+                            // Calculate panorama, window, and classic seats
+                            for (let seat = 1; seat <= seatCapacity; seat++) {
+                              const status = bookedSeats.includes(seat) ? 1 : 0;
+                              let seatType = getSeatType(seat);
+                              seats.push({ seat, status, seatType });
+                            }
+                          } else {
+                            // Calculate panorama, window, and classic seats
+                            for (let seat = 1; seat <= seatCapacity; seat++) {
+                              const status = 0;
+                              let seatType = getSeatType(seat);
+                              seats.push({ seat, status, seatType });
+                            }
+                          }
+
+                          // Update the seat type of specified seats to 'Panorama Seat'
+                          [1, 2, 5, 6, 7].forEach((panoramaSeat) => {
+                            seats[panoramaSeat - 1].seatType = 'Panorama Seat';
+                          });
+
+                          // Update the seat type of the second to last seat to 'Classic Seat'
+                          if (seats.length >= 2) {
+                            seats[seats.length - 2].seatType = 'Classic Seat';
+                          }
+                          if (seats.length >= 2) {
+                            seats[seats.length - 57].seatType = 'Reserved Seat';
+                          }
+
+                          res.status(200).json({
+                            success: true,
+                            message: 'Seat information of a Bus in a Trip',
+                            tripNumber: tripNumber,
+                            Seat_Info: seats,
+                          });
+                        } catch (error) {
+                          console.error(error);
+                          res.status(500).json({ success: false, error: 'Error while fetching seat information' });
+                        }
+                      };
+
+                      // Function to determine seat type based on seat number
+                      const getSeatType = (seatNumber) => {
+                        const windowSeatsPattern = [3, 8, 12, 15, 16, 20, 21, 25, 26, 30, 31, 35, 36, 40, 41, 45, 46, 50, 51, 55, 58, 59, 63, 64, 69];
+                        return windowSeatsPattern.includes(seatNumber) ? 'Window Seat' : 'Classic Seat';
+                      };
+
+
+
+
 
 // APi for calculateFareFor selected seats in Bus for trip
                             
@@ -1489,8 +1600,7 @@ const adminLogin = async (req, res) => {
                     const tripId = req.params.tripId;
                     const {selectedSeatNumbers , passengerAges} = req.body; 
                     const { sourceStop, destinationStop } = req.query;
-                        
-                      
+                   
                     // Find the trip by its ID
                     const trip = await TripModel.findById(tripId);
                           
@@ -1659,6 +1769,8 @@ const adminLogin = async (req, res) => {
     // api for book tickit               
        
                                       const bookTicket = async (req, res) => {
+                                       
+                                      
                                         try {
                                           const { tripId } = req.params;
                                           const {
@@ -1671,8 +1783,12 @@ const adminLogin = async (req, res) => {
                                              payment                       
                                             
                                           } = req.body;
-                                               
+                                             
+                                         
+                                          
+
                                           const { source, destination } = req.query;
+                                         
                                           const date = new Date(journey_date)
                                         
                                           // Checking for required fields in the request
@@ -1706,8 +1822,9 @@ const adminLogin = async (req, res) => {
                                               message: 'User not found',
                                             });
                                           }
+                                            const userFullName = user.fullName
                                           const userId = user._id;                                      
-                                          
+                                             
                                           // Fetch trip and check if it exists
                                           const trip = await TripModel.findById(tripId);
                                            const tripNumber = trip.tripNumber
@@ -1866,7 +1983,7 @@ const adminLogin = async (req, res) => {
                                           await transaction.save();
                                           const newAdminNotification = new AdminNotificationDetail({
                                             userId  ,                                           
-                                            message: `congratulation ..!! , new booking has been made by the user : ${userId} in a trip : ${tripId} with bookingId : ${bookingId} `,
+                                            message: `congratulation ..!! , new booking has been made by the user : ${userFullName} in a trip : ${tripNumber} with bookingId : ${bookingId} `,
                                             date: date,
                                             status: 'confirmed', 
                                             bookingId: bookingId,
@@ -2044,7 +2161,7 @@ const adminLogin = async (req, res) => {
                                     
                                         // Fetch the user associated with the booking
                                         const user = await UserModel.findById(booking.userId);
-                                    
+                                          const userName = user.fullName
                                         // check if the provided email matches the user email
                                         if (user.email !== email) {
                                           return res.status(400).json({
@@ -2063,7 +2180,7 @@ const adminLogin = async (req, res) => {
                                         if (!trip) {
                                           return res.status(400).json({ success: false, tripNotFound: 'Trip not found' });
                                         }
-                                    
+                                           const tripNumber = trip.tripNumber
                                         // calculate the refund amount and cancellation type based on the cancellation policy
                                         const cancellationDate = new Date(booking.date);
                                         const currentDate = new Date();
@@ -2157,7 +2274,7 @@ const adminLogin = async (req, res) => {
                                         // notification for admin
                                         const newAdminNotification = new AdminNotificationDetail({
                                           userId: booking.userId,
-                                          cancellationMessage: ` cancle booking request sent by the user : ${booking.userId} in a trip : ${booking.tripId} with bookingId : ${bookingId} `,
+                                          message: ` cancle booking request sent by the user : ${userName} in a trip : ${tripNumber} with bookingId : ${bookingId} `,
                                           date: new Date(),
                                           bookingId: bookingId,
                                           tripId: booking.tripId,
@@ -2270,6 +2387,7 @@ const adminLogin = async (req, res) => {
                                             message: 'No matching trips found for the route'
                                           });
                                         }
+                                        
                                         res.status(200).json({
                                           success: true,
                                           message: 'upcoming trips for the same route ',
@@ -2290,139 +2408,163 @@ const adminLogin = async (req, res) => {
                           
       // change Trip
 
-                                  const changeTrip = async (req, res) => {
-                                    try {
-                                      const { bookingId, newTripId } = req.body;
-                                  
-                                      // Validate required fields
-                                      const requiredFields = ['bookingId', 'newTripId'];
-                                      for (const field of requiredFields) {
-                                        if (!req.body[field]) {
-                                          return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
-                                        }
-                                      }
-                                  
-                                      // Find the booking by bookingId
-                                      const booking = await BookingModel.findOne({ bookingId });
-                                  
-                                      if (!booking) {
-                                        return res.status(404).json({ success: false, message : 'Booking not found' });
-                                      }
-                                  
-                                      // Check if the trip has already been updated
-                                      if (booking.tripUpdated) {
-                                        return res.status(400).json({ success: false, message : 'Trip already updated once' });
-                                      }
-                                  
-                                      const oldTripId = booking.tripId;
-                                  
-                                      // Find the old and new trips based on tripIds
-                                      const oldTrip = await TripModel.findById(oldTripId);
-                                  
-                                      if (!oldTrip) {
-                                       
-                                        return res.status(404).json({ success: false, message : 'Old Trip not found' });
-                                      }
-                                  
-                                      const newTrip = await TripModel.findById(newTripId);
-                                  
-                                      if (!newTrip) {
-                                       
-                                        return res.status(404).json({ success: false, message : 'New trip not found' });
-                                      }
-                                  
-                                      if (!Array.isArray(booking.selectedSeatNumbers) || booking.selectedSeatNumbers.length !== booking.passengers.length) {
-                                        return res.status(400).json({ success: false, message : 'Invalid selected seat number' });
-                                      }
-                                  
-                                      // Check if oldTrip and oldTrip.booked_seat are defined and are arrays
-                                      if (!oldTrip || !Array.isArray(oldTrip.booked_seat)) {
-                                        return res.status(400).json({
-                                          success : false,
-                                          message : 'Invalid old trip data',
-                                        });
-                                      }
-                                  
-                                      // Transfer the selected seats from the old trip to the new trip's booked_seat and vice versa
-                                      for (const seat of booking.selectedSeatNumbers) {
-                                        const oldSeatIndex = oldTrip.booked_seat.indexOf(seat);
-                                        const newSeatIndex = newTrip.Available_seat.indexOf(seat);
-                                  
-                                        if (oldSeatIndex !== -1) {
-                                          oldTrip.booked_seat.splice(oldSeatIndex, 1);
-                                          oldTrip.Available_seat.push(seat);
-                                        }
-                                  
-                                        if (newSeatIndex !== -1) {
-                                          newTrip.Available_seat.splice(newSeatIndex, 1);
-                                          newTrip.booked_seat.push(seat);
-                                        }
-                                      }
-                                  
-                                      // Check if the same selectedSeatNumbers of the new trip are already booked in BookingModel
-                                      const existingBooking = await BookingModel.findOne({
-                                        tripId: newTripId,
-                                        selectedSeatNumbers: { $in: booking.selectedSeatNumbers },
-                                      });
-                                  
-                                      if (existingBooking) {
-                                        // Assign different seat numbers to the user on the same bookingId
-                                        const availableSeatsInNewTrip = newTrip.Available_seat;
-                                        const newSelectedSeatNumbers = [];
-                                  
-                                        for (const seat of booking.selectedSeatNumbers) {
-                                          if (availableSeatsInNewTrip.includes(seat)) {
-                                            newSelectedSeatNumbers.push(seat);
-                                            availableSeatsInNewTrip.splice(availableSeatsInNewTrip.indexOf(seat), 1);
-                                          } else {
-                                            // Find and assign a different seat
-                                            const differentSeat = availableSeatsInNewTrip.shift();
-                                            newSelectedSeatNumbers.push(differentSeat);
-                                          }
-                                        }
-                                  
-                                        // Update the selectedSeatNumbers and passengers of the existing booking
-                                        existingBooking.selectedSeatNumbers = newSelectedSeatNumbers;
-                                        // Update passengers accordingly
-                                        for (let i = 0; i < booking.passengers.length; i++) {
-                                          existingBooking.passengers[i].seat = newSelectedSeatNumbers[i];
-                                        }
-                                  
-                                        // Save changes to the existing booking
-                                        await existingBooking.save();
-                                      }
-                                  
-                                      // Check if there are available seats in the new trip
-                                      if (newTrip.Available_seat.length === 0) {
-                                        return res.status(400).json({
-                                          success: false,
-                                          message: 'No available seats in the new trip. Please select another trip.',
-                                        });
-                                      }
-                                  
-                                      // Update the booking's tripId to the newTripId
-                                      booking.tripId = newTripId;
-                                      
-                                      booking.date = newTrip.startingDate;
-                                  
-                                      // Mark the trip as updated
-                                      booking.tripUpdated = true;
-                                  
-                                      // Save changes to the booking, oldTrip, and newTrip
-                                      await Promise.all([booking.save(), oldTrip.save(), newTrip.save()]);
-                                  
-                                      return res.status(200).json({
-                                        success: true,
-                                        message: 'Trip changed successfully',
-                                      });
-                                    } catch (error) {
-                                      console.error(error);
-                                      return res.status(500).json({
-                                        success: false,
-                                        message : 'There is an error',
-                                      });
+                              const changeTrip = async (req, res) => {
+                                try {
+                                  const { bookingId, newTripId } = req.body;
+                              
+                                  // Validate required fields
+                                  const requiredFields = ['bookingId', 'newTripId'];
+                                  for (const field of requiredFields) {
+                                    if (!req.body[field]) {
+                                      return res.status(400).json({ error: `Missing ${field.replace('_', ' ')} field`, success: false });
                                     }
-                                  };
+                                  }
+                                      
+                                  // Find the booking by bookingId 
+                                  const booking = await BookingModel.findOne({ bookingId });
+                                      const userId = booking.userId
+                                    const user  = await UserModel.findOne({ _id : userId })
+                                    const userName = user.fullName
+                                  if (!booking) {
+                                    return res.status(404).json({ success: false, message : 'Booking not found' });
+                                  }
+                                if (booking) {
+                                    // Check if the associated trip is completed
+                                    //   const bookingInHistory = await BookingModel.findOne({ bookingId : bookingId });
+                                      const associatedTrip = await TripModel.findById(booking.tripId);
+
+                                  if (associatedTrip && associatedTrip.status === 'completed') {
+                                      return res.status(400).json({ success: false, message: 'You cannot change the trip for previous booking Id.' });
+                                      }
+                                  else
+                                    {
+                                if (booking.tripUpdated) {
+                                    return res.status(400).json({ success: false, message : 'Trip already updated once' });
+                                  }
+                              
+                                  const oldTripId = booking.tripId;
+                              
+                                  // Find the old and new trips based on tripIds
+                                  const oldTrip = await TripModel.findById(oldTripId);
+                                    const oldTripNumber = oldTrip.tripNumber
+                              
+                                  if (!oldTrip) {
+                                  
+                                    return res.status(404).json({ success: false, message : 'Old Trip not found' });
+                                  }
+                              
+                                  const newTrip = await TripModel.findById(newTripId);
+                                  const newTripNumber = newTrip.tripNumber
+                              
+                                  if (!newTrip) {
+                                  
+                                    return res.status(404).json({ success: false, message : 'New trip not found' });
+                                  }
+                              
+                                  if (!Array.isArray(booking.selectedSeatNumbers) || booking.selectedSeatNumbers.length !== booking.passengers.length) {
+                                    return res.status(400).json({ success: false, message : 'Invalid selected seat number' });
+                                  }
+                              
+                                  // Check if oldTrip and oldTrip.booked_seat are defined and are arrays
+                                  if (!oldTrip || !Array.isArray(oldTrip.booked_seat)) {
+                                    return res.status(400).json({
+                                      success : false,
+                                      message : 'Invalid old trip data',
+                                    });
+                                  }
+                              
+                                  // Transfer the selected seats from the old trip to the new trip's booked_seat and vice versa
+                                  for (const seat of booking.selectedSeatNumbers) {
+                                    const oldSeatIndex = oldTrip.booked_seat.indexOf(seat);
+                                    const newSeatIndex = newTrip.Available_seat.indexOf(seat);
+                              
+                                    if (oldSeatIndex !== -1) {
+                                      oldTrip.booked_seat.splice(oldSeatIndex, 1);
+                                      oldTrip.Available_seat.push(seat);
+                                    }
+                              
+                                    if (newSeatIndex !== -1) {
+                                      newTrip.Available_seat.splice(newSeatIndex, 1);
+                                      newTrip.booked_seat.push(seat);
+                                    }
+                                  }
+                              
+                                  // Check if the same selectedSeatNumbers of the new trip are already booked in BookingModel
+                                  const existingBooking = await BookingModel.findOne({
+                                    tripId: newTripId,
+                                    selectedSeatNumbers: { $in: booking.selectedSeatNumbers },
+                                  });
+                              
+                                  if (existingBooking) {
+                                    // Assign different seat numbers to the user on the same bookingId
+                                    const availableSeatsInNewTrip = newTrip.Available_seat;
+                                    const newSelectedSeatNumbers = [];
+                              
+                                    for (const seat of booking.selectedSeatNumbers) {
+                                      if (availableSeatsInNewTrip.includes(seat)) {
+                                        newSelectedSeatNumbers.push(seat);
+                                        availableSeatsInNewTrip.splice(availableSeatsInNewTrip.indexOf(seat), 1);
+                                      } else {
+                                        // Find and assign a different seat
+                                        const differentSeat = availableSeatsInNewTrip.shift();
+                                        newSelectedSeatNumbers.push(differentSeat);
+                                      }
+                                    }
+                              
+                                    // Update the selectedSeatNumbers and passengers of the existing booking
+                                    existingBooking.selectedSeatNumbers = newSelectedSeatNumbers;
+                                    // Update passengers accordingly
+                                    for (let i = 0; i < booking.passengers.length; i++) {
+                                      existingBooking.passengers[i].seat = newSelectedSeatNumbers[i];
+                                    }
+                              
+                                    // Save changes to the existing booking
+                                    await existingBooking.save();
+                                  }
+                              
+                                  // Check if there are available seats in the new trip
+                                  if (newTrip.Available_seat.length === 0) {
+                                    return res.status(400).json({
+                                      success: false,
+                                      message: 'No available seats in the new trip. Please select another trip.',
+                                    });
+                                  }
+                              
+                                  // Update the booking's tripId to the newTripId
+                                  booking.tripId = newTripId;
+                                  
+                                  booking.date = newTrip.startingDate;
+                              
+                                  // Mark the trip as updated
+                                  booking.tripUpdated = true;
+                              
+                                  // Save changes to the booking, oldTrip, and newTrip
+                                  await Promise.all([booking.save(), oldTrip.save(), newTrip.save()]);
+                                      // notification for admin
+                                      const newAdminNotification = new AdminNotificationDetail({
+                                        userId: booking.userId,
+                                        message: `${userName} changed the trip from tripNumber  : ${oldTripNumber} to  tripNumber : ${newTripNumber} with bookingId : ${bookingId} `,
+                                        bookingId,
+                                        date: new Date(),                                       
+                                      });
+                                      await newAdminNotification.save();
+
+                                  return res.status(200).json({
+                                    success: true,
+                                    message: 'Trip changed successfully',
+                                  });
+                                      }
+                                  }                              
+                                
+                                } catch (error) {
+                                  console.error(error);
+                                  return res.status(500).json({
+                                    success: false,
+                                    message : 'There is an error',
+                                  });
+                                }
+                              };
+
                                   
                  
                                                       /* Booking Manage */
@@ -3783,9 +3925,143 @@ const adminLogin = async (req, res) => {
                                   });
                                 }
                               };
-                              
-    
+      
+    // APi for get total amount in transaction table
+                             const totalTransactionAmount = async ( req , res) =>{
+                              try {
+                                       // check for all transaction amount
+                                    const query = {}
+                                    const transactions = await TransactionModel.find(query)
 
+                                    const totalAmount = transactions.reduce((total , transaction)=>{
+                                      return total + transaction.amount
+                                    } , 0)
+                                    return res.status(200).json({ 
+                                                    success : true ,
+                                                     SuccessMessage : 'total Amount',
+                                                     totalAmount : totalAmount
+                                    })
+                              } catch (error) {
+                                return res.status(500).json({
+                                              success : false ,
+                                              ServerErrorMessage : 'server Error'
+                                })
+                              }
+                             }
+    // APi for get particular transaction from transaction model
+                     const getTransaction_by_bookingId = async ( req ,res)=>{
+                      try {
+                             const bookingId = req.body.bookingId
+                          // check for booking Id required 
+                        if(!bookingId)
+                        {
+                          return res.status(400).json({
+                                               success : false ,
+                                              bookingIdRequired : 'booking Id required'
+                          })
+                        }
+
+                     // check for transaction 
+                       const transaction = await TransactionModel.find({ bookingId : bookingId })
+                        if(!transaction)
+                        {
+                          return res.status(400).json({
+                                         success : false ,
+                                          transactionExistanceMessage : `transaction with the bookingId : ${bookingId} not exist`
+                          })
+                        }
+                        else
+                        {
+                          return res.status(200).json({ 
+                                         success : true ,
+                                        SuccessMessage : `transaction with the bookingId : ${bookingId} `,
+                                        transaction_details : transaction
+                          })
+                        }
+                      } catch (error) {
+                        return res.status(500).json({
+                                    success : false ,
+                                    ServerErrorMessage : 'server error'
+                        })
+                      }
+                     }
+
+      // APi for get particular Booking By tripNumber from BookingModel
+      const getbooking_by_tripNumber = async ( req ,res)=>{
+        try {
+               const tripNumber = req.body.tripNumber
+            // check for tripNumber  required 
+          if(!tripNumber)
+          {
+            return res.status(400).json({
+                                 success : false ,
+                                 tripNumberRequired : 'tripNumber required'
+            })
+          }
+
+       // check for booking 
+         const booking = await BookingModel.find({ tripNumber : tripNumber })
+          if(!booking)
+          {
+            return res.status(400).json({
+                           success : false ,
+                            transactionExistanceMessage : `booking with the tripNumber : ${tripNumber} not exist`
+            })
+          }
+          else
+          {
+            return res.status(200).json({ 
+                           success : true ,
+                          SuccessMessage : `booking with the tripNumber : ${tripNumber} `,
+                          booking_details : booking
+            })
+          }
+        } catch (error) {
+          return res.status(500).json({
+                      success : false ,
+                      ServerErrorMessage : 'server error'
+          })
+        }
+       }
+  // APi for get all Details count
+       const getAllDetailsCount = async(req ,res)=>{
+        try {
+               // check for all Buses
+            const allBuses = await BusModel.find({})
+            if(!allBuses)
+            {
+                return res.status(400).json({
+                              success : false ,
+                              BusExistanceMessage : 'allBuses Not found'
+                })
+            }
+              const BusLength = allBuses.length
+         // check for all Routes
+            const All_Routes = await BusRoute.find({})
+            if(!All_Routes)
+            {
+                return res.status(400).json({
+                              success : false ,
+                              All_RoutesExistanceMessage : 'Routes Not found'
+                })
+            }
+              const All_RoutesLength = All_Routes.length
+
+              return res.status(200).json({
+                           success : true ,
+                           details : {
+                               total_Bus : BusLength,
+                               total_Routes : All_RoutesLength
+                           }
+              })
+         
+        } catch (error) {
+            return res.status(500).json({
+                        success : false ,
+                        serverErrorMessage : 'server error'
+            })
+        }
+      }
     module.exports = { 
                         adminLogin , googleLogin , changePassword, addBus , updateBus ,
                         deleteBus, allBuses ,getBus, addRoute , allroutes , editRoute,addStop_in_Route,
@@ -3800,7 +4076,8 @@ const adminLogin = async (req, res) => {
                           getBookingTrip , sendNotification_to_tripUsers , sendNotification_to_allUser , sendNotifications,
                           getAll_Users_Notificatation , deleteAllUserNotifications , deleteNotifcationById , deleteFeedback,
                           cancelTrip  , change_trips_stop_status , getTripStops , getAdminDetails , updateAdmin ,
-                          notificationCount , getBookings_By_Date
+                          notificationCount , getBookings_By_Date , totalTransactionAmount , getTransaction_by_bookingId ,
+                          getbooking_by_tripNumber , getAllDetailsCount
 
 
 

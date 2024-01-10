@@ -1,5 +1,9 @@
 const mongoose = require('mongoose')
 const busSchema = new mongoose.Schema({
+  bus_category : {
+    type : String,
+    required : true,
+  },
   bus_type:{
     type : String,
     required : true,
@@ -8,7 +12,10 @@ const busSchema = new mongoose.Schema({
     type : Number,
     required : true,
   },   
-    
+  backSeat_capacity :
+  {
+    type : Number
+  },
   bus_no: {
     type : String,
     required : true
@@ -21,10 +28,15 @@ const busSchema = new mongoose.Schema({
     type : Number,
     required : true,
 },
-  amenities:{
-   type :[String],
-   required : true,
+
+ amenities: [
+  {
+    amenities_Name: {
+      type: String
+    },    
   },
+],
+
   images:{
     type : [String],
     required : true,

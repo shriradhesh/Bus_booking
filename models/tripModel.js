@@ -72,7 +72,16 @@ const tripSchema = new mongoose.Schema({
   bus_type: String,
   amenities: [String],
   images: [String],
-  totalDuration : String
+  totalDuration : String,
+  seating_capacity: {
+    type : Number,    
+  },
+  backSeat_capacity : {
+    type : Number
+  },
+  bus_category :{
+    type : String
+  }
  
 }, { timestamps: true });
 

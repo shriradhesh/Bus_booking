@@ -178,8 +178,15 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
         router.post('/cancelTrip/:tripId', adminController.cancelTrip)
 // APi for get admin details
          router.get('/getAdminDetails', adminController.getAdminDetails)
-
-                                   
+// APi for get total transaction Amount
+         router.get('/totalTransactionAmount', adminController.totalTransactionAmount)
+// Api for get tranaction by booking Id
+        router.get('/getTransaction_by_bookingId', adminController.getTransaction_by_bookingId)
+// APi for get booking by tripNumber
+         router.get('/getbooking_by_tripNumber', adminController.getbooking_by_tripNumber)    
+         
+// APi for getAllDetailsCount
+           router.get('/getAllDetailsCount', adminController.getAllDetailsCount)
                                      
 
 
