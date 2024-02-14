@@ -16,7 +16,7 @@ const bookingSchema = new mongoose.Schema({
     },
     tripNumber :
     {
-        type : Number
+        type : String
     },
     
 

@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const tripSchema = new mongoose.Schema({
   tripNumber : {
-        type : Number,
-        required : true
+        type : String,
+        
     },
  startingDate: {
         type: Date,
@@ -52,7 +52,13 @@ const tripSchema = new mongoose.Schema({
       stopName: {
         type: String,
       },
-      EstimatedTimeTaken: {
+       EstimatedTimeTaken: {
+        type: String, 
+      }, 
+      arrival_time: {
+        type: String, 
+      },
+      departure_time: {
         type: String, 
       },
       distance: {
@@ -81,6 +87,9 @@ const tripSchema = new mongoose.Schema({
   },
   bus_category :{
     type : String
+  },
+  eur_per_five_km : {
+        type  : Number
   }
  
 }, { timestamps: true });

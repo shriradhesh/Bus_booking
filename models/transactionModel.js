@@ -14,15 +14,31 @@ const transactionSchema = new mongoose.Schema({
         type : Number,
         required : true,
        },
-       status: {
-        type: String,
-        enum: ['success', 'pending', 'failed' , 'cancelled'],
+       payment_status: {
+        type: String,       
         required : true,
+    },
+    partyId : {
+      
+        type : Number
+    },
+    externalId : {
+      type : String
+    },
+    xReferenceId : {
+      type : String
+    },
+    mtnApiKey : {
+      type : String
     },
     createdAt: {
         type: Date,
         default: Date.now,
       },
+      payment_key : {
+        type : Number
+      }
+
 })
 const TransactionModel = mongoose.model('Transaction', transactionSchema);
 

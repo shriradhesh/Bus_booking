@@ -55,12 +55,12 @@ const userRegister = async (req, res) => {
 
       // Create new user
       const newUser = new UserModel({
-          fullName: fullName,
-          email: email,
+          fullName,
+          email,
           password: hashedPassword,
-          phone_no: phone_no,
-          age: age,
-          gender: gender,
+          phone_no,
+          age,
+          gender,
           isNew: true, 
       });
 
@@ -72,7 +72,7 @@ const userRegister = async (req, res) => {
       message: 'Welcome! user registered successfully.',
       date: new Date(),
       status: 'confirmed', 
-      status : 0
+      notification_status : 0
     });
     await newNotification.save()
     // Emit a notification to the WebSocket server
@@ -82,10 +82,13 @@ const userRegister = async (req, res) => {
       // const messageContent = `User Registered Successfully ... wellcome to CamerBus Group`
       await sendUserRegisterEmail(newUser.email, `Congratulations! User created successfully.` , link);
 
-      res.status(200).json({ message: `user created successfully , \n successfull email send to registered user email`, success: true, Data: data });
+      res.status(200).json({ message: `user created successfully , \n successfull email send to registered user email`,
+       success: true, 
+       Data: data });
   } catch (error) {
       console.error(error);
-      res.status(500).json({ message: 'Error while creating User', success: false });
+      res.status(500).json({ message: 'Error while creating User', 
+      success: false });
   }
 
   function isValidEmail(email) {

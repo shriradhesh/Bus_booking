@@ -187,7 +187,11 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
          
 // APi for getAllDetailsCount
            router.get('/getAllDetailsCount', adminController.getAllDetailsCount)
-                                     
+// APi for delete all transaction
+           router.delete('/deleteAlltransaction', adminController.deleteAlltransaction)
 
+router.post('/filter-trips', adminController.filterTrips);
+
+ 
 
 module.exports = router

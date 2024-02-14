@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const busSchema = new mongoose.Schema({
   bus_category : {
     type : String,
-    required : true,
+    
   },
   bus_type:{
     type : String,
@@ -29,13 +29,9 @@ const busSchema = new mongoose.Schema({
     required : true,
 },
 
- amenities: [
-  {
-    amenities_Name: {
-      type: String
-    },    
-  },
-],
+amenities: {
+  type: [String],  
+},
 
   images:{
     type : [String],

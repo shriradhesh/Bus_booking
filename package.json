@@ -16,6 +16,7 @@
     "cookie-session": "^2.0.0",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
+    "date-fns": "^3.3.1",
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
     "exceljs": "^4.3.0",
@@ -30,6 +31,7 @@
     "moment": "^2.29.4",
     "mongodb": "^5.7.0",
     "mongoose": "^7.4.2",
+    "mtn-momo": "^2.0.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.2",
     "nodemailer": "^6.9.4",
@@ -45,7 +47,8 @@
     "socket.io": "^4.7.2",
     "stripe": "^13.6.0",
     "twilio": "^4.16.0",
-    "twit": "^2.2.11"
+    "twit": "^2.2.11",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
