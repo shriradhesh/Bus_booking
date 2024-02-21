@@ -1868,8 +1868,8 @@ const allTrips = async (req, res) => {
       query = { status };
     }
 
-    // Find trips with the specified query
-    const trips = await TripModel.find(query);
+    // Find trips with the specified query and sort by creation timestamp in descending order
+    const trips = await TripModel.find(query).sort({ createdAt: -1 });
 
     if (trips.length === 0) {
       return res
@@ -1879,7 +1879,7 @@ const allTrips = async (req, res) => {
           success: false,
         });
     }
-
+          
     res.status(200).json({ success: true, trips });
   } catch (error) {
     console.error(error);
@@ -1892,36 +1892,74 @@ const allTrips = async (req, res) => {
   }
 };
 
+
+
+// Api for get trip by tripId
+          const getTrip = async(req , res)=>{
+             try {
+                    const tripId = req.params.tripId
+                    // check for tripId
+                if(!tripId)
+                {
+                  return res.status(400).json({
+                       success : false ,
+                       tripId_message : 'trip id required'
+                  })
+                }
+
+                // check for trip
+                const trip = await TripModel.findOne({ _id : tripId })
+                if(!trip)
+                {
+                  return res.status(400).json({
+                         success : false ,
+                         trip_message : 'trip not found'
+                  })
+                }
+                else
+                {
+                  return res.status(200).json({
+                        success : true ,
+                        message : 'trip Details',
+                        trip_details : trip
+                  })
+                }
+             } catch (error) {
+                  return res.status(500).json({
+                       success : false ,
+                       message : 'server error',
+                       error_message : error.message
+                  })
+             } 
+          }
 // Api for searchtrips
 
 const searchTrips = async (req, res) => {
   try {
     const { sourceStop, destinationStop, date } = req.body;
-if(!sourceStop)
-{
-  return res.status(400).json({
-                     success : false ,
-                     sourceStopExistance : 'sourceStop required'
-  })
-}
-if(!destinationStop)
-{
-  return res.status(400).json({
-                     success : false ,
-                     destinationStopExistance : 'destinationStop required'
-  })
-}
-if(!date)
-{
-  return res.status(400).json({
-                     success : false ,
-                     dateExistance : 'date required'
-  })
-}
+    if (!sourceStop) {
+      return res.status(400).json({
+        success: false,
+        sourceStopExistance: 'sourceStop required'
+      });
+    }
+    if (!destinationStop) {
+      return res.status(400).json({
+        success: false,
+        destinationStopExistance: 'destinationStop required'
+      });
+    }
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        dateExistance: 'date required'
+      });
+    }
+
     // Find trips that match the given date
     const trips = await TripModel.find({
-      startingDate: date ,
-      status : "scheduled"
+      startingDate: date,
+      status: "scheduled"
     });
 
     if (!trips || trips.length === 0) {
@@ -1935,34 +1973,25 @@ if(!date)
     const matchingTrips = [];
 
     for (const trip of trips) {
-      const routeNumber = trip.routeNumber;
-      // Find the route with the same routeNumber
-      const route = await BusRoute.findOne({ routeNumber });
-
-      if (!route) {
-        continue;
-      }
-
-      const sourceIndex = route.stops.findIndex((stop) => stop.stopName === sourceStop);
-      const destinationIndex = route.stops.findIndex((stop) => stop.stopName === destinationStop);
+      const sourceIndex = trip.stops.findIndex((stop) => stop.stopName === sourceStop);
+      const destinationIndex = trip.stops.findIndex((stop) => stop.stopName === destinationStop);
 
       if (sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex) {
-        const stops = route.stops.map((stop) => stop.stopName);                                 
-       
-        const stopsDuration = calculateTotalDuration(route.stops, sourceIndex, destinationIndex);
+        const stops = trip.stops.map((stop) => stop.stopName);
+      
+        const stopsDuration = calculateTotalDuration(trip.stops, sourceIndex, destinationIndex);
         const arrivalTime = ArrivalTime(trip, sourceStop);
-
+        const departureTime = DepartureTime(trip, sourceStop)
 
         matchingTrips.push({
-          trip: trip ,                                         
+          trip: trip,
           stopsDuration: stopsDuration,
-          ArrivalTime : arrivalTime,
-          DepartureTime : arrivalTime
-
+          ArrivalTime: arrivalTime,
+          DepartureTime: departureTime
         });
       }
     }
-      
+
     if (matchingTrips.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1979,10 +2008,11 @@ if(!date)
     res.status(500).json({
       success: false,
       message: 'Error while fetching the data',
-      error_message : error.message
+      error_message: error.message
     });
   }
 };
+
 
 const calculateTotalDuration = (stops, sourceIndex, destinationIndex) => {
   let totalHours = 0;
@@ -1993,26 +2023,37 @@ const calculateTotalDuration = (stops, sourceIndex, destinationIndex) => {
       // For the source stop, set the duration to 0
       totalHours += 0;
       totalMinutes += 0;
-    } else if (stops[i].EstimatedTimeTaken) {
-      const [hours, minutes] = stops[i].EstimatedTimeTaken.split(' Hour, ');
-
-      totalHours += parseInt(hours);
-      totalMinutes += parseInt(minutes.replace(' Minute', ''));
     } else {
-      
+      const stop = stops[i];
+      const haltTime = stop.stop_halt || "0 Hour, 0 Minute"; // If stop_halt doesn't exist, default to "0 Hour, 0 Minute"
+      const [haltHours, haltMinutes] = haltTime.split(' Hour, ');
+
+      if (stop.EstimatedTimeTaken) {
+        const [estHours, estMinutes] = stop.EstimatedTimeTaken.split(' Hour, ');
+
+        totalHours += parseInt(estHours);
+        totalMinutes += parseInt(estMinutes.replace(' Minute', ''));
+      }
+
+      // Add halt time
+      totalHours += parseInt(haltHours);
+      totalMinutes += parseInt(haltMinutes.replace(' Minute', ''));
     }
   }
+
   // Convert excess minutes to hours
   totalHours += Math.floor(totalMinutes / 60);
   totalMinutes = totalMinutes % 60;
 
-  return { hours: totalHours, minutes: totalMinutes }
+  return { hours: totalHours, minutes: totalMinutes };
 };
+
 
 const ArrivalTime = (trip, sourceStop) => {
   // Find the index of the source stop
   var sourceIndex = trip.stops.findIndex(stop => stop.stopName === sourceStop);
-
+  var sourceStop_halt = trip.stops[sourceIndex].stop_halt || "0 Hour, 0 Minute";
+ 
   // If source stop not found, return null indicating invalid data
   if (sourceIndex === -1) {
       return null;
@@ -2056,47 +2097,128 @@ const ArrivalTime = (trip, sourceStop) => {
     }
 
     // Format the final arrival time
-    var formattedArrivalTime = `${startingDate}, ${arrivalHours}:${finalMinutes} ${ampm}`;
+    var formattedArrivalTime = ` ${arrivalHours}:${finalMinutes} ${ampm}`;
 
-    return formattedArrivalTime;
+
+
+
+    function timeToMinutes(timeStr) {
+      let [hours, minutes] = timeStr.match(/\d+/g).map(Number); // Extract hours and minutes using regex
+      if (timeStr.includes("pm") && hours !== 12) {
+          hours += 12; // Convert to 24-hour format if PM and not already 12 PM
+      }
+      return hours * 60 + minutes;
+  }
+  
+  // Function to format time
+  function formatTime(minutes) {
+      let hours = Math.floor(minutes / 60) % 24;
+      let mins = minutes % 60;
+      let ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12; // Convert to 12-hour format
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${ampm}`;
+  }
+  
+  // Convert sourceStop_halt to minutes
+  let sourceStopMinutes = timeToMinutes(sourceStop_halt);
+  
+  // Convert formattedArrivalTime to minutes
+  let arrivalMinutes2 = timeToMinutes(formattedArrivalTime);
+  
+  // Subtract source stop halt from arrival time
+  let outputMinutes = arrivalMinutes2 - sourceStopMinutes;
+  
+  // Format the output time
+  let formattedOutputTime = formatTime(outputMinutes);
+
+
+    var formattedArrivalTime1 = `${startingDate}, ${formattedOutputTime}`;
+         
+    return formattedArrivalTime1;
 };
+
+const DepartureTime = (trip, sourceStop) => {
+  // Find the index of the source stop
+  var sourceIndex = trip.stops.findIndex(stop => stop.stopName === sourceStop);
+
+  // If source stop not found, return null indicating invalid data
+  if (sourceIndex === -1) {
+    return null;
+  }
+
+  // If the source stop is the first stop, return the starting time of the trip
+  if (sourceIndex === 0) {
+    return `${trip.startingTime}`;
+  }
+
+  // Parse starting time
+  var [startingDate, startingTime] = trip.startingTime.split(', ');
+  var [startingTimeHours, startingTimeMinutes, ampm] = startingTime.split(/:| /).map(part => parseInt(part) || part);
+
+  // Adjust starting time for AM/PM
+  if (ampm === 'pm' && startingTimeHours !== 12) {
+    startingTimeHours += 12;
+  }
+
+  // Calculate the total estimated time until the source stop
+  var totalEstimatedTime = calculateTotalDuration(trip.stops, 0, sourceIndex);
+
+  // Convert total estimated time to hours and minutes
+  let departureHours = startingTimeHours + totalEstimatedTime.hours;
+  let departureMinutes = startingTimeMinutes + totalEstimatedTime.minutes;
+
+  // Adjust for overflow in minutes
+  if (departureMinutes >= 60) {
+    departureHours += Math.floor(departureMinutes / 60);
+    departureMinutes %= 60;
+  }
+
+  // Adjust for overflow in hours
+  departureHours %= 24;
+
+  // Determine AM/PM for departure time
+  let resultPeriod = departureHours < 12 ? 'AM' : 'PM';
+
+  // Convert to 12-hour format
+  if (departureHours > 12) {
+    departureHours -= 12;
+  }
+  var stringWithoutLeadingDigits = departureMinutes.slice(2);
+  // Format the final departure time
+  var formattedDepartureTime = `${startingDate}, ${departureHours}:${stringWithoutLeadingDigits < 10 ? '0' : ''}${stringWithoutLeadingDigits} ${resultPeriod}`;
+
+  // Log and return the formatted departure time
+  return formattedDepartureTime;
+};
+
+
+
+
+
 
 
 
 // Api for filter trip 
 
 
-const filterTrips = async (req, res) => {
+var filterTrips = async function(req, res) {
   try {
-    const { sourceStop, destinationStop, date } = req.body;
-    let { busType, arrivalTimeRange } = req.body;
-    
+    var sourceStop = req.body.sourceStop;
+    var destinationStop = req.body.destinationStop;
+    var date = req.body.date;
+    var busType = req.body.busType;
+    var arrivalTimeRange = req.body.arrivalTimeRange;
 
-    // check for required fields
-    if(!sourceStop)
-    {
+    // Check for required fields
+    if (!sourceStop || !destinationStop || !date) {
       return res.status(400).json({
-           success : false,
-           sourceStop_message : 'source Stop Required'
-      })
-    }
-    if(!destinationStop)
-    {
-      return res.status(400).json({
-           success : false,
-           destinationStop_message : 'destinationStop Required'
-      })
-    }
-    if(!date)
-    {
-      return res.status(400).json({
-           success : false,
-           date_message : 'date Required'
-      })
+        success: false,
+        message: 'sourceStop, destinationStop, and date are required fields'
+      });
     }
 
     // Find trips that match the given date
-    const trips = await TripModel.find({
+    var trips = await TripModel.find({
       startingDate: date,
       status: "scheduled"
     });
@@ -2108,50 +2230,50 @@ const filterTrips = async (req, res) => {
       });
     }
 
-    // Process the filtered trips
-    let matchingTrips = [];
-    for (const trip of trips) {
-      const routeNumber = trip.routeNumber;
-      // Find the route with the same routeNumber
-      const route = await BusRoute.findOne({ routeNumber });
+    // Filter trips based on source and destination stops
+    var matchingTrips = [];
+    for (var i = 0; i < trips.length; i++) {
+      var trip = trips[i];
+      var routeNumber = trip.routeNumber;
+      var route = await BusRoute.findOne({ routeNumber });
 
       if (!route) {
         continue;
       }
 
-      const sourceIndex = route.stops.findIndex((stop) => stop.stopName === sourceStop);
-      const destinationIndex = route.stops.findIndex((stop) => stop.stopName === destinationStop);
-      
+      var sourceIndex = route.stops.findIndex(stop => stop.stopName === sourceStop);
+      var destinationIndex = route.stops.findIndex(stop => stop.stopName === destinationStop);
+
       if (sourceIndex !== -1 && destinationIndex !== -1 && sourceIndex < destinationIndex) {
-        const stopsDuration = calculateTotalDuration(route.stops, sourceIndex, destinationIndex);
-        const arrivalTime = ArrivalTime(trip, sourceStop);
-        const arrivalDate = arrivalTime.split(', ')[0];
-        const aTime = arrivalTime.split(',')[1].trim();          
-        const resultArrivalTime = arrivalDate + ", " + aTime;
+        var stopsDuration = calculateTotalDuration(route.stops, sourceIndex, destinationIndex);
+        var arrivalTime = ArrivalTime(trip, sourceStop);
+        const departureTime = DepartureTime(trip, sourceStop)
+
+        var arrivalDate = arrivalTime.split(', ')[0];
+        var aTime = arrivalTime.split(',')[1].trim();          
+        var resultArrivalTime = arrivalDate + ", " + aTime;
 
         matchingTrips.push({
           trip: trip,
           stopsDuration: stopsDuration,
           ArrivalTime: resultArrivalTime,
-          DepartureTime: resultArrivalTime
+          DepartureTime: departureTime
         });
       }
     }
 
-    // Check and apply filters
+    // Apply additional filters if provided
     if (busType) {
-      const busTypes = busType.split(',').map(type => type.trim());
+      var busTypes = busType.split(',').map(type => type.trim());
       matchingTrips = matchingTrips.filter(trip => busTypes.includes(trip.trip.bus_type));
     }
 
+    // Apply arrival time range filter
     if (arrivalTimeRange) {
-      const ranges = arrivalTimeRange.split(',').map(range => range.trim());
+      var ranges = arrivalTimeRange.split('-').map(range => range.trim());
       matchingTrips = matchingTrips.filter(trip => {
-        const arrivalTime = trip.ArrivalTime.split(',')[1].trim();
-        return ranges.some(range => {
-          const [start, end] = range.split('-').map(time => time.trim());
-          return arrivalTime >= start && arrivalTime <= end;
-        });
+        var arrivalTime = trip.ArrivalTime.split(',')[1].trim();
+        return isBetweenTime(arrivalTime, ranges[0], ranges[1]);
       });
     }
 
@@ -2170,13 +2292,51 @@ const filterTrips = async (req, res) => {
       trips: matchingTrips
     });
   } catch (error) {
+    console.error('Error while filtering trips:', error);
     res.status(500).json({
       success: false,
       message: 'Error while fetching the data',
-      error_message : error.message
+      error_message: error.message
     });
   }
 };
+
+// Custom function to check if a given time falls within a specified time range
+function isBetweenTime(time, startTime, endTime) {
+  // Convert time strings to hours and minutes
+  var [startHour, startMinute, startPeriod] = startTime.split(/:|\s/).map(str => str.trim());
+  var [endHour, endMinute, endPeriod] = endTime.split(/:|\s/).map(str => str.trim());
+  var [arrivalHour, arrivalMinute, arrivalPeriod] = time.split(/:|\s/).map(str => str.trim());
+
+  // Convert periods to lowercase for case-insensitive comparison
+  startPeriod = startPeriod ? startPeriod.toLowerCase() : '';
+  endPeriod = endPeriod ? endPeriod.toLowerCase() : '';
+  arrivalPeriod = arrivalPeriod ? arrivalPeriod.toLowerCase() : '';
+
+  // Convert to 24-hour format if necessary
+  if (startPeriod === 'pm' && startHour !== '12') {
+    startHour = parseInt(startHour) + 12;
+  } else if (startPeriod === 'am' && startHour === '12') {
+    startHour = 0;
+  }
+  if (endPeriod === 'pm' && endHour !== '12') {
+    endHour = parseInt(endHour) + 12;
+  } else if (endPeriod === 'am' && endHour === '12') {
+    endHour = 0;
+  }
+  if (arrivalPeriod === 'pm' && arrivalHour !== '12') {
+    arrivalHour = parseInt(arrivalHour) + 12;
+  } else if (arrivalPeriod === 'am' && arrivalHour === '12') {
+    arrivalHour = 0;
+  }
+
+  // Check if arrival time is within the range
+  return (
+    (arrivalHour > startHour || (arrivalHour === startHour && arrivalMinute >= startMinute)) &&
+    (arrivalHour < endHour || (arrivalHour === endHour && arrivalMinute <= endMinute))
+  );
+}
+
 
 
 // views seats 
@@ -2285,7 +2445,7 @@ const calculateFareForSelectedSeats = async (req, res) => {
 
     if (!trip) {
       return res
-        .status(404)
+        .status(400)
         .json({ success: false, message: "Trip not found" });
     }
 
@@ -3039,6 +3199,30 @@ function calculateAgeGroup(age) {
   }
 }
 
+
+cron.schedule('0 0 * * *', async () => {
+  try {
+      const today = moment().startOf('day'); // Get today's date without time
+      const fiveDaysAgo = today.clone().subtract(5, 'days'); // Calculate the date 5 days ago
+
+      // Find bookings that are less than today's date and older than 5 days
+      const bookingsToDelete = await BookingModel.find({
+          date: { $lt: today.toDate(), $gte: fiveDaysAgo.toDate() }
+      });
+
+      // Delete the bookings
+      await BookingModel.deleteMany({
+          _id: { $in: bookingsToDelete.map(booking => booking._id) }
+      });
+
+      console.log('Expired bookings deleted successfully.');
+  } catch (error) {
+      console.error('Error deleting expired bookings:', error);
+  }
+});
+
+
+
 // Api for cancle tickit
 const cancelTicket = async (req, res) => {
   try {
@@ -3110,7 +3294,7 @@ const cancelTicket = async (req, res) => {
       (cancellationDate - currentDate) / (1000 * 60 * 60 * 24)
     );
 
-    console.log("Day before trip:", dayBeforeTrip);
+   
 
     if (dayBeforeTrip >= 5) {
       cancellationType = "flexible";
@@ -3750,7 +3934,7 @@ const change_trips_stop_status = async (req, res) => {
       return res
         .status(400)
         .json({
-          success: true,
+          success: false ,
           stopExistanceMessage: "stop not found in trip",
         });
     }
@@ -5206,6 +5390,156 @@ const deleteAlltransaction = async (req, res) => {
   }
 };
 
+
+// Api for add Halt on particular stop in a trip
+
+   const add_Halt_on_stop = async ( req ,res)=>{
+    try {
+                 const tripId = req.params.tripId
+              const { stop_halt , stopName } = req.body
+          // check for tripId
+        if(!tripId)
+        {
+          return res.status(400).json({
+                  success : false ,
+                  tripId_message : 'trip Id required'
+          })
+        }
+
+        // check for stop_halt and stopName
+
+        if(!stop_halt)
+        {
+          return res.status(400).json({
+                 success : false ,
+                 stop_halt_message : 'stop_halt required'
+          })
+        }
+        if(!stopName)
+        {
+          return res.status(400).json({
+                 success : false ,
+                 stopName_message : 'stopName required'
+          })
+        }
+
+            // check for trip
+            const trip = await TripModel.findOne({ _id : tripId })
+            if(!trip)
+            {
+              return res.status(400).json({
+                      success : false ,
+                      trip_message : 'trip not found'
+              })
+            }
+                            // Find the stop in the trip by stopName
+                const stop = trip.stops.find(stop => stop.stopName === stopName);
+
+                if (!stop) {
+                  return res.status(400).json({
+                     success : false ,                 
+                    stop_message: 'Stop not found in the trip' });
+                }
+                const timeParts = stop_halt.split(",");
+
+                if (timeParts.length !== 2) {
+                  return res
+                    .status(400)
+                    .json({
+                      success: false,
+                      invalid_message : `Invalid stop_halt format. Use 'X Hour, X Minute' format.`,
+                    });
+                }
+            
+                const [hoursPart, minutesPart] = timeParts.map((part) => part.trim());
+            
+                const hoursMatch = hoursPart.match(/(\d+)\s*Hour/i);
+                const minutesMatch = minutesPart.match(/(\d+)\s*Minute/i);
+            
+                if (!hoursMatch || !minutesMatch) {
+                  return res
+                    .status(400)
+                    .json({
+                      success: false,
+                      invalid_message: `Invalid stop_halt format. Use 'X Hour, X Minute' format.`,
+                    });
+                }
+            
+                const hours = parseInt(hoursMatch[1]);
+                const minutes = parseInt(minutesMatch[1]);
+            
+                // Calculate the total time in minutes
+                const totalMinutes = hours * 60 + minutes;
+
+                // Update the stop with the halt information
+                stop.stop_halt = `${hours} Hour, ${minutes} Minute`
+
+                // Save the changes to the trip
+                await trip.save();
+
+                res.json({ success: true, message: 'Halt added to stop successfully' });
+
+
+    } catch (error) {
+      return res.status(500).json({
+              success : false ,
+              message : 'server error',
+              error_message : error.message
+      })
+    }
+   }
+
+
+  
+         // Api for active Inactive user
+
+        const active_Inactive_user = async ( req ,res)=>{
+          try {
+                 const userId = req.params.userId
+              // check for userId
+              if(!userId)
+              {
+                return res.status(400).json({
+                   success : false ,
+                   userId_message : 'userID required'
+                })
+              }
+
+              // check for user
+            const user = await UserModel.findOne({
+                 _id : userId
+        
+            })
+
+             // toggle the user status
+        
+             const currentStatus = user.user_status
+             const newStatus = 1 - currentStatus
+             user.user_status = newStatus
+
+             let message;
+              if (newStatus === 1) {
+                  message = 'User inactivated successfully.';
+              } else {
+                  message = 'User activated successfully.';
+              }
+              
+             await user.save()
+             return res.status(200).json({
+                 success : true ,
+                 message : message
+             })
+             
+          } catch (error) {
+               return res.status(500).json({
+                    success : false ,
+                    message : 'server error'
+               })
+          
+          }
+        }
+                  
+
 module.exports = {
   adminLogin,
   googleLogin,
@@ -5275,5 +5609,8 @@ module.exports = {
   getbooking_by_tripNumber,
   getAllDetailsCount,
   deleteAlltransaction,
-  filterTrips
+  filterTrips,
+  getTrip ,
+  add_Halt_on_stop,
+  active_Inactive_user
 };

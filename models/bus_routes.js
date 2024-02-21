@@ -17,10 +17,7 @@ const busRouteSchema = new mongoose.Schema({
       },
        EstimatedTimeTaken: {
         type: String, 
-      }, 
-      // arrival_time: {
-      //   type: String, 
-      // },
+      },
       // departure_time: {
       //   type: String, 
       // },

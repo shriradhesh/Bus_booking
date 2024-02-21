@@ -100,40 +100,55 @@ const userRegister = async (req, res) => {
     
    // API for Login 
                
-   const loginUser =async (req, res) => {
-      try {
+   const loginUser = async (req, res) => {
+    try {
         const { email, password } = req.body;
 
-        const user = await UserModel.findOne({ email })
-        if (!user) {
-          return res.status(401).json({ EmailMessage : 'Invalid email' , success : false });
-        }
-        
-           if(!email)
-           {
+        if (!email || !password) {
             return res.status(400).json({
-                                      success : false ,
-                                      message : 'email is required'
-            })
-           }
-           if(!password)
-           {
-            return res.status(400).json({
-                                      success : false ,
-                                      message : 'password is required'
-            })
-           }
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-          return res.status(401).json({ passwordMessage : 'Invalid password' , success: false});
+                success: false,
+                message: 'Email and password are required'
+            });
         }
 
-            res.status(200).json({successMessage: 'Login Successfully', user: user , success : true });
-        } catch (error) {
-          console.error(error);
-            res.status(500).json({ errorMessage : 'Error while login the user' , success: false });
+        const user = await UserModel.findOne({ email });
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email'
+            });
         }
+
+        if (user.user_status === 1) {
+            return res.status(400).json({
+                success: false,
+                message: 'Your account is suspended. Please contact the admin for further details.'
+            });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid password'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            user: user
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Error while logging in the user'
+        });
     }
+};
+
   // Api for logout user
         const logoutUser = async(req,res)=>{
           try{
