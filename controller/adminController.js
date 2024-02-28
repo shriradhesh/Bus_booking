@@ -3215,7 +3215,7 @@ cron.schedule('0 0 * * *', async () => {
           _id: { $in: bookingsToDelete.map(booking => booking._id) }
       });
 
-      console.log('Expired bookings deleted successfully.');
+     
   } catch (error) {
       console.error('Error deleting expired bookings:', error);
   }
@@ -5539,6 +5539,43 @@ const deleteAlltransaction = async (req, res) => {
           }
         }
                   
+  // Api for get all stops of Route
+                       const allStops_ofRoute = async(req ,res)=>{
+                        try {
+                          const routeId = req.params.routeId
+                          // check for routeId
+                      if(!routeId)
+                      {
+                            return res.status(400).json({
+                                         success : false ,
+                                         routeId_message : 'route Id required'
+                            })
+                      }
+                      // check for route
+                       const route = await BusRoute.findOne({ _id : routeId })
+                       if(!route)
+                       {
+                        return res.status(400).json({
+                                  success : false ,
+                                  route_message : 'route not exist'
+                        })
+                       }
+
+                          const stops_array = route.stops
+                        return res.status(200).json({
+                                success : true ,
+                                message : 'stops of the route',
+                                route_no : route.routeNumber,
+                                stops : stops_array
+                        })
+                        } catch (error) {
+                             return res.status(500).json({
+                                      success : false ,
+                                      message : 'server error'
+                             })
+                        }
+                        
+                       }
 
 module.exports = {
   adminLogin,
@@ -5612,5 +5649,6 @@ module.exports = {
   filterTrips,
   getTrip ,
   add_Halt_on_stop,
-  active_Inactive_user
+  active_Inactive_user,
+  allStops_ofRoute
 };

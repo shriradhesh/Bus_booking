@@ -194,6 +194,7 @@ router.post('/filter-trips', adminController.filterTrips);
 router.get('/getTrip/:tripId', adminController.getTrip)
 router.post('/add_Halt_on_stop/:tripId', adminController.add_Halt_on_stop)
 router.post('/active_Inactive_user/:userId', adminController.active_Inactive_user)
+router.get('/allStops_ofRoute/:routeId', adminController.allStops_ofRoute)
  
 
 module.exports = router
