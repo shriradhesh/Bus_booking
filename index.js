@@ -359,6 +359,139 @@ app.post('/makePayment', async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
+                                                                    /* Orange Payment  */
+     
+
+    // Endpoint to obtain access token and initiate payment request
+    app.post('/initiatePayment', async (req, res) => {
+        try {
+            // Step 1: Obtain Access Token
+            const username = "X_kT8gdEALMotiuTXUW4FMt7CcAa";
+            const password = "T3hIFfJSjMJwwk2HZweo5xx2hzUa";
+            const grantType = "client_credentials";
+            
+            // Generate a unique identifier (timestamp in milliseconds)
+            const uniqueIdentifier = Date.now().toString();
+        
+            const base64Credentials = Buffer.from(`${username}:${password}`).toString('base64');
+        
+            const authResponse = await axios.post(
+                'https://api-s1.orange.cm/token',
+                new URLSearchParams({
+                    grant_type: grantType,
+                    unique_identifier: uniqueIdentifier
+                }).toString(),
+                {
+                    headers: {
+                        'Authorization': `Basic ${base64Credentials}`,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                }
+            );
+    
+            const accessToken = authResponse.data.access_token;
+    
+            // Step 2: Use Access Token to Initiate Payment
+            const paymentResponse = await axios.post(
+                'https://api-s1.orange.cm/omcoreapis/1.0.2/mp/init',
+                {},
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`, // Corrected the authorization header
+                        'Content-Type': 'application/json',
+                        'X-AUTH-TOKEN': 'WU5PVEVIRUFEOllOT1RFSEVBRDIwMjA='
+                    }
+                }
+            );
+    
+            const payToken = paymentResponse.data.data.payToken;
+    
+            // Construct the response
+            const responseData = {
+                success: true,
+                message: "Payment request successfully initiated",
+                data: {
+                    access_token: accessToken,
+                    payToken: payToken
+                }
+            };
+    
+            // Send the response
+            res.status(200).json(responseData);
+        } catch (error) {
+            // Handle errors
+            res.status(500).json({
+                success: false,
+                message: 'An error occurred during payment initiation',
+                error: error.message
+            });
+        }
+    });
+    
+
+// APi for orange payment
+                
+                 // step 3
+                 app.post('/pay', async (req, res) => {
+                    try {
+                        // Access token obtained from the request body
+                        const access_token = req.body.access_token;
+                
+                        // Retrieve parameters from the request body
+                        const { amount, subscriberMsisdn, payToken } = req.body;
+                
+                        // Construct the request data with fixed values and generated orderId
+                        const orderId = `order${Math.random().toString(36).substring(2)}`;
+                        const data = JSON.stringify({
+                            "notifUrl": "https://www.y-note.cm/notification",
+                            "channelUserMsisdn": "659924755",
+                            "amount": amount,
+                            "subscriberMsisdn": subscriberMsisdn,
+                            "pin": "2369",
+                            "orderId": orderId,
+                            "description": "Commande 12345",
+                            "payToken": payToken
+                        });
+                
+                        // Configure the request
+                        const config = {
+                            method: 'post',
+                            maxBodyLength: Infinity,
+                            url: 'https://api-s1.orange.cm/omcoreapis/1.0.2/mp/pay',
+                            headers: { 
+                                'X-AUTH-TOKEN': 'WU5PVEVIRUFEOllOT1RFSEVBRDIwMjA=', 
+                                'Content-Type': 'application/json', 
+                                'Authorization': `Bearer ${access_token}`
+                            },
+                            data: data
+                        };
+                
+                        // Make the request using Axios
+                        const response = await axios.request(config);
+                
+                        // Construct the response data
+                        const responseData = {
+                            success: true,                         
+                            data: response.data
+                        };
+                
+                        // Send the response
+                        res.status(200).json(responseData);
+                    } catch (error) {
+                        // Handle errors
+                        res.status(500).json({
+                            success: false,
+                            message: 'An error occurred during payment initiation',
+                            error: error.message
+                        });
+                    }
+                });
+                
+               
+                
+                
+               
+                
 
 
 //Router configuration   

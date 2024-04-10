@@ -21,7 +21,8 @@ const mongoose = require('mongoose')
 const fs = require('fs')
 const sendUserRegisterEmail = require('../utils/userRegisterEmail')
 const NotificationDetail = require('../models/notificationDetails')
- 
+const Admin = require('../models/adminModel')
+ const sendAdminEmail = require('../utils/adminEmail')
                     
                                     /* --> User API <-- */
 
@@ -114,22 +115,22 @@ const userRegister = async (req, res) => {
         const user = await UserModel.findOne({ email });
 
         if (!user) {
-            return res.status(401).json({
+            return res.status(400).json({
                 success: false,
                 message: 'Invalid email'
             });
         }
 
-        if (user.user_status === 1) {
+        if (user.user_status === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Your account is suspended. Please contact the admin for further details.'
+                restricted_message: 'Your account is suspended. Please contact the admin for further details.'
             });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            return res.status(401).json({
+            return res.status(400).json({
                 success: false,
                 message: 'Invalid password'
             });
@@ -195,7 +196,7 @@ const userRegister = async (req, res) => {
               return res.status(400).json({ notMatchedPassword : 'Password do not match' , success : false})
             }
 
-             // find Admin by Id
+             // find user by Id
              
              const user = await UserModel.findOne({ email })
               
@@ -524,32 +525,66 @@ const userRegister = async (req, res) => {
         
 
     // contact us 
-    const contactUs =  async (req,res)=>{
-      try{
-      const { fullName, email , companyName , message} = req.body;
-
-         if(!fullName || !email || !companyName || !message ){
-         return res.status(400).json({ error : 'Missing required Field ', success : false})
-         }              
-     
-      var newMessage = new contactModel({
-        fullName : fullName,
-         email : email,
-         companyName : companyName,
-         message: message,
+    const contactUs = async (req, res) => {
+      try {
+          const { fullName, email, companyName, message } = req.body;
+  
+          // Check if all required fields are provided
+          if (!fullName || !email || !companyName || !message) {
+              return res.status(400).json({ error: 'Missing required field(s)', success: false });
+          }
+  
+          // Create a new message object
+          const newMessage = new contactModel({
+              fullName,
+              email,
+              companyName,
+              message,
+          });
+  
+          // Find admin
+          const admin = await Admin.findOne({});
+  
+          // Check if admin exists
+          if (!admin) {
+              return res.status(400).json({ success: false, message: 'Admin not found' });
+          }
+  
+          // Save data into Database
+          const data = await newMessage.save();
+  
+          // Prepare email content in simplified table format
+          const emailContent = `
+              <table border="1" cellpadding="10" cellspacing="0">
+                  <tr>
+                      <td><strong>Email:</strong></td>
+                      <td>${newMessage.email}</td>
+                  </tr>
+                  <tr>
+                      <td><strong>Message:</strong></td>
+                      <td>${newMessage.message}</td>
+                  </tr>
+                  <tr>
+                      <td><strong>Company Name:</strong></td>
+                      <td>${newMessage.companyName}</td>
+                  </tr>
+              </table>
+          `;
+  
+          // Send email to admin
+          await sendAdminEmail(admin.email, `New Query from ${fullName}`, emailContent);
+  
+          // Send response
+          res.status(200).json({ message: 'Message created successfully', success: true, data });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: 'Error while creating message', success: false });
+      }
+  };
+  
+  
+  
          
-      })
-            
-               // save Data into Database
-      const data = await newMessage.save()
-      res.status(200).json({ message : ' message Created Successfully' , success : true, Data : data})
-      }
-      catch(error)
-      {
-                console.error(error);
-               res.status(500).json({ message : 'Error while creating message' , success : false})
-      }
-   }         
         
 // get all feedbacks detials
                    const allFeedback = async (req , res)=>{

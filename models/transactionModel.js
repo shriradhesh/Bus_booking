@@ -37,7 +37,17 @@ const transactionSchema = new mongoose.Schema({
       },
       payment_key : {
         type : Number
+      },
+      subscriberMsisdn : {
+        type : String
+      },
+      txnmode : {
+        type : String
+      },
+      createtime : {
+        type : String
       }
+
 
 })
 const TransactionModel = mongoose.model('Transaction', transactionSchema);
