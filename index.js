@@ -489,7 +489,44 @@ app.post('/makePayment', async (req, res) => {
                 
                
                 
-                
+           // Api for check payment status
+           
+           app.post('/checkPaymentStatus', async (req, res) => {
+            try {
+                // Retrieve parameters from the request body
+                const { access_token, payToken } = req.body;
+        
+                // Make the request to check payment status
+                const config = {
+                    method: 'get',
+                    maxBodyLength: Infinity,
+                    url: `https://api-s1.orange.cm/omcoreapis/1.0.2/mp/paymentstatus/${payToken}`,
+                    headers: { 
+                        'X-AUTH-TOKEN': 'WU5PVEVIRUFEOllOT1RFSEVBRDIwMjA=', // Your X-AUTH-TOKEN
+                        'Authorization': `Bearer ${access_token}`
+                    }
+                };
+        
+                const response = await axios.request(config);
+        
+                // Construct the response data
+                const responseData = {
+                    success: true,
+                    paymentStatus: response.data
+                };
+        
+                // Send the response
+                res.status(200).json(responseData);
+            } catch (error) {
+                // Handle errors
+                res.status(500).json({
+                    success: false,
+                    message: 'An error occurred while checking payment status',
+                    error: error.message
+                });
+            }
+        });
+        
                
                 
 
