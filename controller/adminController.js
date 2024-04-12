@@ -2639,6 +2639,8 @@ const bookTicket = async (req, res) => {
       xReferenceId,
       mtnApiKey,
       orangeResponse,
+      accessToken,
+      payToken
 
     } = req.body;
 
@@ -2790,6 +2792,7 @@ const bookTicket = async (req, res) => {
     // check for payment key for payment method
     // here 1 for stripe
     // here 2 for mtn momo
+    // here 3 for orange Money
     if (payment_key === 1) {
                                  
       try {
@@ -2904,71 +2907,55 @@ const bookTicket = async (req, res) => {
             })
             .join("\n");
 
-          const emailContent = `
-                                                    <main>
-                                                    <div style="width: 80%; margin: 40px auto; padding: 20px; background-color: #fff; border: 2px solid #000; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                                                    <div>
-                                                    <img src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" alt="InspHired" style="width: 25%;">
-                                                    <h2 style="font-size: 28px; font-weight: 700; color: #000; margin: 0%; text-align: right;">Bus Ticket</h2>
-                                                  </div>
-                                                      <hr style="border-top: 2px solid #000;">
-                                                      <div style="margin-top: 20px;">
-                                                        <p style="font-size: 18px; margin-bottom: 10px;"><strong>Dear ${user.fullName},</strong></p>
-                                                        <p style="font-size: 16px; margin-bottom: 20px;">Your booking for departure on ${date} has been confirmed.</p>
-                                                        <table style="width: 100%; border-collapse: collapse;">
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Booking ID</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${bookingId}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Number</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.tripNumber}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Bus Number</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.bus_no}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Name</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverName}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Contact</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverContact}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Starting Time</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.startingTime}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Your Source</th>
-                                                            <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${source}</td>
-                                                          </tr>
-                                                          <tr>
-                                                            <th style="padding: 10px; text-align: left; font-size: 18px;"><strong>Your Destination</strong></th>
-                                                            <td style="padding: 10px; font-size: 18px;">${destination}</td>
-                                                          </tr>
-                                                        </table>
-                                                        <!-- Passenger Details Section -->
-                                                        <div style="margin-top: 20px;">
-                                                          <h3 style="font-size: 24px; font-weight: 700; color: #000; margin-bottom: 10px;">Passenger Details</h3>
-                                                          <table style="width: 100%; border-collapse: collapse; text-align: center;">
-                                                            <tr>
-                                                              <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Passenger Name</th>
-                                                              <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Age</th>
-                                                              <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Gender</th>
-                                                              <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Seat Number</th>
-                                                            </tr>
-                                                            ${passengerDetails}
-                                                          </table>
-                                                        </div>
-                                                      </div>
-                                                      <!-- Footer -->
-                                                      
-                                                    </div>
-                                                  </main>
-                                                  
-                                                      `;
+          const emailContent = `<main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <div style="text-align: center;">
+            <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+            <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+          </div>
+        
+          <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+        
+          <div style="margin: 15px 0;">
+            <p style="font-size: 14px; margin-bottom: 8px;"><strong>Dear ${user.fullName},</strong></p>
+            <p style="font-size: 12px; margin-bottom: 15px;">Your booking for departure on ${date} has been confirmed.</p>
+        
+            <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Booking ID:</strong> ${bookingId}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Number:</strong> ${trip.tripNumber}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Bus Number:</strong> ${trip.bus_no}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Name:</strong> ${Driver.driverName}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Contact:</strong> ${Driver.driverContact}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Starting Time:</strong> ${trip.startingTime}</p>
+                </div>
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Source:</strong> ${source}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Destination:</strong> ${destination}</p>
+                  <!-- Add more ticket details here -->
+                </div>
+              </div>
+        
+              <!-- Passenger Details Section -->
+              <div>
+                <h3 style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Passenger Details</h3>
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #007bff; color: #fff;">
+                      <th style="padding: 8px; font-size: 14px;">Passenger Name</th>
+                      <th style="padding: 8px; font-size: 14px;">Age</th>
+                      <th style="padding: 8px; font-size: 14px;">Gender</th>
+                      <th style="padding: 8px; font-size: 14px;">Seat Number</th>
+                    </tr>
+                    ${passengerDetails}
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+        </main>
+        `;
 
           // Generate the QR CODE and send the booking confirmation email
           const qrCodeData = `http://192.168.1.41:4000/${bookingId}`;
@@ -3107,71 +3094,55 @@ const bookTicket = async (req, res) => {
           })
           .join("\n");
 
-        const emailContent = `
-                                         <main>
-                                         <div style="width: 80%; margin: 40px auto; padding: 20px; background-color: #fff; border: 2px solid #000; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                                         <div>
-                                         <img src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" alt="InspHired" style="width: 25%;">
-                                         <h2 style="font-size: 28px; font-weight: 700; color: #000; margin: 0%; text-align: right;">Bus Ticket</h2>
-                                       </div>
-                                           <hr style="border-top: 2px solid #000;">
-                                           <div style="margin-top: 20px;">
-                                             <p style="font-size: 18px; margin-bottom: 10px;"><strong>Dear ${user.fullName},</strong></p>
-                                             <p style="font-size: 16px; margin-bottom: 20px;">Your booking for departure on ${date} has been confirmed.</p>
-                                             <table style="width: 100%; border-collapse: collapse;">
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Booking ID</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${newBookingId}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Number</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.tripNumber}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Bus Number</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.bus_no}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Name</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverName}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Contact</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverContact}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Starting Time</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.startingTime}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Your Source</th>
-                                                 <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${source}</td>
-                                               </tr>
-                                               <tr>
-                                                 <th style="padding: 10px; text-align: left; font-size: 18px;"><strong>Your Destination</strong></th>
-                                                 <td style="padding: 10px; font-size: 18px;">${destination}</td>
-                                               </tr>
-                                             </table>
-                                             <!-- Passenger Details Section -->
-                                             <div style="margin-top: 20px;">
-                                               <h3 style="font-size: 24px; font-weight: 700; color: #000; margin-bottom: 10px;">Passenger Details</h3>
-                                               <table style="width: 100%; border-collapse: collapse; text-align: center;">
-                                                 <tr>
-                                                   <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Passenger Name</th>
-                                                   <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Age</th>
-                                                   <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Gender</th>
-                                                   <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Seat Number</th>
-                                                 </tr>
-                                                 ${passengerDetails}
-                                               </table>
-                                             </div>
-                                           </div>
-                                           <!-- Footer -->
-                                           
-                                         </div>
-                                       </main>
-                                       
-                                           `;
+          const emailContent = `<main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <div style="text-align: center;">
+            <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+            <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+          </div>
+        
+          <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+        
+          <div style="margin: 15px 0;">
+            <p style="font-size: 14px; margin-bottom: 8px;"><strong>Dear ${user.fullName},</strong></p>
+            <p style="font-size: 12px; margin-bottom: 15px;">Your booking for departure on ${date} has been confirmed.</p>
+        
+            <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Booking ID:</strong> ${newBookingId}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Number:</strong> ${trip.tripNumber}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Bus Number:</strong> ${trip.bus_no}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Name:</strong> ${Driver.driverName}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Contact:</strong> ${Driver.driverContact}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Starting Time:</strong> ${trip.startingTime}</p>
+                </div>
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Source:</strong> ${source}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Destination:</strong> ${destination}</p>
+                  <!-- Add more ticket details here -->
+                </div>
+              </div>
+        
+              <!-- Passenger Details Section -->
+              <div>
+                <h3 style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Passenger Details</h3>
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #007bff; color: #fff;">
+                      <th style="padding: 8px; font-size: 14px;">Passenger Name</th>
+                      <th style="padding: 8px; font-size: 14px;">Age</th>
+                      <th style="padding: 8px; font-size: 14px;">Gender</th>
+                      <th style="padding: 8px; font-size: 14px;">Seat Number</th>
+                    </tr>
+                    ${passengerDetails}
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+        </main>
+        `;
         // Generate the QR CODE and send the booking confirmation email
         const qrCodeData = `http://192.168.1.41:4000/${newBookingId}`;
         const qrCodeImage = "ticket-QRCODE.png";
@@ -3205,8 +3176,7 @@ const bookTicket = async (req, res) => {
     if(payment_key === 3)
     {
      
-       try {
-                                                         
+       try {                                                       
                                          
          const newBookingId = shortid.generate();
  
@@ -3231,6 +3201,8 @@ const bookTicket = async (req, res) => {
            createtime: orangeResponse.paymentStatus.data.createtime,
            payment_status: orangeResponse.paymentStatus.data.status,
            payment_key: payment_key,
+           accessToken : accessToken,
+           payToken : payToken
          });
  
          await transaction.save();
@@ -3305,71 +3277,55 @@ const bookTicket = async (req, res) => {
            })
            .join("\n");
  
-         const emailContent = `
-                                          <main>
-                                          <div style="width: 80%; margin: 40px auto; padding: 20px; background-color: #fff; border: 2px solid #000; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                                          <div>
-                                          <img src="https://itdevelopmentservices.com/insphire/public/image/front/img/logo.png" alt="InspHired" style="width: 25%;">
-                                          <h2 style="font-size: 28px; font-weight: 700; color: #000; margin: 0%; text-align: right;">Bus Ticket</h2>
-                                        </div>
-                                            <hr style="border-top: 2px solid #000;">
-                                            <div style="margin-top: 20px;">
-                                              <p style="font-size: 18px; margin-bottom: 10px;"><strong>Dear ${user.fullName},</strong></p>
-                                              <p style="font-size: 16px; margin-bottom: 20px;">Your booking for departure on ${date} has been confirmed.</p>
-                                              <table style="width: 100%; border-collapse: collapse;">
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Booking ID</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${newBookingId}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Number</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.tripNumber}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Bus Number</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.bus_no}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Name</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverName}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Driver Contact</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${Driver.driverContact}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Trip Starting Time</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${trip.startingTime}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px; border-bottom: 2px solid #000;">Your Source</th>
-                                                  <td style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">${source}</td>
-                                                </tr>
-                                                <tr>
-                                                  <th style="padding: 10px; text-align: left; font-size: 18px;"><strong>Your Destination</strong></th>
-                                                  <td style="padding: 10px; font-size: 18px;">${destination}</td>
-                                                </tr>
-                                              </table>
-                                              <!-- Passenger Details Section -->
-                                              <div style="margin-top: 20px;">
-                                                <h3 style="font-size: 24px; font-weight: 700; color: #000; margin-bottom: 10px;">Passenger Details</h3>
-                                                <table style="width: 100%; border-collapse: collapse; text-align: center;">
-                                                  <tr>
-                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Passenger Name</th>
-                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Age</th>
-                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Gender</th>
-                                                    <th style="padding: 10px; font-size: 18px; border-bottom: 2px solid #000;">Seat Number</th>
-                                                  </tr>
-                                                  ${passengerDetails}
-                                                </table>
-                                              </div>
-                                            </div>
-                                            <!-- Footer -->
-                                            
-                                          </div>
-                                        </main>
-                                        
-                                            `;
+           const emailContent = `<main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+           <div style="text-align: center;">
+             <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+             <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+           </div>
+         
+           <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+         
+           <div style="margin: 15px 0;">
+             <p style="font-size: 14px; margin-bottom: 8px;"><strong>Dear ${user.fullName},</strong></p>
+             <p style="font-size: 12px; margin-bottom: 15px;">Your booking for departure on ${date} has been confirmed.</p>
+         
+             <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+               <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                 <div style="flex: 1;">
+                   <p style="font-size: 14px; margin: 0;"><strong>Booking ID:</strong> ${newBookingId}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Trip Number:</strong> ${trip.tripNumber}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Bus Number:</strong> ${trip.bus_no}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Driver Name:</strong> ${Driver.driverName}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Driver Contact:</strong> ${Driver.driverContact}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Trip Starting Time:</strong> ${trip.startingTime}</p>
+                 </div>
+                 <div style="flex: 1;">
+                   <p style="font-size: 14px; margin: 0;"><strong>Your Source:</strong> ${source}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Your Destination:</strong> ${destination}</p>
+                   <!-- Add more ticket details here -->
+                 </div>
+               </div>
+         
+               <!-- Passenger Details Section -->
+               <div>
+                 <h3 style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Passenger Details</h3>
+                 <div style="overflow-x: auto;">
+                   <table style="width: 100%; border-collapse: collapse;">
+                     <tr style="background-color: #007bff; color: #fff;">
+                       <th style="padding: 8px; font-size: 14px;">Passenger Name</th>
+                       <th style="padding: 8px; font-size: 14px;">Age</th>
+                       <th style="padding: 8px; font-size: 14px;">Gender</th>
+                       <th style="padding: 8px; font-size: 14px;">Seat Number</th>
+                     </tr>
+                     ${passengerDetails}
+                   </table>
+                 </div>
+               </div>
+             </div>
+           </div>
+           <!-- Footer -->
+         </main>
+         `;
          // Generate the QR CODE and send the booking confirmation email
          const qrCodeData = `http://192.168.1.54:4000/${newBookingId}`;
          const qrCodeImage = "ticket-QRCODE.png";
@@ -3499,7 +3455,7 @@ const cancelTicket = async (req, res) => {
 
     if (!booking) {
       return res
-        .status(404)
+        .status(400)
         .json({
           success: false,
           BookingNotFound: "Booking not found with the given ID",
@@ -3588,7 +3544,8 @@ const cancelTicket = async (req, res) => {
     const transaction = await TransactionModel.findOne({
       bookingId: booking.bookingId,
     });
-
+          const  access_token = transaction.accessToken
+          const payToken = transaction.payToken
     if (transaction) {
       // Check if the transaction has a chargeId
       const chargeId = transaction.chargeId;
@@ -3629,7 +3586,8 @@ const cancelTicket = async (req, res) => {
               error_details: stripeError,
             });
           }
-        } else if (transaction.payment_key === 2) {
+        }
+         else if (transaction.payment_key === 2) {
           // Refund process for MTN MoMo (Replace this with actual MTN MoMo SDK calls)
           const mtnMomoRefundProcessingDays =
             Math.floor(Math.random() * (10 - 5 + 1)) + 5;
@@ -3637,93 +3595,159 @@ const cancelTicket = async (req, res) => {
           mtnMomoRefundProcessingDate.setDate(
             mtnMomoRefundProcessingDate.getDate() + mtnMomoRefundProcessingDays
           );
-
           try {
             const response = await axios.post(
-              "https://sandbox.momodeveloper.mtn.com/v1_0/apiuser",
+              `https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/${transaction.chargeId}/refund`,
               {
-                transactionId: transaction.chargeId,
                 amount: refundAmount,
-                referenceId: transaction.xReferenceId,
-                apiKey: transaction.mtnApiKey,
-                // subscriptionKey : "858dac789fa44355a9d4d2e26c9b400a"
+                currency: 'EUR', // Adjust currency if necessary
+              },
+              {
+                headers: {
+                  'X-Reference-Id': transaction.xReferenceId,
+                  'X-Target-Environment': 'sandbox',
+                  'Content-Type': 'application/json',
+                  'Ocp-Apim-Subscription-Key': '939e26ed861c4ee1ad519608ec62d49e',
+                  'Authorization': `Bearer ${transaction.mtnApiKey}`,
+                },
               }
             );
-
+      
             if (response.data.status === "succeeded") {
               transaction.payment_status = "cancelled";
               transaction.amount = refundAmount;
               transaction.refundProcessingDate = mtnMomoRefundProcessingDate;
+              await transaction.save();
             } else {
-              return res.status(400).json({
-                success: false,
-                refundFailedMessage: "MTN MoMo Refund failed",
-              });
+              return res.status(400).json({ success: false, refundFailedMessage: "MTN MoMo Refund failed" });
             }
           } catch (mtnMomoError) {
             console.error("Error making refund request:", mtnMomoError.message);
-
-            return res.status(500).json({
+            return res.status(400).json({
               success: false,
               errorMessage: "MTN MoMo Refund Error",
               error_message: mtnMomoError.message,
               error_details: mtnMomoError,
             });
-          }
+          }          
         }
-      }
-    }
+        else if ( transaction.payment_key === 3)
+        {
+                const orangeRefundProcessingDays = Math.floor(Math.random() * (10 - 5 + 1)) + 5
+                const orangeRefundProcessingDate = new Date()
+                orangeRefundProcessingDate.setDate(
+                    orangeRefundProcessingDate.getDate() + orangeRefundProcessingDays
+                )
 
-    const newNotification = new NotificationDetail({
-      userId: booking.userId,
-      message: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
-      date: new Date(),
-      status: "cancelled",
-      bookingId: bookingId,
-      tripId: booking.tripId,
-      notification_status: 0,
-    });
-    await newNotification.save();
+                try{
+                     const data = Json.stringify({
+                        "payToken" : payToken,
+                        "transactionId": transaction.chargeId,
+                         "amount": refundAmount,
+                     })
+                         // configure the request
 
-    // notification for admin
-    const newAdminNotification = new AdminNotificationDetail({
-      userId: booking.userId,
-      message: ` cancel booking request sent by the user : ${userName} in a trip : ${tripNumber} with bookingId : ${bookingId} `,
-      date: new Date(),
-      bookingId: bookingId,
-      tripId: booking.tripId,
-    });
-    await newAdminNotification.save();
+                         const config = {
+                              method : 'post',
+                              maxBodyLength : Infinity,
+                              url : 'https://api-s1.orange.cm/omcoreapis/1.0.2/mp/refund',
+                              headers: { 
+                                'X-AUTH-TOKEN': 'WU5PVEVIRUFEOllOT1RFSEVBRDIwMjA=', // Your X-AUTH-TOKEN
+                                'Content-Type': 'application/json', 
+                                'Authorization': `Bearer ${access_token}`
+                            },
+                            data: data
+                            }
+                              
+                             // make the request using Axios
 
-    await booking.save();
-    await trip.save();
+                             const response = await axios.request(config)
 
-    // Send a cancellation email to the user
-    const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
-                                                                      Refund Amount: $${refundAmount}\n\nYour amount will refund within 5 to 10 working days.\n\nThank you for using our service.`;
-    await sendCancelEmail(
-      user.email,
-      "Ticket Cancellation Confirmation",
-      emailContent
-    );
+                                // Check if the refund request was successful
+                          if (response.status === 200 && response.data && response.data.success) {
+                            // Update the transaction status and refund processing Date
+                            transaction.payment_status = "cancelled";
+                            transaction.amount = refundAmount;
+                            transaction.refundProcessingDate = orangeRefundProcessingDate;
+                            await transaction.save();
 
-    res.status(200).json({
-      success: true,
-      SuccessMessage:
-        "Ticket cancellation successfully  ,  Confirmation sent to user email.",
-    });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        ServerErrorMessage: "server error",
-        error: error.message,
-        error_details: error,
-      });
-  }
-};
+                            // Return success response
+                            return res.status(200).json({
+                                success: true,
+                                message: 'Orange Money refund successful.'
+                            });
+                        } else {
+                            // Handle unsuccessful refund request
+                            console.error('Orange Money Refund Failed:', response.data);
+                            return res.status(400).json({
+                                success: false,
+                                message: 'Orange Money refund failed.',
+                                error: response.data.error 
+                            });
+                        }                     
+                              
+                              } catch(error)
+                              {
+                                      res.status(400).json({
+                                        success : false ,
+                                        message : 'an Error occured during refund process using Orange',
+                                        error_message : error.message
+                                      })
+                                    }
+                                    } 
+                                      }
+                        }
+
+                        const newNotification = new NotificationDetail({
+                          userId: booking.userId,
+                          message: `congratulation ..!! your booking : ${bookingId} has been cancelled  `,
+                          date: new Date(),
+                          status: "cancelled",
+                          bookingId: bookingId,
+                          tripId: booking.tripId,
+                          notification_status: 0,
+                        });
+                        await newNotification.save();
+
+                        // notification for admin
+                        const newAdminNotification = new AdminNotificationDetail({
+                          userId: booking.userId,
+                          message: ` cancel booking request sent by the user : ${userName} in a trip : ${tripNumber} with bookingId : ${bookingId} `,
+                          date: new Date(),
+                          bookingId: bookingId,
+                          tripId: booking.tripId,
+                        });
+                        await newAdminNotification.save();
+
+                        await booking.save();
+                        await trip.save();
+
+                        // Send a cancellation email to the user
+                        const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
+                                                                                          Refund Amount: $${refundAmount}\n\nYour amount will refund within 5 to 10 working days.\n\nThank you for using our service.`;
+                        await sendCancelEmail(
+                          user.email,
+                          "Ticket Cancellation Confirmation",
+                          emailContent
+                        );
+
+                        res.status(200).json({
+                          success: true,
+                          SuccessMessage:
+                            "Ticket cancellation successfully  ,  Confirmation sent to user email.",
+                        });
+                      } catch (error) {
+                        console.error(error);
+                        return res
+                          .status(500)
+                          .json({
+                            success: false,
+                            ServerErrorMessage: "server error",
+                            error: error.message,
+                            error_details: error,
+                          });
+                      }
+                    };
 
 // Api for get tickits booked by a user
 

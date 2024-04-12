@@ -481,7 +481,7 @@ app.post('/makePayment', async (req, res) => {
                         // Handle errors
                         res.status(500).json({
                             success: false,
-                            message: 'An error occurred during payment initiation',
+                            message: 'payment error',
                             error: error.message
                         });
                     }

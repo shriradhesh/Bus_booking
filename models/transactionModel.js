@@ -1,4 +1,5 @@
-const mongoose = require ('mongoose')
+const mongoose = require ('mongoose');
+const AccessToken = require('twilio/lib/jwt/AccessToken');
 const transactionSchema = new mongoose.Schema({
 
        bookingId : {
@@ -45,6 +46,12 @@ const transactionSchema = new mongoose.Schema({
         type : String
       },
       createtime : {
+        type : String
+      },
+      accessToken : {
+        type : String
+      },
+      payToken : {
         type : String
       }
 
