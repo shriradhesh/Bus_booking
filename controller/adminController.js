@@ -3723,8 +3723,24 @@ const cancelTicket = async (req, res) => {
                         await trip.save();
 
                         // Send a cancellation email to the user
-                        const emailContent = `Dear ${user.fullName},\nYour booking with Booking ID ${booking.bookingId} has been canceled.\n\n
-                                                                                          Refund Amount: $${refundAmount}\n\nYour amount will refund within 5 to 10 working days.\n\nThank you for using our service.`;
+                        const emailContent = `<!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Cancellation Confirmation</title>
+                        </head>
+                        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; color: #333;">
+                            <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                                <h2 style="color: #000;">&nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp  &nbsp Booking Cancellation</h2>
+                                <p>Dear ${user.fullName},</p>
+                                <p>We regret to inform you that your booking with Booking ID <span style="font-weight: bold;">${booking.bookingId}</span> has been canceled.</p>
+                                <p>Refund Amount: <span style="font-weight: bold;">$${refundAmount}</span></p>
+                                <p>Your refund will be processed within 5 to 10 working days.</p>
+                                <p>Thank you for choosing our service.</p>
+                                <p><b> &nbsp &nbsp &nbsp Sincerely,<br>Camer Bus Travels </b> </p>
+                            </div>
+                        </body>
+                        </html>
+                        `;
                         await sendCancelEmail(
                           user.email,
                           "Ticket Cancellation Confirmation",

@@ -32,7 +32,7 @@ const generateBookingPDF = async (user, trip, bookingId, newBookingId,  selected
   };
        
 
-const sendBookingEmail = async (recipientEmail, subject, text, user, trip, bookingId, newBookingId ,  selectedSeatNumbers, totalFare) => {
+const sendBookingEmail = async (recipientEmail, subject, text, user, trip, bookingId, newBookingId ,  selectedSeatNumbers, totalFare_in_Euro) => {
     try {
         const qrCodeImage = 'tickit-QRCODE.png';
         const pdfAttachment = await generateBookingPDF (user, trip, bookingId, newBookingId , selectedSeatNumbers, totalFare);
