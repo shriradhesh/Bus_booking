@@ -1,42 +1,15 @@
 const nodemailer = require('nodemailer');
-const PDFDocument = require('pdfkit');
+const puppeteer = require('puppeteer');
 
-const generateBookingPDF = async (user, trip, bookingId, newBookingId,  selectedSeatNumbers, totalFare_in_Euro) => {
-    return new Promise((resolve, reject) => {
-        const doc = new PDFDocument();
-  
-        // Buffer to store PDF content
-        const buffers = [];
-        doc.on('data', buffers.push.bind(buffers));
-        doc.on('end', () => {
-            const pdfData = Buffer.concat(buffers);
-            resolve(pdfData);
-        });
-  
-        // Add user and trip details to the PDF
-        doc.fontSize(12).text(`Full Name: ${user.fullName}`);
-        doc.fontSize(12).text(`Trip Number: ${trip.tripNumber}`);
-        doc.fontSize(12).text(`Bus Number: ${trip.bus_no}`);
-        doc.fontSize(12).text(`Selected Seats: ${selectedSeatNumbers}`);
-        doc.fontSize(12).text(`Starting Time: ${trip.startingTime}`);
-       
-       // Conditionally include either bookingId or newBookingId
-       if (bookingId) {
-        doc.fontSize(12).text(`Booking ID: ${bookingId}`);
-         } else if (newBookingId) {
-        doc.fontSize(12).text(`New Booking ID: ${newBookingId}`);
-        }      
-  
-        doc.end();
-    });
-  };
+
        
 
-const sendBookingEmail = async (recipientEmail, subject, text, user, trip, bookingId, newBookingId ,  selectedSeatNumbers, totalFare_in_Euro) => {
+const sendBookingEmail = async (recipientEmail, subject, emailContent , htmlContent) => {
     try {
-        const qrCodeImage = 'tickit-QRCODE.png';
-        const pdfAttachment = await generateBookingPDF (user, trip, bookingId, newBookingId , selectedSeatNumbers, totalFare);
+        // Generate PDF from HTML content using Puppeteer
+        const pdfBuffer = await createPDF(emailContent);
 
+        // Create a Nodemailer transporter using Gmail SMTP
         const transporter = nodemailer.createTransport({
             host: 'smtp.gmail.com',
             port: 587,
@@ -48,19 +21,18 @@ const sendBookingEmail = async (recipientEmail, subject, text, user, trip, booki
             }
         });
 
+        // Send email with attachment
         await transporter.sendMail({
             from: process.env.SMTP_MAIL,
             to: recipientEmail,
             subject: subject,
-            html: text,
+            html : htmlContent ,
             attachments: [
                 {
-                    filename: 'tickit-QRCODE.png',
-                    path: qrCodeImage
-                },
-                {
-                    filename: 'booking_details.pdf',
-                    content: pdfAttachment
+                    filename: 'booking.pdf',
+                    content: pdfBuffer,
+                    encoding: 'base64',
+                    contentType: 'application/pdf'
                 }
             ]
         });
@@ -68,7 +40,38 @@ const sendBookingEmail = async (recipientEmail, subject, text, user, trip, booki
         console.log("Email sent successfully");
     } catch (error) {
         console.error("Error sending email:", error);
+        throw new Error("Email sending failed");
+    }
+};
+
+const createPDF = async (emailContent) => {
+    try {
+        const browser = await puppeteer.launch({
+            // Adjust these options as needed
+            headless: true, // or false to see Chromium in action
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
+        const page = await browser.newPage();
+
+        // Adjust viewport and wait for network idle
+        await page.setViewport({ width: 1200, height: 800 }); // Adjust viewport size as needed
+        await page.setContent(emailContent, { waitUntil: 'networkidle0' });
+
+        // Generate PDF with a timeout
+        const pdf = await page.pdf({ format: 'A4',  timeout: 60000 }); // Adjust timeout as needed
+
+        await browser.close();
+        return pdf;
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        throw new Error('PDF generation failed: ' + error.message); // Log detailed error message
     }
 };
 
 module.exports = sendBookingEmail  
+
+
+
+
+
+

@@ -13,24 +13,26 @@ const transactionSchema = new mongoose.Schema({
        },
        amount : {
         type : Number,
-        required : true,
+       
        },
        payment_status: {
         type: String,       
-        required : true,
+        
     },
-    partyId : {
-      
-        type : Number
+    mtn_access_token : {
+       type : String
     },
-    externalId : {
+    customer_key : {
       type : String
     },
-    xReferenceId : {
+    paymentRef : {
       type : String
     },
-    mtnApiKey : {
+    notify_url : {
       type : String
+    },
+    request_id : {
+      type : Number
     },
     createdAt: {
         type: Date,
@@ -53,7 +55,13 @@ const transactionSchema = new mongoose.Schema({
       },
       payToken : {
         type : String
-      }
+      },
+      promoCode : {
+        type : String
+   },
+     discount_price : {
+        type : Number
+   }
 
 
 })

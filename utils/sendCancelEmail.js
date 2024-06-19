@@ -17,7 +17,7 @@ const sendCancelEmail = async(recipientEmail , subject , text)=>{
                 from : process.env.SMTP_MAIL,
                 to : recipientEmail,
                 subject : subject,
-                text : text,
+                html  : text,
                 
              })
              console.log("email sent successfully");

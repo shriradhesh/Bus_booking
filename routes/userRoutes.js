@@ -63,8 +63,10 @@ router.post('/contactUs', userController.contactUs)
 //API for get all feedback
 router.get('/allFeedback', userController.allFeedback)
 
+router.post('/active_Inactive_user/:userId', userController.active_Inactive_user)
 
-
+// APi for get all Users
+router.get('/allUsers', userController.allUsers)
 
 
                            

@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer')
-const CancelTripEmail = async(recipientEmail , subject , text)=>{
+const CancelTripEmail = async( recipientEmail , subject , text)=>{
     try{
         
         const transporter = nodemailer.createTransport({

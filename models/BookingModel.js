@@ -14,20 +14,34 @@ const bookingSchema = new mongoose.Schema({
         ref: 'TripModel', 
         required: true, 
     },
-    tripNumber :
-    {
-        type : String
+    return_tripId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TripModel', 
+        
     },
     
+       tripNumber : {
+         type : String
+       },
 
     date: {
         type: Date,
         required: true,
     },
 
+    return_date: {
+        type: Date,
+      
+    },
+
     selectedSeatNumbers: [{
         type: Number,
         required: true,
+    }],
+    
+    return_SeatNumbers: [{
+        type: Number,
+       
     }],
 
     totalFare: {
@@ -36,8 +50,8 @@ const bookingSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: ['confirmed', 'pending', 'cancelled'],
-        default: 'confirmed',
+        enum: ['confirmed', 'pending', 'cancelled' , 'cancel'],
+        default: 'pending',
     },
 
     // paymentMethod: {
@@ -47,7 +61,7 @@ const bookingSchema = new mongoose.Schema({
     paymentStatus: {
         type: String,
         enum: ['success', 'pending', 'failed'],
-        default: 'success',
+       
     },
  
     bookingId: {

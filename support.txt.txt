@@ -1,0 +1,605 @@
+ // Update Available_seat and bookedSeats arrays in the trip
+    if (Array.isArray(trip.Available_seat)) {
+      for (const seat of selectedSeatNumbers) {
+        const index = trip.Available_seat.indexOf(seat);
+        if (index !== -1) {
+          trip.Available_seat.splice(index, 1);
+          trip.booked_seat.push(seat);
+        }
+      }
+    }
+
+
+
+
+
+
+
+  const newNotification = new NotificationDetail({
+            userId,
+            message: `congratulation ..!! , new booking has been made with bookingId : ${bookingId} `,
+            date: date,
+            status: "confirmed",
+            bookingId: bookingId,
+            tripId,
+            notification_status: 0,
+          });
+          await newNotification.save();
+         
+          const newAdminNotification = new AdminNotificationDetail({
+            userId,
+            message: `congratulation ..!! , new booking has been made by the user : ${user.fullName} in a trip : ${tripNumber} with bookingId : ${bookingId} `,
+            date: date,
+            status: "confirmed",
+            bookingId: bookingId,
+            tripId,
+          });
+          await newAdminNotification.save();
+
+
+  // Generate passenger details and email content
+          const passengerDetails = passengers
+            .map((passenger, index) => {
+              const seatNumber = selectedSeatNumbers[index];
+              return `
+                                                        <tr>
+                                                        <td style="border: 2px solid #dadada; border-right: 0; border-left: 0; padding: 10px; font-size: 18px; white-space: nowrap;">
+                                                          ${passenger.name}
+                                                        </td>
+                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                          ${passenger.age}
+                                                        </td>
+                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                          ${passenger.gender}
+                                                        </td>
+                                                        <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                          ${seatNumber}
+                                                        </td>                                              
+                                                      </tr>
+                                                    `;
+            })
+            .join("\n");
+
+          const emailContent = `<main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <div style="text-align: center;">
+            <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+            <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+          </div>
+        
+          <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+        
+          <div style="margin: 15px 0;">
+            <p style="font-size: 14px; margin-bottom: 8px;"><strong>Dear ${user.fullName},</strong></p>
+            <p style="font-size: 12px; margin-bottom: 15px;">Your booking for departure on ${date} has been confirmed.</p>
+        
+            <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Booking ID:</strong> ${bookingId}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Number:</strong> ${trip.tripNumber}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Bus Number:</strong> ${trip.bus_no}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Name:</strong> ${Driver.driverName}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Contact:</strong> ${Driver.driverContact}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Starting Time:</strong> ${trip.startingTime}</p>
+                </div>
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Source:</strong> ${source}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Destination:</strong> ${destination}</p>
+                  <!-- Add more ticket details here -->
+                </div>
+              </div>
+        
+              <!-- Passenger Details Section -->
+              <div>
+                <h3 style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Passenger Details</h3>
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #007bff; color: #fff;">
+                      <th style="padding: 8px; font-size: 14px;">Passenger Name</th>
+                      <th style="padding: 8px; font-size: 14px;">Age</th>
+                      <th style="padding: 8px; font-size: 14px;">Gender</th>
+                      <th style="padding: 8px; font-size: 14px;">Seat Number</th>
+                    </tr>
+                    ${passengerDetails}
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+        </main>
+        `;
+
+          // Generate the QR CODE and send the booking confirmation email
+          const qrCodeData = `http://192.168.1.41:4000/${bookingId}`;
+          const qrCodeImage = "ticket-QRCODE.png";
+          await qrcode.toFile(qrCodeImage, qrCodeData);
+          const pdfAttachment = await generateBookingPDF (user, trip, bookingId, selectedSeatNumbers, totalFare_in_Euro);
+          await sendBookingEmail(
+            email,
+            "Your Booking has been confirmed",
+            emailContent,
+            user,
+            trip,
+            bookingId,
+            selectedSeatNumbers,
+            totalFare_in_Euro,
+            pdfAttachment
+          );
+
+
+-------------------------------------------------
+
+// Save notifications
+        const userNotification = new NotificationDetail({
+          userId,
+          message: `Congratulations! A new booking has been made with bookingId: ${newBookingId}`,
+          date: date,
+          status: "confirmed",
+          bookingId: newBookingId,
+          tripId,
+          notification_status: 0,
+        });
+
+        const adminNotification = new AdminNotificationDetail({
+          userId,
+          message: `Congratulations! A new booking has been made by the user: ${user.fullName} in trip: ${tripNumber} with bookingId: ${newBookingId}`,
+          date: date,
+          status: "confirmed",
+          bookingId: newBookingId,
+          tripId,
+        });
+
+        await userNotification.save();
+        await adminNotification.save();
+
+
+
+
+        // Generate passenger details and email content
+        const passengerDetails = passengers
+          .map((passenger, index) => {
+            const seatNumber = selectedSeatNumbers[index];
+            return `
+                                             <tr>
+                                             <td style="border: 2px solid #dadada; border-right: 0; border-left: 0; padding: 10px; font-size: 18px; white-space: nowrap;">
+                                               ${passenger.name}
+                                             </td>
+                                             <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                               ${passenger.age}
+                                             </td>
+                                             <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                               ${passenger.gender}
+                                             </td>
+                                             <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                               ${seatNumber}
+                                             </td>                                              
+                                           </tr>
+                                         `;
+          })
+          .join("\n");
+
+          const emailContent = `<main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <div style="text-align: center;">
+            <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+            <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+          </div>
+        
+          <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+        
+          <div style="margin: 15px 0;">
+            <p style="font-size: 14px; margin-bottom: 8px;"><strong>Dear ${user.fullName},</strong></p>
+            <p style="font-size: 12px; margin-bottom: 15px;">Your booking for departure on ${date} has been confirmed.</p>
+        
+            <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Booking ID:</strong> ${newBookingId}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Number:</strong> ${trip.tripNumber}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Bus Number:</strong> ${trip.bus_no}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Name:</strong> ${Driver.driverName}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Driver Contact:</strong> ${Driver.driverContact}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Trip Starting Time:</strong> ${trip.startingTime}</p>
+                </div>
+                <div style="flex: 1;">
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Source:</strong> ${source}</p>
+                  <p style="font-size: 14px; margin: 0;"><strong>Your Destination:</strong> ${destination}</p>
+                  <!-- Add more ticket details here -->
+                </div>
+              </div>
+        
+              <!-- Passenger Details Section -->
+              <div>
+                <h3 style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Passenger Details</h3>
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #007bff; color: #fff;">
+                      <th style="padding: 8px; font-size: 14px;">Passenger Name</th>
+                      <th style="padding: 8px; font-size: 14px;">Age</th>
+                      <th style="padding: 8px; font-size: 14px;">Gender</th>
+                      <th style="padding: 8px; font-size: 14px;">Seat Number</th>
+                    </tr>
+                    ${passengerDetails}
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+        </main>
+        `;
+        // Generate the QR CODE and send the booking confirmation email
+        const qrCodeData = `http://192.168.1.41:4000/${newBookingId}`;
+        const qrCodeImage = "ticket-QRCODE.png";
+        await qrcode.toFile(qrCodeImage, qrCodeData);
+        const pdfAttachment = await generateBookingPDF (user, trip, newBookingId, selectedSeatNumbers, totalFare_in_Euro);
+        await sendBookingEmail(
+          email,
+          "Your Booking has been confirmed",
+          emailContent,
+            user,
+            trip,
+            newBookingId,
+            selectedSeatNumbers,
+            totalFare_in_Euro,
+            pdfAttachment
+        );
+
+
+
+---------------------------------------------------
+
+
+         // Save notifications
+         const userNotification = new NotificationDetail({
+           userId,
+           message: `Congratulations! A new booking has been made with bookingId: ${newBookingId}`,
+           date: date,
+           status: "confirmed",
+           bookingId: newBookingId,
+           tripId,
+           notification_status: 0,
+         });
+ 
+         const adminNotification = new AdminNotificationDetail({
+           userId,
+           message: `Congratulations! A new booking has been made by the user: ${user.fullName} in trip: ${tripNumber} with bookingId: ${newBookingId}`,
+           date: date,
+           status: "confirmed",
+           bookingId: newBookingId,
+           tripId,
+         });
+ 
+         await userNotification.save();
+         await adminNotification.save();
+ 
+
+
+
+
+
+       // Generate passenger details and email content
+         const passengerDetails = passengers
+           .map((passenger, index) => {
+             const seatNumber = selectedSeatNumbers[index];
+             return `
+                                              <tr>
+                                              <td style="border: 2px solid #dadada; border-right: 0; border-left: 0; padding: 10px; font-size: 18px; white-space: nowrap;">
+                                                ${passenger.name}
+                                              </td>
+                                              <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                ${passenger.age}
+                                              </td>
+                                              <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                ${passenger.gender}
+                                              </td>
+                                              <td style="border: 2px solid #dadada; padding: 10px; font-size: 18px; border-right: 0; white-space: nowrap;">
+                                                ${seatNumber}
+                                              </td>                                              
+                                            </tr>
+                                          `;
+           })
+           .join("\n");
+ 
+           const emailContent = `<main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+           <div style="text-align: center;">
+             <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+             <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+           </div>
+         
+           <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+         
+           <div style="margin: 15px 0;">
+             <p style="font-size: 14px; margin-bottom: 8px;"><strong>Dear ${user.fullName},</strong></p>
+             <p style="font-size: 12px; margin-bottom: 15px;">Your booking for departure on ${date} has been confirmed.</p>
+         
+             <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+               <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                 <div style="flex: 1;">
+                   <p style="font-size: 14px; margin: 0;"><strong>Booking ID:</strong> ${newBookingId}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Trip Number:</strong> ${trip.tripNumber}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Bus Number:</strong> ${trip.bus_no}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Driver Name:</strong> ${Driver.driverName}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Driver Contact:</strong> ${Driver.driverContact}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Trip Starting Time:</strong> ${trip.startingTime}</p>
+                 </div>
+                 <div style="flex: 1;">
+                   <p style="font-size: 14px; margin: 0;"><strong>Your Source:</strong> ${source}</p>
+                   <p style="font-size: 14px; margin: 0;"><strong>Your Destination:</strong> ${destination}</p>
+                   <!-- Add more ticket details here -->
+                 </div>
+               </div>
+         
+               <!-- Passenger Details Section -->
+               <div>
+                 <h3 style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Passenger Details</h3>
+                 <div style="overflow-x: auto;">
+                   <table style="width: 100%; border-collapse: collapse;">
+                     <tr style="background-color: #007bff; color: #fff;">
+                       <th style="padding: 8px; font-size: 14px;">Passenger Name</th>
+                       <th style="padding: 8px; font-size: 14px;">Age</th>
+                       <th style="padding: 8px; font-size: 14px;">Gender</th>
+                       <th style="padding: 8px; font-size: 14px;">Seat Number</th>
+                     </tr>
+                     ${passengerDetails}
+                   </table>
+                 </div>
+               </div>
+             </div>
+           </div>
+           <!-- Footer -->
+         </main>
+         `;
+         // Generate the QR CODE and send the booking confirmation email
+         const qrCodeData = `http://192.168.1.54:4000/${newBookingId}`;
+         const qrCodeImage = "ticket-QRCODE.png";
+         await qrcode.toFile(qrCodeImage, qrCodeData);
+         const pdfAttachment = await generateBookingPDF (user, trip, newBookingId, selectedSeatNumbers, totalFare_in_Euro);
+         await sendBookingEmail(
+           email,
+           "Your Booking has been confirmed",
+           emailContent,
+             user,
+             trip,
+             newBookingId,
+             selectedSeatNumbers,
+             totalFare_in_Euro,
+             pdfAttachment
+         );
+
+
+
+
+--------------------------------------
+
+
+
+{
+  journey_date: '2024-04-25T00:00:00.000Z',
+  selectedSeatNumbers: [ 53 ],
+  email: 'mobappssolutions183@gmail.com',
+  totalFare_in_Euro: 1,
+  payment_key: 3,
+  passengers: [ { name: 'ram', age: 34, gender: 'female' } ],
+  orangeResponse: {
+    message: 'Transaction retrieved successfully',
+    data: {
+      id: 165029333,
+      createtime: '1713592321',
+      subscriberMsisdn: '691734201',
+      amount: 1,
+      payToken: 'MP2404202C0C907B84FE47FB3166',
+      txnid: 'MP240420.0652.B46112',
+      txnmode: 'orderdsfuni90imt',
+      inittxnmessage: 'Paiement e la clientele done.The devrez confirmer le paiement en saisissant son code PIN et vous recevrez alors un 
+SMS. Merci dutiliser des services Orange Money.',
+      inittxnstatus: '200',
+      confirmtxnstatus: null,
+      confirmtxnmessage: null,
+      status: 'PENDING',
+      notifUrl: 'https://www.y-note.cm/notification',
+      description: 'Commande 12345',
+      channelUserMsisdn: '659924755'
+    }
+  },
+  accessToken: '82ad7d15-dd48-3b75-9008-e641e3a1f849',
+  payToken: 'MP2404201DF8A327225E4D501C57'
+}
+
+
+---------------------------------------------------------
+
+
+const updateBooking = async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+
+        if (!bookingId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Booking ID is required',
+            });
+        }
+
+        const bookings = await BookingModel.find({ bookingId });
+        if (!bookings || bookings.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Booking not found',
+            });
+        }
+
+        const transaction = await TransactionModel.findOne({ bookingId });
+        if (!transaction) {
+            return res.status(400).json({
+                success: false,
+                message: 'Transaction not found',
+            });
+        }
+
+        const paymentStatus = transaction.payment_status;
+        if (!['succeeded', 'SUCCESSFUL', 'SUCCESSFULL'].includes(paymentStatus)) {
+            await Promise.all(bookings.map(booking => {
+                booking.status = 'cancelled';
+                return booking.save();
+            }));
+            transaction.payment_status = 'failed';
+            await transaction.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Booking cancelled due to payment failure',
+            });
+        }
+
+        const allDetails = await Promise.all(bookings.map(async booking => {
+            const trip = await TripModel.findById(booking.tripId);
+            if (!trip) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Trip not found',
+                });
+            }
+
+            const updateSeatStatus = (seats) => {
+                seats.forEach(seat => {
+                    const index = trip.Available_seat.indexOf(seat);
+                    if (index !== -1) {
+                        trip.Available_seat.splice(index, 1);
+                        trip.booked_seat.push(seat);
+                    }
+                });
+            };
+
+            if (Array.isArray(trip.Available_seat)) {
+                updateSeatStatus(booking.selectedSeatNumbers);
+                updateSeatStatus(booking.return_SeatNumbers);
+            }
+
+            booking.status = 'confirmed';
+            await Promise.all([trip.save(), booking.save()]);
+
+            const [user, driver] = await Promise.all([
+                UserModel.findById(booking.userId),
+                DriverModel.findById(trip.driverId),
+            ]);
+
+            return { user, trip, driver, booking };
+        }));
+
+        const generateAndSendEmail = async (paymentKey) => {
+            const bookingDetails = allDetails.map(({ user, trip, driver, booking }) => {
+                const passengerDetails = booking.passengers.map((passenger, index) => {
+                    const seatNumber = booking.selectedSeatNumbers[index] || booking.return_SeatNumbers[index];
+                    return `
+                        <tr>
+                            <td>${passenger.name}</td>
+                            <td>${passenger.age}</td>
+                            <td>${passenger.gender}</td>
+                            <td>${seatNumber}</td>
+                        </tr>
+                    `;
+                }).join("\n");
+
+                return {
+                    bookingId: booking.bookingId,
+                    tripNumber: trip.tripNumber,
+                    busNumber: trip.bus_no,
+                    driverName: driver.driverName,
+                    driverContact: driver.driverContact,
+                    startingTime: trip.startingTime,
+                    totalFare: booking.totalFare,
+                    source: booking.source,
+                    destination: booking.destination,
+                    passengerDetails,
+                };
+            });
+
+            const emailContent = bookingDetails.map(details => `
+                <main style="width: 70%; margin: 30px auto; padding: 15px; background-color: #d3d3d3; border: 3px solid #000; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                    <div style="text-align: center;">
+                        <h2 style="font-size: 24px; font-family: 'Arial Black', sans-serif; color: #556b2f; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Camer Bus Travels</h2>
+                        <h3 style="font-size: 18px; font-weight: 700; color: #000; margin: 0;">Book-Ticket</h3>
+                    </div>
+                    <hr style="border-top: 1px dashed #007bff; margin: 15px 0;">
+                    <div style="margin: 15px 0;">
+                        <p><strong>Dear ${allDetails[0].user.fullName},</strong></p>
+                        <p>Your booking for departure on ${allDetails[0].booking.date} has been confirmed.</p>
+                        <div style="background-color: #fff; border-radius: 6px; padding: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                                <div style="flex: 1;">
+                                    <p><strong>Booking ID:</strong> ${details.bookingId}</p>
+                                    <p><strong>Trip Number:</strong> ${details.tripNumber}</p>
+                                    <p><strong>Bus Number:</strong> ${details.busNumber}</p>
+                                    <p><strong>Driver Name:</strong> ${details.driverName}</p>
+                                    <p><strong>Driver Contact:</strong> ${details.driverContact}</p>
+                                    <p><strong>Trip Starting Time:</strong> ${details.startingTime}</p>
+                                    <p><strong>Total Amount paid:</strong> ${details.totalFare}</p>
+                                </div>
+                                <div style="flex: 1;">
+                                    <p><strong>Your Source:</strong> ${details.source}</p>
+                                    <p><strong>Your Destination:</strong> ${details.destination}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h3>Passenger Details</h3>
+                                <div style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tr style="background-color: #007bff; color: #fff;">
+                                            <th>Passenger Name</th>
+                                            <th>Age</th>
+                                            <th>Gender</th>
+                                            <th>Seat Number</th>
+                                        </tr>
+                                        ${details.passengerDetails}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            `).join('');
+
+            const qrCodeData = `http://192.168.1.41:4000/${bookingId}`;
+            const qrCodeImage = "ticket-QRCODE.png";
+            await qrcode.toFile(qrCodeImage, qrCodeData);
+            const pdfAttachments = await Promise.all(
+                allDetails.map(({ user, trip, driver, booking }) => generateBookingPDF(user, trip, driver, booking, bookingId))
+            );
+
+            await sendBookingEmail(
+                allDetails[0].user.email,
+                "Your Booking has been confirmed",
+                emailContent,
+                allDetails.map(detail => detail.user),
+                allDetails.map(detail => detail.trip),
+                allDetails.map(detail => detail.driver),
+                allDetails.map(detail => detail.booking),
+                bookingId,
+                allDetails[0].booking.passengerDetails,
+                pdfAttachments
+            );
+        };
+
+        const paymentKey = transaction.payment_key;
+        if ([1, 2, 3].includes(paymentKey)) {
+            await generateAndSendEmail(paymentKey);
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Unsupported payment method',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Booking confirmed successfully',
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error_message: error.message,
+        });
+    }
+};

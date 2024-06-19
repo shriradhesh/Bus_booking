@@ -248,7 +248,7 @@ const userRegister = async (req, res) => {
           const user = await UserModel.findOne({ email });
   
           if (!user) {
-              return res.status(404).json({ success: false, message: ' User with given email not found' });
+              return res.status(404).json({ success: false, message: 'User with given email not found' });
           }
   
           const otp = generateOTP();
@@ -604,9 +604,72 @@ const userRegister = async (req, res) => {
                       })
                     }
                    }
+          // APi for get all users
+const allUsers = async (req, res) => {
+  try {
+    const users = await UserModel.find();
+          // sorted user
+      const sortedUser = users.sort((a,b)=> b.createdAt - a.createdAt)
+    res
+      .status(200)
+      .json({ success: true, message: " all users : ", all_users: sortedUser });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, error: "Error while finding the users" });
+  }
+};
 
+
+         // Api for active Inactive user
+
+         const active_Inactive_user = async ( req ,res)=>{
+          try {
+                 const userId = req.params.userId
+              // check for userId
+              if(!userId)
+              {
+                return res.status(400).json({
+                   success : false ,
+                   userId_message : 'userID required'
+                })
+              }
+
+              // check for user
+            const user = await UserModel.findOne({
+                 _id : userId
+        
+            })
+
+             // toggle the user status
+        
+             const currentStatus = user.user_status
+             const newStatus = 1 - currentStatus
+             user.user_status = newStatus
+
+             let message;
+              if (newStatus === 1) {
+                  message = 'User activated successfully.';
+              } else {
+                  message = 'User inactivated successfully.';
+              }
+              
+             await user.save()
+             return res.status(200).json({
+                 success : true ,
+                 message : message
+             })
+             
+          } catch (error) {
+               return res.status(500).json({
+                    success : false ,
+                    message : 'server error'
+               })
+          
+          }
+        }
     
 module.exports = {userRegister , loginUser , logoutUser , userChangePass , forgetPassOTP ,verifyOTP , userResetPass,
                     updateUser , getUser , deleteUser, seeRoutes , upcoming_Booking , bookingHistory , contactUs ,
-                    allFeedback 
+                    allFeedback ,  allUsers , active_Inactive_user,
                   }
