@@ -427,8 +427,7 @@ const sendReturnEmail = require('../utils/sendReturnEmail')
                                               totalFare: roundAmount,
                                               source,
                                               destination,
-                                              userEmail: email,
-                                             
+                                              userEmail: email,                                             
                                             });
 
                                                 

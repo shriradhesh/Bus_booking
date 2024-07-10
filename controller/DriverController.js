@@ -54,8 +54,9 @@ const addDriver = async (req, res) => {
         driverContact,
         driverLicence_number,
         status,
-        driverProfileImage,
+       
       } = req.body;
+      let driverProfileImage = ''
   
       const requiredFields = [
         "driverId",
@@ -95,9 +96,27 @@ const addDriver = async (req, res) => {
       });
       // set Driver availability  and profile Images
       newDriver.availability = "available";
-      if (req.file) {
-        newDriver.driverProfileImage = req.file.filename;
-      }
+
+      if (req.file && req.file.filename) {
+        // Get the file extension
+        const fileExtension = path.extname(req.file.filename).toLowerCase();
+
+        // List of allowed extensions
+        const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+
+        // Check if the file extension is in the allowed list
+        if (allowedExtensions.includes(fileExtension)) {
+            // If valid, update the profile image
+            newDriver.driverProfileImage = req.file.filename
+        } else {
+            // If not valid, throw an error
+            return res.status(400).json({
+                success : false ,
+                message :  'Invalid file type. Only .jpg, .jpeg, and .png files are allowed.'
+        });
+        }
+    }
+  
   
       const savedDriver = await newDriver.save();
       res
@@ -170,12 +189,27 @@ const addDriver = async (req, res) => {
       existingDriver.driverName = driverName;
       existingDriver.driverContact = driverContact;
       existingDriver.status = status;
-      existingDriver.availability = availability;
-  
-      // Update driver profile image if a file is provided
-      if (req.file) {
-        existingDriver.driverProfileImage = req.file.filename;
-      }
+      existingDriver.availability = availability;  
+
+      if (req.file && req.file.filename) {
+        // Get the file extension
+        const fileExtension = path.extname(req.file.filename).toLowerCase();
+
+        // List of allowed extensions
+        const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+
+        // Check if the file extension is in the allowed list
+        if (allowedExtensions.includes(fileExtension)) {
+            // If valid, update the profile image
+            existingDriver.driverProfileImage = req.file.filename
+        } else {
+            // If not valid, throw an error
+            return res.status(400).json({
+                success : false ,
+                message :  'Invalid file type. Only .jpg, .jpeg, and .png files are allowed.'
+        });
+        }
+    }
   
       // Save the updated driver data into the database
       const updatedDriver = await existingDriver.save();

@@ -290,7 +290,7 @@ const userRegister = async (req, res) => {
                         const { otp } = req.body
                         if(!otp)
                         {
-                          return res.status(400).json({ success : false , message : ' otp is required' })
+                          return res.status(400).json({ success : false , message : 'otp is required' })
                         }
                         const userOTP = await otpModel.findOne ({ otp })
                         if(!userOTP)

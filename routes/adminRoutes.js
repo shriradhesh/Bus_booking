@@ -40,6 +40,16 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
           router.delete('/delete_promo_code/:promo_code_id', adminController.delete_promo_code)
 
 
+             /* forget password */
+
+// Api for generate otp
+          router.post("/generate_otp", adminController.generate_otp)
+// Api for verifyOTP
+           router.post("/verify_admin_OTP", adminController.verify_admin_OTP)
+// Api for adminResetPass
+           router.post("/adminResetPass/:adminId", adminController.adminResetPass )
+
+
 
 
                

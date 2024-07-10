@@ -2,10 +2,11 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const OTPSchema = new Schema({
-    userId: {
+    
+    adminId: {
         type: Schema.Types.ObjectId,
       
-        ref: "user",
+        ref: "Admin",
     },
     
     otp: {
@@ -19,6 +20,6 @@ const OTPSchema = new Schema({
     },
 });
 
-const otpModel = mongoose.model('otpModel', OTPSchema);
+const adminotpModel = mongoose.model('adminotpModel', OTPSchema);
 
-module.exports = otpModel;
+module.exports = adminotpModel;

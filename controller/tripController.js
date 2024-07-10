@@ -211,37 +211,86 @@ const createTrip = async (req, res) => {
   
   // schedule a job to update trip status
   
-   cron.schedule('* * * * *', async () => {
-                                    try {
-                                      const currentDate = new Date();
-                                  
-                                      // find trips with end Date over
-                                      const expiredTrips = await TripModel.find({
-                                        endDate: {
-                                          $lt: currentDate,
-                                        },
-                                        status: { $ne: 'completed' }, 
-                                      });
-                                  
-                                      if (expiredTrips.length > 0) {
-                                        await TripModel.updateMany(
-                                          {
-                                            _id: {
-                                              $in: expiredTrips.map((trip) => trip._id),
-                                            },
-                                          },
-                                          {
-                                            status: 'completed',
-                                          }
-                                        );
-                                      }
-                                    } catch (error) {
-                                      console.error('Error while updating trip status:', error);
-                                    }
-                                  });
+  // cron.schedule('* * * * *', async () => {
+  //   try {
+  //     const currentDate = new Date();
+  //     const oneDayAgo = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
   
+  //     // Find trips with end date exactly 24 hours ago and not completed
+  //     const expiredTrips = await TripModel.find({
+  //       endDate: { $lte: oneDayAgo },
+  //       status: { $ne: 'completed' },
+  //     });
   
+  //     if (expiredTrips.length > 0) {
+  //       await TripModel.updateMany(
+  //         {
+  //           _id: { $in: expiredTrips.map((trip) => trip._id) },
+  //         },
+  //         {
+  //           status: 'completed',
+  //         }
+  //       );
+  //     }
+  //   } catch (error) {
+  //     console.error('Error while updating trip status:', error);
+  //   }
+  // });
   
+
+     // Api for update trip status 
+
+     const update_tripStatus = async (req, res) => {
+      try {
+        const tripId = req.params.tripId;
+       
+        // Check if tripId is provided
+        if (!tripId) {
+          return res.status(400).json({
+            success: false,
+            message: 'tripId is required'
+          });
+        }
+    
+        // Find the trip by tripId and ensure it's not already completed or cancelled
+        const trip = await TripModel.findOne({
+          _id : tripId
+         
+        });
+              
+        // Check if trip exists
+        if (!trip) {
+          return res.status(404).json({
+            success: false,
+            message: 'Trip not found or already completed/cancelled'
+          });
+        }
+    
+        // Update status only if current status is 'scheduled'
+        if (trip.status === 'scheduled') {
+          trip.status = 'completed';
+          await trip.save();
+    
+          return res.status(200).json({
+            success: true,
+            message: 'Trip status updated to completed'
+          });
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Trip status cannot be updated. Current status is not scheduled.'
+          });
+        }
+    
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          message: 'Server error',
+          error_message: error.message
+        });
+      }
+    };
+    
 
      // Api for update Trip
 
@@ -415,7 +464,10 @@ const searchTrips = async (req, res) => {
   
       // Filter trips to include only those with matching source and destination stops
       const matchingTrips = [];
-  
+      let AC_tripCount = 0;
+      let NON_AC_tripCount = 0;
+      let lux_tripCount = 0;
+        
       for (const trip of trips) {
         const sourceIndex = trip.stops.findIndex((stop) => stop.stopName === sourceStop);
         const destinationIndex = trip.stops.findIndex((stop) => stop.stopName === destinationStop);
@@ -426,12 +478,26 @@ const searchTrips = async (req, res) => {
           const stopsDuration = calculateTotalDuration(trip.stops, sourceIndex, destinationIndex);
           const arrivalTime = ArrivalTime(trip, sourceStop);
           const departureTime = DepartureTime(trip, sourceStop)
-  
-          matchingTrips.push({
+          const destinationExpectedTime = DestinationExpectedTime(departureTime, stopsDuration);
+
+           // Count trip types
+            if (trip.bus_type === 'AC') {
+              AC_tripCount++;
+            } else if (trip.bus_type === 'NON_AC' || trip.bus_type === 'Non-AC') {
+              NON_AC_tripCount++;
+            } else if (trip.bus_type === 'luxury') {
+              lux_tripCount++;
+            }
+                   
+
+          
+          matchingTrips.push({           
             trip: trip,
             stopsDuration: stopsDuration,
             ArrivalTime: arrivalTime,
-            DepartureTime: departureTime
+            DepartureTime: departureTime,
+            destinationExpectedTime: destinationExpectedTime
+            
           });
         }
       }
@@ -446,6 +512,9 @@ const searchTrips = async (req, res) => {
       res.status(200).json({
         success: true,
         message: 'Trips for the search criteria',
+        AC_tripCount: AC_tripCount,
+        NON_AC_tripCount: NON_AC_tripCount,
+        lux_tripCount: lux_tripCount,
         trips: matchingTrips
       });
     } catch (error) {
@@ -505,12 +574,15 @@ const searchTrips = async (req, res) => {
             const stopsDuration = calculateTotalDuration(trip.stops, sourceIndex, destinationIndex);
             const arrivalTime = ArrivalTime(trip, fromStop);
             const departureTime = DepartureTime(trip, fromStop);
+            const destinationExpectedTime = DestinationExpectedTime(departureTime, stopsDuration);
   
             matchingTrips.push({
               trip: trip,
               stopsDuration: stopsDuration,
               arrivalTime: arrivalTime,
-              departureTime: departureTime
+              departureTime: departureTime,
+              destinationExpectedTime : destinationExpectedTime
+              
             });
           }
         }
@@ -683,7 +755,53 @@ const searchTrips = async (req, res) => {
                                       return `${startingDate}, ${formattedDepartureTime}`;
                                   }
                                 
-  
+                                  function convertTo24Hour(time) {
+                                    let [timePart, modifier] = time.split(' ');
+                                    let [hours, minutes] = timePart.split(':').map(Number);
+                                  
+                                    if (modifier === 'PM' && hours < 12) {
+                                      hours += 12;
+                                    }
+                                    if (modifier === 'AM' && hours === 12) {
+                                      hours = 0;
+                                    }
+                                  
+                                    return `${hours}:${minutes < 10 ? '0' + minutes : minutes}`;
+                                  }
+                                  
+                                  function DestinationExpectedTime(departureTime, stopsDuration) {
+                                    var [startingDate, departureFormattedTime] = departureTime.split(', ');
+                                    departureFormattedTime = convertTo24Hour(departureFormattedTime);
+                                    let [departureHours, departureMinutes] = departureFormattedTime.split(':').map(Number);
+                                  
+                                    let durationHours = stopsDuration.hours;
+                                    let durationMinutes = stopsDuration.minutes;
+                                  
+                                    let expectedHours = departureHours + durationHours;
+                                    let expectedMinutes = departureMinutes + durationMinutes;
+                                  
+                                    if (expectedMinutes >= 60) {
+                                      expectedHours += Math.floor(expectedMinutes / 60);
+                                      expectedMinutes %= 60;
+                                    }
+                                  
+                                    // Handle next day scenario
+                                    while (expectedHours >= 24) {
+                                      var nextDate = new Date(startingDate);
+                                      nextDate.setDate(nextDate.getDate() + 1); // Increment date by 1
+                                      startingDate = nextDate.toISOString().split('T')[0]; // Get the next date
+                                      expectedHours -= 24; // Subtract 24 hours
+                                    }
+                                  
+                                    expectedHours = expectedHours < 10 ? '0' + expectedHours : expectedHours;
+                                    expectedMinutes = expectedMinutes < 10 ? '0' + expectedMinutes : expectedMinutes;
+                                  
+                                    let formattedExpectedTime = `${expectedHours}:${expectedMinutes}`;
+                                  
+                                    return `${startingDate}, ${formattedExpectedTime}`;
+                                  }
+                                  
+                                  
   
   
   // Api for filter trip 
@@ -740,12 +858,16 @@ const searchTrips = async (req, res) => {
           var arrivalDate = arrivalTime.split(', ')[0];
           var aTime = arrivalTime.split(',')[1].trim();          
           var resultArrivalTime = arrivalDate + ", " + aTime;
+
+          const destinationExpectedTime = DestinationExpectedTime(departureTime, stopsDuration);
+  
   
           matchingTrips.push({
             trip: trip,
             stopsDuration: stopsDuration,
             ArrivalTime: resultArrivalTime,
-            DepartureTime: departureTime
+            DepartureTime: departureTime,
+            destinationExpectedTime : destinationExpectedTime
           });
         }
       }
@@ -1732,5 +1854,6 @@ const add_Halt_on_stop = async ( req ,res)=>{
                  cancelTrip,
                  add_Halt_on_stop,
                  updateTrip ,
-                 RoundTrip
+                 RoundTrip,
+                 update_tripStatus
             }

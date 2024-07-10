@@ -199,12 +199,29 @@ const All_Transaction = async (req, res) => {
         });
       }
       const All_RoutesLength = All_Routes.length;
-  
+      // check for booking
+      const all_bookings = await BookingModel.find()
+      // check for all location
+      const all_location = await stopModel.find()
+        // check for confirmed booking
+      const confirmed_booking = await BookingModel.find({
+        status : 'confirmed'
+      })
+       // check for cancelled booking
+       const cancelled_booking = await BookingModel.find({
+        status : 'cancelled'
+      })
+
+
       return res.status(200).json({
         success: true,
         details: {
           total_Bus: BusLength,
           total_Routes: All_RoutesLength,
+          total_booking : all_bookings.length,
+          all_location : all_location.length,
+          confirmed_booking : confirmed_booking.length,
+          cancelled_booking : cancelled_booking.length
         },
       });
     } catch (error) {

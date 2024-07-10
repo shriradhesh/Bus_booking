@@ -39,6 +39,8 @@ const { sendUpcomingNotifications } = require('../controller/adminController');
              router.post('/cancelTrip/:tripId', tripController.cancelTrip)
 // Api for add Halt on particular stop in a trip
         router.post('/add_Halt_on_stop/:tripId', tripController.add_Halt_on_stop)
+// Api for update trip status
+         router.post('/update_tripStatus/:tripId', tripController.update_tripStatus)
 
 
 

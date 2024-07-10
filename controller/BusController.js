@@ -86,7 +86,37 @@ const addBus = async (req, res) => {
         });
       }
   
-      const imagePaths = req.files ? req.files.map((file) => file.filename) : [];
+      let imagePaths = [];
+
+        if (req.files && req.files.length > 0) {
+            // List of allowed extensions
+            const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+
+            // Filter and get the valid files
+            imagePaths = req.files
+                .map(file => {
+                    const fileExtension = path.extname(file.filename).toLowerCase();
+                    if (allowedExtensions.includes(fileExtension)) {
+                        return file.filename;
+                    } else {
+                        return null;
+                    }
+                })
+                .filter(filename => filename !== null);
+
+            if (imagePaths.length !== req.files.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid file type. Only .jpg, .jpeg, and .png files are allowed.'
+                });
+            }
+          } else {
+            return res.status(400).json({
+                success: false,
+                message: 'No files uploaded.'
+            });
+        }       
+
       const validStatuses = ["active", "inactive"];
       const busStatus = validStatuses.includes(status) ? status : "active";
   
@@ -127,123 +157,121 @@ const addBus = async (req, res) => {
   
   const updateBus = async (req, res) => {
     try {
-      const id = req.params.id;
-      const {
-        bus_type,
-        seating_capacity,
-        model,
-        manufacture_year,
-        amenities,
-        status,
-        availability,
-      } = req.body;
-  
-      const existBus = await BusModel.findOne({ _id: id });
-  
-      if (!existBus) {
-        return res.status(400).json({ message: "Bus Not found", success: false });
-      }
-  
-      const validStatuses = ["active", "inactive"];
-      const validAvailabilities = ["available", "unavailable", "booked"];
-  
-      if (
-        !validStatuses.includes(status) ||
-        !validAvailabilities.includes(availability)
-      ) {
-        return res
-          .status(400)
-          .json({
-            message: "Invalid status or availability value",
-            success: false,
-          });
-      }
-  
-      if (
-        (status === "inactive" && availability !== "unavailable") ||
-        (availability === "unavailable" && status !== "inactive")
-      ) {
-        return res.status(400).json({
-          message: "Invalid combination of status and availability",
-          success: false,
-        });
-      }
-  
-      existBus.bus_type = bus_type;
-      existBus.seating_capacity = seating_capacity;
-      existBus.model = model;
-      existBus.manufacture_year = manufacture_year;
-  
-      // Validate and parse amenities
-      let amenities_details;
-      if (amenities !== undefined && amenities !== "") {
-        try {
-          amenities_details = amenities.split(",").map((item) => item.trim());
-        } catch (error) {
-          return res
-            .status(400)
-            .json({ message: "Invalid format for amenities", success: false });
+        const id = req.params.id;
+        const {
+            bus_type,
+            seating_capacity,
+            model,
+            manufacture_year,
+            amenities,
+            status,
+            availability,
+        } = req.body;
+
+        const existBus = await BusModel.findOne({ _id: id });
+
+        if (!existBus) {
+            return res.status(400).json({ message: "Bus Not found", success: false });
         }
-      }
-  
-      existBus.amenities = amenities_details || [];
-  
-      existBus.status = status;
-      existBus.availability = availability;
-  
-      // Check if req.files exist and if it contains images
-      if (req.files && req.files.length > 0) {
-        const images = [];
-  
-        for (const file of req.files) {
-          // Ensure that the file is an image
-          if (file.mimetype.startsWith("image/")) {
-            // If the Bus Images already exist, delete the old file if it exists
-            if (existBus.images && existBus.images.length > 0) {
-              existBus.images.forEach((oldFileName) => {
-                const oldFilePath = `uploads/${oldFileName}`;
-                if (fs.existsSync(oldFilePath)) {
-                  fs.unlinkSync(oldFilePath);
-                }
-              });
+
+        const validStatuses = ["active", "inactive"];
+        const validAvailabilities = ["available", "unavailable", "booked"];
+
+        if (!validStatuses.includes(status) || !validAvailabilities.includes(availability)) {
+            return res.status(400).json({
+                message: "Invalid status or availability value",
+                success: false,
+            });
+        }
+
+        if ((status === "inactive" && availability !== "unavailable") || (availability === "unavailable" && status !== "inactive")) {
+            return res.status(400).json({
+                message: "Invalid combination of status and availability",
+                success: false,
+            });
+        }
+
+        existBus.bus_type = bus_type;
+        existBus.seating_capacity = seating_capacity;
+        existBus.model = model;
+        existBus.manufacture_year = manufacture_year;
+
+        // Validate and parse amenities
+        let amenities_details;
+        if (amenities) {
+            try {
+                // Remove leading and trailing whitespace and quotes, then parse as JSON array
+                amenities_details = JSON.parse(amenities.replace(/'/g, '"'));
+            } catch (error) {
+                return res.status(400).json({ message: "Invalid format for amenities", success: false });
             }
-            // Add the new image filename to the images array
-            images.push(file.filename);
-          }
         }
-  
-        // Update the images with the new one(s) or create a new one if it doesn't exist
-        existBus.images = images.length > 0 ? images : undefined;
-      }
-  
-      const updatedBus = await existBus.save();
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: "Bus Details Edited Successfully",
-          updatedBus,
+
+        // Ensure amenities_details is an array and each item is a string
+        if (!Array.isArray(amenities_details)) {
+            return res.status(400).json({ message: "Invalid format for amenities", success: false });
+        }
+        amenities_details = amenities_details.map(item => String(item).trim());
+
+        existBus.amenities = amenities_details || [];
+
+        existBus.status = status;
+        existBus.availability = availability;
+
+        // Check if req.files exist and if it contains images
+        if (req.files && req.files.length > 0) {
+            const images = [];
+
+            for (const file of req.files) {
+                // Ensure that the file is an image
+                if (file.mimetype.startsWith("image/")) {
+                    // If the Bus Images already exist, delete the old file if it exists
+                    if (existBus.images && existBus.images.length > 0) {
+                        existBus.images.forEach((oldFileName) => {
+                            const oldFilePath = `uploads/${oldFileName}`;
+                            if (fs.existsSync(oldFilePath)) {
+                                fs.unlinkSync(oldFilePath);
+                            }
+                        });
+                    }
+                    // Add the new image filename to the images array
+                    images.push(file.filename);
+                }
+            }
+
+            // Update the images with the new one(s) or create a new one if it doesn't exist
+            existBus.images = images.length > 0 ? images : undefined;
+        }
+
+        const updatedBus = await existBus.save();
+        res.status(200).json({
+            success: true,
+            message: "Bus Details Edited Successfully",
+            updatedBus,
         });
     } catch (error) {
-      console.error("Error while editing the bus details", error);
-      // Revert any changes made to the file system if there's an error
-      if (req.files && req.files.length > 0) {
-        req.files.forEach((file) => {
-          const filePath = `uploads/${file.filename}`;
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        });
-      }
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Error while editing the bus details",
-          error,
+        console.error("Error while editing the bus details", error);
+        // Revert any changes made to the file system if there's an error
+        if (req.files && req.files.length > 0) {
+            req.files.forEach((file) => {
+                const filePath = `uploads/${file.filename}`;
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: "Error while editing the bus details",
+            error,
         });
     }
-  };
+};
+
+
+  
+  
+  
   
   
 
@@ -289,6 +317,38 @@ const addBus = async (req, res) => {
   };
   
   
+
+  // APi for add new image in particular bus 
+  const add_new_image_on_bus = async (req, res) => {
+    try {
+      const { busId } = req.params;
+      
+      const newImages = req.files.map(file => file.filename); // Get the file paths
+  
+      // Validate the inputs
+      if (!newImages.length === 0) {
+        return res.status(400).json({ success: false, message: "at least one image are required" });
+      }
+  
+      // Find the bus by ID
+      const bus = await BusModel.
+      findOne({_id : busId });
+  
+      if (!bus) {
+        return res.status(404).json({ success: false, message: "BUS not found" });
+      }
+  
+      // Add new images to the bus images array
+      bus.images.push(...newImages);
+  
+      // Save the updated bus document
+      await bus.save();
+  
+      res.status(200).json({ success: true, message: "Images added successfully", Bus_Detail: bus });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "Error while adding images to the BUS" });
+    }
+  };
   
   //APi for delete Bus
   
@@ -395,5 +455,6 @@ const addBus = async (req, res) => {
   deleteBus,
   allBuses,
   getBus,
-  deleteBusImageByIndex
+  deleteBusImageByIndex,
+  add_new_image_on_bus
   }

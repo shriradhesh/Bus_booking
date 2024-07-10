@@ -42,6 +42,8 @@ const { v4: uuidv4 } = require("uuid");
 const PDFDocument = require('pdfkit')
 const promo_Code_Model = require('../models/promo_code')
 const promoCodeEmail = require('../utils/promoCode_email')
+const adminotpModel = require("../models/adminOtp")
+const sendEmails = require('../utils/sendEmails')
 
 
 
@@ -299,26 +301,26 @@ const updateAdmin = async (req, res) => {
     // Update username and email
     admin.username = username;
     admin.email = email;
+           
+    if (req.file && req.file.filename) {
+      // Get the file extension
+      const fileExtension = path.extname(req.file.filename).toLowerCase();
 
-    // Handle file upload if a file is present in the request
-    if (req.file) {
-      if (admin.profileImage) {
-        // If the admin already has a profileImage, delete the old file if it exists
-        const oldFilePath = `path_to_profile_images/${admin.profileImage}`;
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlink(oldFilePath, (err) => {
-            if (err) {
-              console.error("Error deleting old file:", err);
-            }
-          });
-        }
-        // Update the profileImage with the new one
-        admin.profileImage = req.file.filename;
+      // List of allowed extensions
+      const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+
+      // Check if the file extension is in the allowed list
+      if (allowedExtensions.includes(fileExtension)) {
+          // If valid, update the profile image
+          admin.profileImage = req.file.filename;
       } else {
-        // If it doesn't exist, simply set it to the new file
-        admin.profileImage = req.file.filename;
+          // If not valid, throw an error
+          return res.status(400).json({
+              success : false ,
+              message :  'Invalid file type. Only .jpg, .jpeg, and .png files are allowed.'
+      });
       }
-    }
+  }
 
     // Save the updated admin object in the database
     await admin.save();
@@ -582,7 +584,171 @@ const promo_code_id = req.params.promo_code_id
 }
 
 
-                  
+                             /* Forget password  */
+                             
+            // APi for otp generate and email send to admin for  forget password  
+       
+    const generate_otp = async (req, res) => {
+      try {
+          const { email } = req.body;
+  
+          if (!email || !isValidEmail(email)) {
+              return res.status(400).json({
+                  success: false,
+                  message: "Valid email is required"
+              });
+          }
+  
+          const admin = await Admin.findOne({ email });
+  
+          if (!admin) {
+              return res.status(404).json({ success: false, message: 'Admin with given email not found' });
+          }
+  
+          const otp = generateOTP();
+  
+          // Save the OTP in the otpModel
+          const otpData = {
+              adminId: admin._id,
+              otp: otp
+          };
+          await adminotpModel.create(otpData);
+  
+          const emailContent = `<!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Forgot Password - Reset Your Password</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4;">
+              <div class="container" style="width: 80%; margin: 20px auto; padding: 20px; background: #ffffff; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+                  <section style="margin-top: 20px;">
+                      <h2 style="color: #333; font-size: 24px; text-align: center; margin-bottom: 20px;">Dear ${admin.username} </h2>
+                      <p style="color: #666; font-size: 16px; text-align: center; margin-bottom: 30px;">We received a request to reset your password. To proceed, please use the following One-Time Password (OTP):</p>
+                      <div class="otp-box" style="background-color: #f3fcfd; text-align: center; padding: 20px; border-radius: 10px; margin: 0 auto 30px; max-width: 200px; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+                          <div class="otp-code" style="font-size: 36px; font-weight: bold; color: #333;">${otp}</div>
+                      </div>
+                      <p class="message" style="color: #666; font-size: 14px; text-align: center; margin-bottom: 20px;">This OTP will expire in 2 minutes.</p>
+                      <p style="color: #666; font-size: 16px; text-align: center; margin-bottom: 20px;">If you didn't request a password reset, you can ignore this email.</p>
+                      <p style="color: #666; font-size: 16px; text-align: center; margin-bottom: 20px;">Thank you!</p>
+                      <div class="footer" style="text-align: center; margin-top: 40px; color: #666; font-size: 14px;">&copy; Camer Bus Travels </div>
+                  </section>
+              </div>
+          </body>
+          </html>
+          `
+          await sendEmails(admin.email, "Password reset", emailContent);
+  
+          res.status(200).json({ success: true, 
+                                   message: "An OTP has been sent to your email",
+                                   email: admin.email , 
+                                   
+                                   });
+      } catch (error) {
+          console.error('error', error);
+          res.status(500).json({ success: false, message: "An error occurred", error: error });
+      }
+  
+      function isValidEmail(email) {
+          // email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          return emailRegex.test(email);
+      }
+  
+      function generateOTP() {
+          const otp = Math.floor(1000 + Math.random() * 9000).toString();
+          return otp.slice(0, 4);
+      }
+  };
+  // APi for verify OTP
+  const verify_admin_OTP = async (req, res) => {
+            try {
+                      const otp = req.body.otp                    
+
+                     
+                  // check for otp
+                  if(!otp)
+                  {
+                    return res.status(400).json({
+                       success : false ,
+                       message : 'Otp required'
+                    })
+                  }
+
+                  // check for otp existance
+
+                  const adminOTP = await adminotpModel.findOne({ otp : otp })
+
+                  if(!adminOTP)
+                  {
+                    return res.status(400).json({
+                       success : false ,
+                       message : 'invalid otp or expired'
+                    })
+                  }
+                  else
+                  {
+                    return res.status(200).json({
+                       success : true ,
+                       message : "otp verified",
+                       adminId : adminOTP.adminId
+                    })
+                  }
+            } catch (error) {
+                  return res.status(500).json({
+                     success : false ,
+                     message : 'server error',
+                     error_message : error.message
+                  })
+              
+            }
+     }
+    
+  // APi for otp verify and reset password for forget password 
+                
+                  const adminResetPass = async (req, res) => {
+                    try {
+                        const { newPassword , confirmPassword  } = req.body;
+                        const adminId = req.params.adminId
+                        if (!newPassword) {
+                            return res.status(400).json({ success: false, message: 'newPassword is required' });
+                        }
+                        if (!confirmPassword) {
+                            return res.status(400).json({ success: false, message: 'confirmPassword is required' });
+                        }
+                        if (!adminId) {
+                            return res.status(400).json({ success: false, message: 'adminId is required' });
+                        }                       
+                    
+                        const admin = await Admin.findById(adminId);
+
+                        if (!admin) {
+                            return res.status(400).json({ success: false, message: 'Invalid adminId' });
+                        }
+
+                              // checlk if password and confirmpassword matched 
+                  if(newPassword !== confirmPassword)
+                    {
+                        return res.status(400).json({
+                                success : false ,
+                                message : 'confirm password not matched'
+                        })
+                    }
+                    const hashedPassword = await bcrypt.hash(newPassword, 10);
+                    admin.password = hashedPassword;
+                    await admin.save();
+         
+                        // Delete the used OTP
+                        await adminotpModel.deleteOne({ adminId });
+
+                        res.status(200).json({ success: true, message: 'Password reset successfully' });
+                    } catch (error) {
+                        console.error('error', error);
+                        res.status(500).json({ success: false, message: 'An error occurred', error: error });
+                    }
+                };
+
  
 module.exports = {
   adminLogin,
@@ -594,7 +760,10 @@ module.exports = {
   create_promo_code,
   get_promo_codes,
   update_promo_code,
-  delete_promo_code
+  delete_promo_code,
+  generate_otp,
+  verify_admin_OTP,
+  adminResetPass
  
   
  
