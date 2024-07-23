@@ -33,6 +33,8 @@ router.get('/getNotification/:userId', notifcationController.getNotification)
          router.delete('/deleteNotifcationById/:notificationId' , notifcationController.deleteNotifcationById)
 // API for delete particular feedback
         router.delete('/deleteFeedback/:feedbackId', notifcationController.deleteFeedback)
+// Api for seenUserNotification
+        router.post("/seenUserNotification/:notification_id", notifcationController.seenUserNotification)
 
 
 

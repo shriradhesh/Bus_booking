@@ -184,6 +184,8 @@ const addBus = async (req, res) => {
             });
         }
 
+           
+
         if ((status === "inactive" && availability !== "unavailable") || (availability === "unavailable" && status !== "inactive")) {
             return res.status(400).json({
                 message: "Invalid combination of status and availability",
@@ -194,8 +196,8 @@ const addBus = async (req, res) => {
         existBus.bus_type = bus_type;
         existBus.seating_capacity = seating_capacity;
         existBus.model = model;
-        existBus.manufacture_year = manufacture_year;
-
+        existBus.manufacture_year = manufacture_year;  
+                                                          
         // Validate and parse amenities
         let amenities_details;
         if (amenities) {
@@ -288,7 +290,13 @@ const addBus = async (req, res) => {
       if (!bus) {
         return res.status(404).json({ success: false, message: "Bus not found" });
       }
-  
+        if(!imageIndex)
+        {
+          return res.status(400).json({
+             success : false ,
+             message : 'Image Index required'
+          })
+        }
       // Check if the image index is within the valid range
       if (imageIndex < 0 || imageIndex >= bus.images.length) {
         return res.status(400).json({ success: false, message: "Invalid image index" });

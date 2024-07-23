@@ -64,6 +64,7 @@ const getNotification = async (req, res) => {
       // Check for notifications
       const notifications = await NotificationDetail.find({
         userId,
+        notification_status : 1
       });
   
       if (notifications.length === 0) {
@@ -71,24 +72,15 @@ const getNotification = async (req, res) => {
           success: false,
           message: "There are no notifications for the user yet",
         });
-      } else {
-        // Update notification status
-        await NotificationDetail.updateMany(
-          { userId, notification_status: 0 },
-          { $set: { notification_status: 1 } }
-        );
-  
-        // Fetch updated notifications
-        const updatedNotifications = await NotificationDetail.find({
-          userId,
-        }).sort({ createdAt: -1 });
-  
+      }     
+          const updatedNotifications = await notifications.sort(( a , b )=> b.createdAt - a.createdAt)
+
         return res.status(200).json({
           success: true,
           message: "User notifications",
           notification_details: updatedNotifications,
         });
-      }
+      
     } catch (error) {
       return res.status(500).json({
         success: false,
@@ -96,6 +88,11 @@ const getNotification = async (req, res) => {
       });
     }
   };
+
+
+
+
+
   // API for notification status count
   const notificationCount = async (req, res) => {
     try {
@@ -113,17 +110,9 @@ const getNotification = async (req, res) => {
       // Check for notifications
       const notifications = await NotificationDetail.find({
         userId,
-      });
+        notification_status : 1
+      });      
   
-      // Separate notifications based on notification_status
-      const unseenNotifications_Count = notifications.filter(
-        (notification) => notification.notification_status === 0
-      );
-  
-      // Sort notifications by createdAt
-      const sortedUnseenNotifications_Count = unseenNotifications_Count.sort(
-        (a, b) => b.createdAt - a.createdAt
-      );
   
       if (notifications.length === 0) {
         return res.status(400).json({
@@ -133,9 +122,8 @@ const getNotification = async (req, res) => {
       } else {
         return res.status(200).json({
           success: true,
-          SuccessMessage: "notification count",
-          unseenNotification: sortedUnseenNotifications_Count,
-          unseenNotifications_Count: sortedUnseenNotifications_Count.length,
+          SuccessMessage: "notification count",        
+          unseenNotifications_Count: notifications.length,
         });
       }
     } catch (error) {
@@ -145,6 +133,51 @@ const getNotification = async (req, res) => {
       });
     }
   };
+
+  // Api for seen user notification 
+      const seenUserNotification = async ( req , res )=> {
+         try {
+                 const notification_id = req.params.notification_id
+                // check for notification Id
+
+                if(!notification_id)
+                {
+                  return res.status(400).json({
+                     success : false,
+                     message : 'notification Id required'
+                  })
+                }
+
+                //check for notification required
+
+              const check_notify = await NotificationDetail.findOne({
+                 _id : notification_id
+              })
+
+              if(!check_notify)
+              {
+                return res.status(400).json({
+                   success : false ,
+                   message : 'no notification found'
+                })
+              }
+
+                 check_notify.notification_status = 0
+                 await check_notify.save()
+
+                 return res.status(200).json({
+                   success : true ,
+                   message : 'notification seen ..!'
+                 })
+         } catch (error) {
+             return res.status(500).json({
+               success : false ,
+               message : 'server error',
+               error_message : error.message
+             })
+         }
+      }
+
   
   // Api for get notification of admin
   const getAdminNotification = async (req, res) => {
@@ -518,6 +551,7 @@ const getNotification = async (req, res) => {
   deleteNotifcationById,
   deleteFeedback,
   notificationCount,
+  seenUserNotification
  
   
   }

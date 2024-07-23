@@ -158,10 +158,12 @@ const createTrip = async (req, res) => {
       const stops = route.stops;
      
        // Ensure that EstimatedTimeTaken is a number for each stop
+
     const totalDurationInMinutes = stops.reduce((acc, stop) => {
       const [hours, minutes] = stop.EstimatedTimeTaken.split(',').map((str) => parseInt(str.trim()));
       return acc + (hours * 60 + minutes);
     }, 0);
+
         // Convert total duration to hours and minutes
         const totalHours = Math.floor(totalDurationInMinutes / 60);
         const totalMinutes = totalDurationInMinutes % 60;
@@ -488,9 +490,7 @@ const searchTrips = async (req, res) => {
             } else if (trip.bus_type === 'luxury') {
               lux_tripCount++;
             }
-                   
-
-          
+            
           matchingTrips.push({           
             trip: trip,
             stopsDuration: stopsDuration,

@@ -27,6 +27,11 @@ message :
 },
 userEmail : {
   type : String
+},
+notification_status : {
+  type : Number,
+  enum : [ 0 , 1 ],
+  default : 1
 }
 
 },{
